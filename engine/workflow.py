@@ -630,7 +630,8 @@ def set_questions(config: dict, payload: dict) -> dict:
     for i, g in enumerate(payload.get("choice_groups") or [], 1):
         qids = [qid for qid in g.get("questions") or [] if qid in known]
         groups.append({"id": str(g.get("id") or f"g{i}"), "questions": qids,
-                       "answer": int(g.get("answer") or 0)})
+                       "answer": int(g.get("answer") or 0),
+                       "pick": grading_summary.group_pick(g)})
 
     name_box = _clean_boxes(payload.get("name_box"), layout)
     changed = (name_box != config.get("name_box")

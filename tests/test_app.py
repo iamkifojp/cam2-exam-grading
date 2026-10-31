@@ -340,6 +340,23 @@ class ReviewTests(AppTestCase):
         self.assertEqual(err["error"], "report_total_invalid")
         self.post("/api/overall", {"student_id": "nobody", "comment": "x"}, status=400)
 
+    def test_teacher_picks_a_choice(self):
+        self.post("/api/setup/questions", {"name_box": ["page1!B2"], "questions": [
+            {"id": "q1", "label": "Q1", "boxes": ["page1!B2:C3"], "max": 5},
+            {"id": "q2", "label": "Q2", "boxes": ["page2!A1"], "max": 3}],
+            "choice_groups": [{"id": "g1", "questions": ["q1", "q2"], "answer": 1, "pick": "teacher"}]})
+        session = self.client.get("/api/state").get_json()["session"]
+        self.assertEqual(session["config"]["choice_groups"][0]["pick"], "teacher")
+        student = session["summary"]["students"][0]
+        self.assertEqual((student["pending"], student["complete"]), (["g1"], False))
+        session = self.post("/api/choice", {"student_id": "s001", "group_id": "g1",
+                                            "questions": ["q2"]})["session"]
+        student = session["summary"]["students"][0]
+        self.assertEqual((student["pending"], student["marks"]["total"]), ([], 3))
+        err = self.post("/api/choice", {"student_id": "s001", "group_id": "g1",
+                                        "questions": ["q1", "q2"]}, status=400)
+        self.assertEqual(err["error"], "choice_pick_invalid")
+
     def test_export_makes_pdfs_and_gradebook(self):
         job = self.wait(self.post("/api/export", {"language": "ja", "what": "all"})["job"])
         self.assertEqual(job["status"], "done", job.get("error"))

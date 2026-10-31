@@ -389,6 +389,8 @@ table.preview tr.header-row td { color: var(--muted); font-style: italic; }
 .grade-cell.not-counted button { color: var(--muted); text-decoration: line-through; font-weight: 400; }
 .review-table tr.incomplete .sticky-col strong::after { content: " ⚠"; color: var(--warn); }
 .review-table td.adjusted { background: var(--warn-soft); }
+.btn.warn { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.review-table .sticky-col .btn.small { margin-top: 4px; }
 .override-wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; }
 .override { width: 5.5em; text-align: center; font-weight: 700; }
 .overall-comment { min-width: 16em; font-size: .9rem; }

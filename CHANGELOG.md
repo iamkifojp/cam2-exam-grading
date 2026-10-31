@@ -6,6 +6,26 @@ year-month-day.
 
 ## [Unreleased]
 
+### Choice questions: best N or teacher picks (2026-10-31)
+
+#### Added
+- **How an over-answered choice counts.** Each choice in Step 2 has a new
+  setting, *If a student answers more than that*: **Count the best N** (the
+  default, as before) or **I choose which count**. With the second, a student
+  who answered more than N gets an amber **Choice 1: choose which count**
+  button under their name in Step 5. It opens a list of the answers they gave
+  with their marks or levels; tick the N that count and Save. Until then the
+  student is incomplete and the choice adds nothing to the total or average.
+  The button then reads *Choice 1: Q2, Q3 count ✎*, so the pick can be
+  changed. A student who answered N or fewer is counted as before.
+- Student PDFs say *your teacher chose which answers count* beside an answer
+  that was not picked, and the gradebook's Questions sheet says *(teacher
+  chooses)* for such a choice.
+- `grading_summary.set_choice`, `group_pick`; `POST /api/choice`. The choice's
+  setting is stored as `pick` (`"best"` or `"teacher"`) and the picks in
+  `grades.json` under `overall[<student>]["chosen"][<choice id>]`.
+  `student_summary` gains `pending` and `choices`.
+
 ### Repository and licence (2026-10-31)
 
 #### Added

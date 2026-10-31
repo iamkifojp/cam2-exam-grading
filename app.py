@@ -577,6 +577,19 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             state.save_grades()
         return ok()
 
+    @app.post("/api/choice")
+    def choice():
+        """The answers that count in a "teacher picks" choice group for one student."""
+        state.require_session()
+        data = body()
+        sid = str(data.get("student_id"))
+        workflow.find_student(state.config, sid)
+        with state.lock:
+            grading_summary.set_choice(state.config, state.grades, sid,
+                                       str(data.get("group_id")), data.get("questions"))
+            state.save_grades()
+        return ok()
+
     @app.post("/api/export")
     def export():
         """Make the student PDFs and/or the Excel gradebook in reports/."""

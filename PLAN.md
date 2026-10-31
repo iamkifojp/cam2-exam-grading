@@ -111,7 +111,7 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
    - **Forgot to press "next"?** If a box is drawn somewhere that doesn't overlap the current item's box on that page, CAM2 asks *"A new question, or move the box?"*. This was added after browser testing showed how easily a box got replaced by mistake.
    - **Question order:** the selected question in the *So far* list has **↑ ↓** buttons. A question missed and added later can be moved back into place. Grading, the review table, the student PDFs and the gradebook all follow this order. Grades are stored per question, not per position, so moving is safe at any time, even after grading, and does not need re-slicing. Labels that are all CAM2's own (`Q1`, `Q2`…) are renumbered to match; if any label was typed by the teacher, labels are left alone.
 
-**2D — Choice questions (optional).** *"Do students choose which questions to answer (e.g. answer 2 of 3)?"* The answer defaults to **No**. **Yes** lets the teacher tick the questions in the group and enter how many students must answer. Several groups are allowed.
+**2D — Choice questions (optional).** *"Do students choose which questions to answer (e.g. answer 2 of 3)?"* The answer defaults to **No**. **Yes** lets the teacher tick the questions in the group and enter how many students must answer. Several groups are allowed. Each group also says what happens when a student answers more than that: **Count the best N** (default) or **I choose which count**, which puts an amber **choose which count** button under that student's name in Step ⑤.
 
 **2E — Slice.** **Slice all papers →** shows a progress bar. Crops are saved into the session folder.
 
@@ -188,7 +188,7 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
 | Item | Rule |
 |---|---|
 | Marks: question score | A whole number from 0 to the question's maximum. *Not answered* = 0. |
-| Marks: choice group "answer N of M" | The best N scores count. The group's maximum is the sum of the N largest question maximums. A student who answers more than N gets the best N. |
+| Marks: choice group "answer N of M" | N scores count. The group's maximum is the sum of the N largest question maximums. A student who answers more than N gets the best N, or, when the choice is set to **I choose which count**, the N the teacher ticks in Step ⑤ (until then the choice counts nothing and the student is incomplete). |
 | Marks: total | Ordinary questions plus each choice group's contribution. Percentage to 1 decimal place. |
 | Rubric: criterion average | Average of every level given for that criterion, including from questions assessed on several criteria. *Not answered* = 0, but in a choice group only the best N count (questions on several criteria rank by the sum of their levels). Shown to 1 decimal place. |
 | Rubric: suggested final | Average **rounded half up**, so 4.5 → 5 and 5.5 → 6. Python's `round()` must not be used, because it rounds halves to even (`round(4.5) == 4`). |

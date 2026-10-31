@@ -13,7 +13,8 @@
       "name_box": ["page1!A1:E2"] | [],
       "questions": [{"id": "q1", "label": "Q1", "boxes": ["page1!A4:J10"],
                      "max": 5, "rubric_ids": ["r1"]}],
-      "choice_groups": [{"id": "g1", "questions": ["q4", "q5", "q6"], "answer": 2}],
+      "choice_groups": [{"id": "g1", "questions": ["q4", "q5", "q6"], "answer": 2,
+                         "pick": "best" | "teacher"}],
       "students": [{"id": "s001", "scan": "scans/Student_001.pdf",
                     "source": "scan0001.pdf", "pages": 4, "roster_id": null}],
       "roster": [{"id": "n001", "name": "Tanaka Hana"}],
@@ -31,7 +32,8 @@
                            "q3": {"value": null, "comment": "",
                                   "levels": {"r2": 5, "r3": 4}}}},
       "overall": {"s001": {"comment": "", "report_total": null,
-                           "final_levels": {"r1": 6}}}
+                           "final_levels": {"r1": 6},
+                           "chosen": {"g1": ["q4", "q6"]}}}
     }
 
 A question with no entry (or ``value`` null) is *ungraded*. A question
