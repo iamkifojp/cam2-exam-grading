@@ -30,6 +30,18 @@ From `doc/repository-review-2026-10-31.md`.
   question's grades are kept, so a new question with the same id (`q1`)
   inherited its marks and comments. Step 2 and `set_questions` now skip every
   id that has grades.
+- **A new question fills the gap a deleted one left.** Deleting keeps the
+  other labels as they are (a deleted question is often redrawn), and the next
+  question added takes the lowest free label and its place: delete Q2 from
+  Q1–Q4, and the next one is Q2, between Q1 and Q3. Before, it was added at
+  the end, numbered by count, which could repeat a label (two Q2s).
+- **CAM2 no longer stops itself when a laptop wakes from sleep.** The idle
+  watchdog's clock keeps counting through sleep on Windows, so after the lid
+  was closed for over 10 minutes CAM2 could stop before the open tab sent its
+  next heartbeat. A watchdog check that comes far later than planned now
+  starts the 10-minute wait again.
+- **"CAM2 is not running" is shown in Japanese** when Japanese is chosen. It
+  was the one message written in the browser code in English only.
 
 ### Opened from CAM (2026-10-31)
 

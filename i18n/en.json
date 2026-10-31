@@ -523,6 +523,7 @@
   "error.last_page": "A paper needs at least one page.",
   "error.save_folder_required": "Please choose where to save this session.",
   "error.no_open_session": "No session is open. Go back to the start screen.",
+  "error.offline": "CAM2 is not running. Start it again with “Start CAM2 Exam Grading”.",
   "error.busy": "CAM2 is still working on the last task. Please wait a moment.",
   "error.unexpected": "Something unexpected went wrong: {detail}",
   "error.unknown_language": "Unknown language.",

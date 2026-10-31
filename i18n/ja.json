@@ -523,6 +523,7 @@
   "error.last_page": "答案には少なくとも1ページが必要です。",
   "error.save_folder_required": "この採点の保存先を選んでください。",
   "error.no_open_session": "開いている採点がありません。最初の画面に戻ってください。",
+  "error.offline": "CAM2が動いていません。「Start CAM2 Exam Grading」からもう一度起動してください。",
   "error.busy": "CAM2はまだ前の作業中です。少しお待ちください。",
   "error.unexpected": "予期しない問題が発生しました：{detail}",
   "error.unknown_language": "不明な言語です。",
