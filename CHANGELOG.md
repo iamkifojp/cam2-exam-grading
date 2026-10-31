@@ -6,6 +6,27 @@ year-month-day.
 
 ## [Unreleased]
 
+### Opened from CAM (2026-10-31)
+
+#### Added
+- **Host mode** for running CAM2 inside CAM. CAM starts CAM2 with
+  `launcher.py --host <handoff.json>`, naming one exam, the folder its session
+  lives in (inside CAM's class folder) and the class list. A CAM2 that is
+  already running is handed the exam instead (`POST /api/host/handoff`), and
+  closes any other session first.
+- In host mode CAM2 opens that exam straight away, or starts it on the Step 1
+  form with the exam name and save folder fixed (the folder must be empty, and
+  the session goes in it, never in a subfolder). CAM's class list replaces the
+  upload in Step 3; papers are matched from file names as usual, and each
+  entry keeps CAM's `external_id` and its id even if CAM corrects a name. The
+  header shows *CAM · <class>*.
+- **✓ Grading finished — send to CAM** in Step 5 stamps `host_ready_at` in
+  `cam2_session.json` (with a check if anything is ungraded); *Not finished
+  after all* clears it. CAM reads the session folder and never writes to it.
+  Student PDFs and the gradebook are made exactly as before.
+- `engine/host.py`; `POST /api/host/ready`; `/api/state` has `host`. Used on
+  its own, CAM2 is unchanged.
+
 ### Adjust a box while grading (2026-10-31)
 
 #### Added

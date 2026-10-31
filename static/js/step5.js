@@ -181,7 +181,27 @@ ${action}` : action,
     h("div", { class: "table-scroll review-scroll" },
       h("table", { class: "review-table" }, h("thead", {}, head),
         h("tbody", {}, rows), h("tfoot", {}, stat("average"), stat("max"), stat("min")))),
+    c.host ? hostPanel(c, incomplete) : null,
     exportPanel(incomplete));
+}
+
+// Opened from CAM: CAM reads the results only once the teacher sends them.
+function hostPanel(c, incomplete) {
+  const sent = c.host_ready_at;
+  const send = async () => {
+    if (incomplete && !(await confirmBox(t("host.send_incomplete_title"),
+      t("host.send_incomplete", { n: incomplete, host: c.host.name }), t("host.send_anyway")))) return;
+    act(post("/api/host/ready", { ready: true }));
+  };
+  return h("section", { class: `card ${sent ? "" : "accent"}` },
+    h("h2", {}, t("host.send_title", { host: c.host.name })),
+    sent
+      ? [h("p", { class: "ok-text" }, t("host.sent", { time: formatTime(sent), host: c.host.name })),
+        h("div", { class: "actions left" },
+          button(t("host.send_again"), send),
+          button(t("host.unsend"), () => act(post("/api/host/ready", { ready: false })), "ghost"))]
+      : [h("p", { class: "muted" }, t("host.send_hint", { host: c.host.name })),
+        h("div", { class: "actions left" }, button(t("host.send", { host: c.host.name }), send, "primary big"))]);
 }
 
 // A number box for "Total on report" / "Final level". Empty, or the calculated

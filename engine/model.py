@@ -18,7 +18,10 @@
                          "pick": "best" | "teacher"}],
       "students": [{"id": "s001", "scan": "scans/Student_001.pdf",
                     "source": "scan0001.pdf", "pages": 4, "roster_id": null}],
-      "roster": [{"id": "n001", "name": "Tanaka Hana"}],
+      "roster": [{"id": "n001", "name": "Tanaka Hana", "external_id": "8A-07"}],
+      "host": {"name": "CAM", "class_name": "8A"},       # opened from CAM (engine/host.py)
+      "host_ready_at": "..." | null,                     # results sent to the host
+      "crops_of": {"q1": ["page1!A4:J10"]},              # boxes the crops were cut from
       "sliced": false,
       "resume": {"step": 1, "question_id": null, "student_id": null}
     }

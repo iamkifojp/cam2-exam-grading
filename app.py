@@ -19,7 +19,7 @@ import threading
 from flask import Flask, abort, jsonify, request, send_file, send_from_directory
 
 from appstate import AppState
-from engine import (gradebook_xlsx, grading_summary, i18n, keywords, model, reports, roster,
+from engine import (gradebook_xlsx, grading_summary, host, i18n, keywords, model, reports, roster,
                     rubrics, slicer, storage, tables, workflow)
 from engine.errors import SaveError, UserError
 from engine.pickers import documents_folder, open_in_file_manager, pick_folder, pick_pdf
@@ -78,6 +78,24 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             "save_failed": state.save_failed,
         }
 
+    def host_view() -> dict | None:
+        """The app that opened CAM2, and its one exam (None when used on its own)."""
+        if not state.host:
+            return None
+        folder = state.host["session_folder"]
+        return {"host": state.host["host"], "exam_name": state.host["exam_name"],
+                "class_name": state.host["class_name"], "session_folder": folder,
+                "session_exists": storage.is_session_folder(folder),
+                "roster_count": len(state.host["roster"])}
+
+    def adopt_host_session(save: bool = True) -> None:
+        """The host's own session uses the host's class list (papers are
+        matched again once scans come in)."""
+        if host.is_host_session(state.host, state.session.folder):
+            host.apply_roster(state.config, state.host)
+            if save:
+                state.save_config()
+
     def ok(**extra):
         return jsonify(dict({"ok": True, "session": session_view()}, **extra))
 
@@ -117,6 +135,25 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
                 storage.set_pref(key, bool(data[key]))
         return jsonify({"ok": True})
 
+    @app.post("/api/host/handoff")
+    def host_handoff():
+        """A host (CAM) asks this running CAM2 to open one of its exams."""
+        state.host = host.normalize(body())
+        if state.session is not None and not host.is_host_session(state.host, state.session.folder):
+            try:
+                state.save_all()
+            finally:
+                state.close_session()
+        return jsonify({"ok": True})
+
+    @app.post("/api/host/ready")
+    def host_ready():
+        """Grading finished: the host may read the results (or not yet)."""
+        state.require_session()
+        host.set_ready(state.config, bool(body().get("ready")))
+        state.save_config()
+        return ok()
+
     @app.post("/api/heartbeat")
     def heartbeat():
         other = state.heartbeat()
@@ -133,6 +170,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     def get_state():
         return jsonify({"language": language(), "version": VERSION,
                         "session": session_view(), "recent": storage.list_recent(),
+                        "host": host_view(),
                         "prefs": {key: bool(storage.get_pref(key, False))
                                   for key in ("hide_names", "shuffle_papers")}})
 
@@ -186,6 +224,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         session, config, grades = storage.open_session(folder)
         state.set_session(session, config, grades)
         storage.claim_lock(folder, force=True)
+        adopt_host_session()
         rescue = {}
         for kind, file in (("config", session.config_file), ("grades", session.grades_file)):
             newer = file.newer_emergency_copy()
@@ -234,12 +273,19 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         chosen = str(data.get("save_folder") or "").strip().strip('"')
         if not chosen:
             raise UserError("save_folder_required")
-        folder = workflow.choose_session_folder(chosen, exam)
+        if host.is_host_session(state.host, chosen):
+            # The host reads this exact folder, so never a subfolder of it.
+            folder = os.path.abspath(chosen)
+            if os.path.isdir(folder) and os.listdir(folder):
+                raise UserError("host_folder_not_empty", folder=folder)
+        else:
+            folder = workflow.choose_session_folder(chosen, exam)
         session, config, grades = storage.create_session(folder, exam)
         config["layout"] = layout.to_config()
         state.set_session(session, config, grades)
         storage.claim_lock(folder, force=True)
         state.save_config()
+        adopt_host_session()
         return start_import(source)
 
     def start_import(source: dict):
@@ -251,6 +297,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             with state.lock:
                 state.config = config
                 set_step(1)
+                adopt_host_session(save=False)
                 state.save_config()
             return {"students": len(config["students"])}
 
@@ -276,6 +323,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             added = workflow.add_papers(session, config, source, job.progress)
             with state.lock:
                 state.config = config
+                adopt_host_session(save=False)
                 state.save_config()
             return {"added": added}
 

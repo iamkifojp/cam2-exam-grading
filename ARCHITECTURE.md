@@ -37,6 +37,7 @@ This describes how CAM2 is built. For what it should do and why, see
 | `tables.py` | Reads `.xlsx` and `.csv` (UTF-8 or Shift-JIS) into rows of text. |
 | `grading_summary.py` | Recording a grade (with validation), choice groups (best N, or the teacher's pick per student: `pick`, `set_choice`, a *pending* group counts nothing), totals, rubric averages, round-half-up, report overrides, class statistics, progress. In Rubric mode a question can be assessed on several criteria (`rubric_ids`); each (question, criterion) pair is a *slot* with its own level, stored in the grade entry's `levels` and read through `level_of()`, which also reads sessions saved with one `rubric_id`. Summaries key per-slot statistics as `q2/r3` (`slot_key`). |
 | `keywords.py` | Quick comments: the exam's list (`keywords` in the config, or five defaults in the app language), and `apply()`, which ticks keywords on one answer and rebuilds the generated first line of its comment. The line last written is kept as `keyword_text`, so it is replaced exactly and the teacher's own text below it is kept. |
+| `host.py` | Host mode (CAM opening one of its exams): reads and checks the handoff file, gives the session the host's class list keyed by `external_id` (ids stay put when a name changes), and stamps `host_ready_at` when the teacher sends the results. |
 | `i18n.py` | Looks up text in `i18n/en.json` / `i18n/ja.json`; translates `UserError`s. |
 | `pickers.py` | Native folder / PDF dialogs: Windows IFileOpenDialog (in a child process) with a PowerShell fallback, macOS `osascript`. Finds the Documents folder. |
 | `pages.py` | Turning scans into one PDF per paper: a page is a `Ref` (file, page, turn). It joins several PDFs or page photos into one stack and groups it into papers. It also unfolds booklets scanned open: each side is cut in half with `show_pdf_page(clip=…)`, so quality is kept, and pages are put in reading order by `booklet_layout`. A page with a stored rotation is first baked upright with `remove_rotation`. Photos are turned upright from their phone orientation and reduced to about 200 dpi. Also makes the Step 1 preview of paper 1. |
@@ -51,7 +52,7 @@ Phase 5 adds the package builders.
 
 | File | Job |
 |---|---|
-| `launcher.py` | **Single instance:** if CAM2 is already running on this computer, it just opens the browser on it (`server.json` in app data records the port). Otherwise it serves on `127.0.0.1`, on the first free port from 5182. It stops 10 minutes after the last heartbeat, or on **Quit**. Without a console (`pythonw`), output goes to `<app data>/logs/cam2.log`. |
+| `launcher.py` | `--host <handoff.json>`: opened by CAM for one exam (a running CAM2 is handed it through `POST /api/host/handoff`). **Single instance:** if CAM2 is already running on this computer, it just opens the browser on it (`server.json` in app data records the port). Otherwise it serves on `127.0.0.1`, on the first free port from 5182. It stops 10 minutes after the last heartbeat, or on **Quit**. Without a console (`pythonw`), output goes to `<app data>/logs/cam2.log`. |
 | `appstate.py` | **What the server remembers:** the one open session (config, grades, save-failure flag) and background **jobs** for importing and slicing (one at a time; the browser polls their progress). `save_config()` keeps a change in memory even when the save fails, so the browser can show the red banner and retry. |
 | `app.py` | **JSON routes**, grouped by screen (see below). Errors come back as `{"error", "message", "params", "save_error"}`, with status 400, or 409 for save problems. It also stops the browser keeping old scripts after an upgrade (`Cache-Control: no-cache`). |
 | `templates/index.html`, `static/app.css` | **The page:** one HTML shell and one stylesheet. Light and dark themes, large click targets, and the Japanese system fonts listed first. |
@@ -78,6 +79,7 @@ Phase 5 adds the package builders.
 
 | Area | Routes |
 |---|---|
+| Host | `POST /api/host/handoff` (from `launcher.py --host`), `POST /api/host/ready` (`ready`: send the results to CAM, or take them back) |
 | Shell | `GET /`, `GET /api/ping`, `GET /api/i18n`, `POST /api/language`, `GET /api/state`, `POST /api/heartbeat`, `POST /api/quit` |
 | Sessions | `POST /api/session/{open,create,close,reopen,forget,restore-emergency}`, `POST /api/save`, `POST /api/step`, `GET /api/job/<id>` |
 | Step 1 | `POST /api/pick`, `POST /api/inspect`, `POST /api/preview-paper` (paper 1 as JPEG data URLs, no session needed), `GET /api/default-folder`, `POST /api/scans/replace`, `POST /api/scans/add` (a job: late papers), `POST /api/pages/edit` (`student`, `page`, `action`; returns `where` the page is now), `GET /api/thumb/<student>` |
