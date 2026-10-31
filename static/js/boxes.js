@@ -88,8 +88,11 @@ function initialCurrent(d) {
   return d.questions[d.questions.length - 1].id;
 }
 
+// A deleted question's grades are kept, so its id is never handed out again:
+// a new question would inherit them.
 function addQuestion(d) {
-  const used = new Set(d.questions.map((q) => q.id));
+  const used = new Set([...d.questions.map((q) => q.id),
+    ...Object.values(app.session?.grades?.grades || {}).flatMap((per) => Object.keys(per || {}))]);
   let n = 1;
   while (used.has(`q${n}`)) n++;
   const c = config();

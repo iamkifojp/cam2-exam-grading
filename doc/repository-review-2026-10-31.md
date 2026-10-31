@@ -7,6 +7,17 @@ Reviewed commit: `c33b965`
 Scope: Windows and macOS standalone release readiness, following `AGENTS.md`.
 
 This review records four concrete bugs. Proposed fixes below have not been applied.
+
+**Status (2026-10-31): all four are fixed**, with tests. See the CHANGELOG entry
+*Release-readiness fixes*. Two fixes differ from the proposals:
+
+- **#1:** the packaged app starts itself with `--pick` (handled in `launcher.py`)
+  rather than always using PowerShell, so the modern Windows dialog is kept.
+  The same work found that the picker child wrote its answer in the ANSI code
+  page, garbling non-English folder names. That is fixed too.
+- **#2:** replacement is refused once any paper has a grade *or a comment*
+  (`workflow.class_has_work`), since comments would move as well. The Step 1
+  button is disabled with an explanation.
 Verification used source inspection and in-memory checks with filesystem operations
 mocked where needed. No frozen Windows or macOS binary was built or executed.
 

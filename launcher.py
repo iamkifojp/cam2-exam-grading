@@ -8,6 +8,9 @@
 
 Usage:  python launcher.py [--port 5182] [--no-browser] [--idle 600] [--host handoff.json]
 
+``--pick`` is only for the packaged app opening its own Windows file dialog
+(see ``engine/pickers.py``).
+
 ``--host`` is for another app (CAM) opening one of its exams in CAM2; see
 ``engine/host.py``. A CAM2 that is already running is handed the exam.
 """
@@ -28,7 +31,7 @@ from werkzeug.serving import make_server
 
 from app import create_app
 from appstate import AppState
-from engine import host, storage
+from engine import host, pickers, storage
 from engine.errors import UserError
 
 DEFAULT_PORT = 5182
@@ -154,4 +157,6 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == [pickers.PICK_FLAG]:      # packaged app: a Windows file dialog
+        raise SystemExit(pickers._main(sys.argv[2:]))
     raise SystemExit(main())
