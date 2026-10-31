@@ -1,6 +1,6 @@
 # CAM2 — Standalone Exam Slicing & Grading App (Implementation Plan)
 
-> **Working Directory:** `C:\Project\CAM2`
+> **Working Directory:** `C:\Project\cam2-exam-grading` (GitHub: `iamkifojp/cam2-exam-grading`)
 > **Forked From:** `C:\Project\criterion-assessment-metrics-public` — grid maths and slicing (`cam_grading_workspace/exam_engine.py`), the save-safety layer (`engine/persistence.py`), the native folder picker (`engine/folder_dialog.py`) and the portable bundle builder (`tools/build_windows_bundle.py`).
 > **Status:** v7. Revised after a review. Adds Windows and Mac packages, A4/B5/A3 paper sizes with a 5 mm grid, a "see whole page" viewer, answer boxes that span several pages, choice questions ("answer 2 of 3"), rubric levels you can set yourself, report-only totals, a fully bilingual app (EN/日本語) and CAM's save-safety checks.
 
@@ -243,7 +243,7 @@ The app is a small local web server (Flask) plus the teacher's browser, so the s
 
 ### App code
 ```text
-C:\Project\CAM2\
+cam2-exam-grading\
 ├── PLAN.md
 ├── README.md
 ├── requirements.txt            # Flask, Pillow, PyMuPDF, openpyxl  (no python-docx)
