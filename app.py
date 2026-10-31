@@ -112,8 +112,9 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     @app.post("/api/prefs")
     def set_prefs():
         data = body()
-        if "hide_names" in data:
-            storage.set_pref("hide_names", bool(data["hide_names"]))
+        for key in ("hide_names", "shuffle_papers"):
+            if key in data:
+                storage.set_pref(key, bool(data[key]))
         return jsonify({"ok": True})
 
     @app.post("/api/heartbeat")
@@ -132,7 +133,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     def get_state():
         return jsonify({"language": language(), "version": VERSION,
                         "session": session_view(), "recent": storage.list_recent(),
-                        "prefs": {"hide_names": bool(storage.get_pref("hide_names", False))}})
+                        "prefs": {key: bool(storage.get_pref(key, False))
+                                  for key in ("hide_names", "shuffle_papers")}})
 
     # --- Pickers --------------------------------------------------------------------
 

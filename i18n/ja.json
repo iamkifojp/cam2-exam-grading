@@ -315,6 +315,7 @@
   "step4.next_question": "次の設問",
   "step4.graded_count": "{total} 枚中 {done} 枚 採点済み",
   "step4.hide_names": "生徒の名前を隠す",
+  "step4.shuffle_papers": "答案の順番を入れ替える（設問ごとに別の順番）",
   "step4.show_name": "名前を表示",
   "step4.ungraded_only": "未採点のみ表示",
   "step4.to_review": "次へ：確認と出力 →",

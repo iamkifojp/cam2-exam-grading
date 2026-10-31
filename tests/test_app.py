@@ -137,6 +137,12 @@ class ShellTests(AppTestCase):
         self.post("/api/prefs", {"hide_names": True})
         self.assertTrue(self.client.get("/api/state").get_json()["prefs"]["hide_names"])
 
+    def test_shuffle_papers_preference(self):
+        self.assertFalse(self.client.get("/api/state").get_json()["prefs"]["shuffle_papers"])
+        self.post("/api/prefs", {"shuffle_papers": True})
+        prefs = self.client.get("/api/state").get_json()["prefs"]
+        self.assertEqual(prefs, {"hide_names": False, "shuffle_papers": True})   # independent of hiding
+
     def test_language_switch(self):
         self.assertEqual(self.client.get("/api/i18n").get_json()["language"], "en")
         self.post("/api/language", {"language": "ja"})

@@ -6,6 +6,18 @@ year-month-day.
 
 ## [Unreleased]
 
+### Shuffle papers while grading (2026-10-31)
+
+#### Added
+- **Shuffle papers** tick box in Step 4, beside *Hide student names* and
+  separate from it, remembered on this computer (`shuffle_papers` in
+  `prefs.json`). Papers come in a different order for every question, the
+  same each time that question is opened (seeded by session and question).
+  With names hidden as well, *Paper 3 of 24* is a different student on each
+  question, so no impression of one student builds up across questions. The
+  strip numbers, ◀ ▶, "Show ungraded only" and *Go to Q2* all follow the
+  shuffled order. Ported from CAM's grading workspace (`examSeededShuffle`).
+
 ### Quick comments while grading (2026-10-31)
 
 #### Added

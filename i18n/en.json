@@ -316,6 +316,7 @@
   "step4.graded_count": "{done} of {total} papers graded",
   "step4.ungraded_only": "Show ungraded only",
   "step4.hide_names": "Hide student names",
+  "step4.shuffle_papers": "Shuffle papers (a new order for each question)",
   "step4.show_name": "Show name",
   "step4.to_review": "Next: Review & export →",
   "step4.papers": "Papers",
