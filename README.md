@@ -22,15 +22,39 @@ training**:
   MYP 0–8). CAM2 ships no rubric text; you type, paste or upload your own.
   An exam can use several criteria, and one question can be assessed on more
   than one of them, with a level for each.
+- **Real scans, not perfect ones.** Scan the whole class into one PDF, a few
+  batches, one file per student or phone photos. Booklets scanned open on A3
+  are put back in page order, and upside-down, misplaced or missing pages can
+  be fixed on screen. Late papers can be added at any time.
 
-> **Status:** in development. Phases 1–4 are done: the whole app works from
-> the start screen to the student PDFs and Excel gradebook. The no-install
-> Windows and Mac downloads (Phase 5) follow. See [PLAN.md](PLAN.md) for the
-> roadmap and [CHANGELOG.md](CHANGELOG.md) for progress.
+## Status
+
+**The app is finished; the downloads are not.** Everything a teacher does in
+CAM2 is built and tested, from the start screen to the student PDFs and
+the Excel gradebook. What is left is packaging it so that teachers can run it
+without installing anything.
+
+| Stage | | State |
+|---|---|---|
+| Phase 1 | Engine and tests | ✅ done |
+| Phase 2 | Start screen and Steps ①–③ | ✅ done |
+| Phase 3 | Step ④ grading | ✅ done |
+| Phase 4 | Step ⑤ review, student PDFs and Excel gradebook | ✅ done |
+| Phase 4b | Scanning guide, booklets, page fixes, late papers | ✅ done |
+| Phase 4c | Questions assessed on several criteria | ✅ done |
+| Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ next |
+
+All 187 automated tests pass, and every finished stage was also tried out in a
+browser with sample papers, in English and Japanese. Until the downloads are
+ready, CAM2 can be run from the source code (see
+[For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
+[CHANGELOG.md](CHANGELOG.md) the details of each stage.
 
 ## For teachers
 
-Downloads will appear here once the first version is ready:
+The downloads are being built in Phase 5 and are **not available yet**.
+When they are, they will be on this repository's
+[Releases](https://github.com/iamkifojp/cam2-exam-grading/releases) page:
 
 | Computer | Download | First start |
 |---|---|---|

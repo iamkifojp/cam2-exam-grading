@@ -11,6 +11,10 @@ year-month-day.
 #### Added
 - **MIT licence** (`LICENSE`), the same as CAM. The README has a Licence
   section.
+- **README status.** A Status section shows every stage with its state
+  (Phases 1–4c done, Phase 5 packaging next), says the downloads are not
+  available yet and will be on the Releases page, and adds a feature line on
+  real-world scans (booklets, page fixes, late papers).
 - **`.gitattributes`** keeps line endings consistent between Windows and Mac
   (CRLF for `.bat`/`.cmd`, LF for `.sh`/`.command`) and marks images, PDFs,
   spreadsheets and zips as binary.
