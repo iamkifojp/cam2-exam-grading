@@ -90,7 +90,7 @@ function chooseAnswers(c, s, gid, ch) {
       h("div", { class: "tick-list" }, list)),
     actions: [
       { label: t("common.cancel") },
-      { label: t("step5.choose_save"), kind: "primary",
+      { label: t("common.save"), kind: "primary",
         onClick: () => act(post("/api/choice", { student_id: s.id, group_id: gid, questions: [...picked] })) },
     ],
   });

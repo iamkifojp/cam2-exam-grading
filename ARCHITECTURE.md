@@ -36,6 +36,7 @@ This describes how CAM2 is built. For what it should do and why, see
 | `roster.py` | Class lists: header and name-column guesses, name extraction, pasted names, file-name auto-matching. |
 | `tables.py` | Reads `.xlsx` and `.csv` (UTF-8 or Shift-JIS) into rows of text. |
 | `grading_summary.py` | Recording a grade (with validation), choice groups (best N, or the teacher's pick per student: `pick`, `set_choice`, a *pending* group counts nothing), totals, rubric averages, round-half-up, report overrides, class statistics, progress. In Rubric mode a question can be assessed on several criteria (`rubric_ids`); each (question, criterion) pair is a *slot* with its own level, stored in the grade entry's `levels` and read through `level_of()`, which also reads sessions saved with one `rubric_id`. Summaries key per-slot statistics as `q2/r3` (`slot_key`). |
+| `keywords.py` | Quick comments: the exam's list (`keywords` in the config, or five defaults in the app language), and `apply()`, which ticks keywords on one answer and rebuilds the generated first line of its comment. The line last written is kept as `keyword_text`, so it is replaced exactly and the teacher's own text below it is kept. |
 | `i18n.py` | Looks up text in `i18n/en.json` / `i18n/ja.json`; translates `UserError`s. |
 | `pickers.py` | Native folder / PDF dialogs: Windows IFileOpenDialog (in a child process) with a PowerShell fallback, macOS `osascript`. Finds the Documents folder. |
 | `pages.py` | Turning scans into one PDF per paper: a page is a `Ref` (file, page, turn). It joins several PDFs or page photos into one stack and groups it into papers. It also unfolds booklets scanned open: each side is cut in half with `show_pdf_page(clip=…)`, so quality is kept, and pages are put in reading order by `booklet_layout`. A page with a stored rotation is first baked upright with `remove_rotation`. Photos are turned upright from their phone orientation and reduced to about 200 dpi. Also makes the Step 1 preview of paper 1. |
@@ -82,7 +83,7 @@ Phase 5 adds the package builders.
 | Step 1 | `POST /api/pick`, `POST /api/inspect`, `POST /api/preview-paper` (paper 1 as JPEG data URLs, no session needed), `GET /api/default-folder`, `POST /api/scans/replace`, `POST /api/scans/add` (a job: late papers), `POST /api/pages/edit` (`student`, `page`, `action`; returns `where` the page is now), `GET /api/thumb/<student>` |
 | Step 2 | `POST /api/setup/{layout,mode,rubrics,rubrics/check,rubrics/import,questions}`, `GET /api/setup/rubrics/template`, `POST /api/slice`, `GET /api/page/<student>/<page>`, `GET /api/preview-crop/<student>` |
 | Step 3 | `POST /api/roster/{upload,columns,paste,clear}`, `POST /api/students/<student>/match`, `GET /api/crop/<region>/<student>` |
-| Step 4 | `POST /api/grade` (value and/or comment; saves `grades.json` at once), `POST /api/position` (the question and paper on screen, for resuming) |
+| Step 4 | `POST /api/grade` (value and/or comment and/or `keywords`; saves `grades.json` at once), `POST /api/setup/keywords` (the quick-comment list), `POST /api/position` (the question and paper on screen, for resuming) |
 | Step 5 | `POST /api/overall` (overall comment, report-only total or final levels; empty means "use the calculated value"), `POST /api/choice` (`student_id`, `group_id`, `questions`: the answers that count in a "teacher picks" choice), `POST /api/export` (a job: `what` is `all` or `excel`, plus `language`), `POST /api/open-folder` (shows `reports/` in Explorer or Finder) |
 
 **The session view** sent to the browser includes the grades, progress
@@ -255,7 +256,8 @@ python -m unittest discover -s tests -t .
 | `test_storage.py` | Every save-safety rule (ported from CAM's cloud-safety and concurrency tests), the lock, recent sessions, paths |
 | `test_rubrics.py` | Level parsing, overlaps, imports, template round trip, Shift-JIS |
 | `test_roster.py` | Spreadsheet reading, column guesses, pasted names, auto-matching (including macOS-decomposed names) |
-| `test_grading_summary.py` | Validation, round-half-up, choice groups (ported from CAM's `test_exam_sections.py`), rubric averages, overrides, class statistics |
+| `test_grading_summary.py` | Validation, round-half-up, choice groups (ported from CAM's `test_exam_sections.py`) with best N and teacher picks, rubric averages, overrides, class statistics |
+| `test_keywords.py` | Quick-comment list defaults and clean-up, rebuilding the generated line while keeping typed text, language changes |
 | `test_i18n.py` | Key and placeholder parity, error coverage |
 | `test_pickers.py` | Picker launching on Windows and macOS (ported from CAM's `test_folder_dialog.py`) |
 | `test_workflow.py` | Import from a folder and a combined PDF, re-import, set-up drafts vs. `check_ready`, layout changes, slicing a two-page question, matching names |

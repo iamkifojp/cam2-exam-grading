@@ -146,7 +146,7 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
      - **Rubric mode:** one card per band showing its descriptor. Inside each card is a button for every level in that band; for example, the `5–6` card has `[5]` and `[6]`.
      - **A question on several criteria** is graded one criterion at a time: the question list has `Q2 · Criterion B` and `Q2 · Criterion C` as separate items, so the teacher grades B across the class and then C. Tabs at the top of the card switch criterion on the same paper and show each criterion's level. *Not answered* applies to every criterion of the question, and the comment is shared.
   2. **Not answered:** counts as 0, except in a choice group, where the question is left out (see §3).
-  3. **Comment (optional):** one text box.
+  3. **Comment (optional):** one text box, with **quick comments** above it: tick boxes for common feedback (*Strengths* and *Areas to develop*) that write one generated line at the top of the comment and keep the teacher's own text. **✎ Edit list** sets the exam's list.
 - **No keyboard shortcuts.**
 - **Moving on:** **Next paper →** sits under the comment box. After a grade,
   keyboard focus moves to it, but CAM2 doesn't move on by itself, so there's

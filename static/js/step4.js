@@ -7,7 +7,7 @@ import { post } from "./api.js";
 import { t } from "./i18n.js";
 import { goTo } from "./main.js";
 import { act, app, config, criteriaOf, gradeOf, handleError, render } from "./store.js";
-import { button, debounce, formatTime, h } from "./ui.js";
+import { button, debounce, formatTime, h, modal } from "./ui.js";
 import { parseRange } from "./boxes.js";
 
 const NA = "not_answered";
@@ -372,6 +372,19 @@ function gradeCard(c, d, item, student) {
       h("span", { class: "muted" }, `/ ${q.max}`));
   }
 
+  const picked = entry(student.id, q.id)?.keywords || [];
+  const toggleKeyword = async (label, on) => {
+    await saveComment.flush();
+    const next = on ? [...picked, label] : picked.filter((x) => x !== label);
+    act(post("/api/grade", { student_id: student.id, question_id: q.id, keywords: next }));
+  };
+  const pills = h("div", { class: "keyword-pills" },
+    h("div", { class: "row" }, h("span", { class: "label" }, t("step4.keywords")),
+      button(t("step4.keywords_edit"), () => editKeywords(c), "small ghost")),
+    h("div", {}, (c.keywords || []).map((k) => h("label", { class: `check pill ${k.type}` },
+      h("input", { type: "checkbox", checked: picked.includes(k.label),
+        onchange: (e) => toggleKeyword(k.label, e.target.checked) }), k.label))));
+
   const commentBox = h("textarea", { id: "comment-box", rows: "3", placeholder: t("grade.comment_placeholder"),
     "aria-label": t("grade.comment_placeholder"),
     oninput: (e) => saveComment(student.id, q.id, e.target.value),
@@ -386,11 +399,32 @@ function gradeCard(c, d, item, student) {
     h("div", { class: "row" },
       button(t("grade.not_answered"), notAnswered, value === NA ? "small on" : "small", { "aria-pressed": value === NA ? "true" : "false" }),
       value !== null ? button(t("step4.clear"), clear, "small ghost") : null),
+    pills,
     h("label", { class: "comment" }, h("span", { class: "label" }, t("step4.comment")), commentBox),
     nextId
       ? button(t("step4.next_paper_button"), () => { saveComment.flush(); moveTo({ sid: nextId }); },
         "primary big", { id: "next-paper" })
       : lastPaperActions(c, d, item));
+}
+
+// The exam's quick comments, one per line under Strengths and Areas to develop.
+function editKeywords(c) {
+  const lines = (type) => (c.keywords || []).filter((k) => k.type === type).map((k) => k.label).join("\n");
+  const strengths = h("textarea", { rows: "4" }, lines("strength"));
+  const growth = h("textarea", { rows: "6" }, lines("growth"));
+  const read = (box, type) => box.value.split("\n").map((s) => s.trim()).filter(Boolean)
+    .map((label) => ({ label, type }));
+  modal({
+    title: t("step4.keywords_title"),
+    body: h("div", { class: "stack" }, h("p", { class: "muted" }, t("step4.keywords_hint")),
+      h("label", { class: "stack" }, h("span", { class: "label" }, t("step4.keywords_strengths")), strengths),
+      h("label", { class: "stack" }, h("span", { class: "label" }, t("step4.keywords_growth")), growth)),
+    actions: [
+      { label: t("common.cancel") },
+      { label: t("common.save"), kind: "primary", onClick: () => act(post("/api/setup/keywords",
+        { keywords: [...read(strengths, "strength"), ...read(growth, "growth")] })) },
+    ],
+  });
 }
 
 // Tabs for a question on several criteria; each shows its level on this paper.

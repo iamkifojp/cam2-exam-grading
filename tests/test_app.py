@@ -283,6 +283,17 @@ class GradingTests(AppTestCase):
         session = self.grade({"student_id": "s001", "question_id": "q1", "value": None})["session"]
         self.assertIsNone(session["grades"]["grades"]["s001"]["q1"]["value"])
 
+    def test_quick_comments(self):
+        session = self.client.get("/api/state").get_json()["session"]
+        self.assertEqual(len(session["config"]["keywords"]), 5)          # defaults, in English
+        self.post("/api/setup/keywords", {"keywords": [{"label": "neat", "type": "strength"}]})
+        self.grade({"student_id": "s001", "question_id": "q1", "comment": "Typed."})
+        session = self.grade({"student_id": "s001", "question_id": "q1", "keywords": ["neat"]})["session"]
+        self.assertEqual(session["config"]["keywords"], [{"label": "neat", "type": "strength"}])
+        self.assertEqual(session["grades"]["grades"]["s001"]["q1"]["comment"], "Strengths: neat.\nTyped.")
+        err = self.grade({"student_id": "s001", "question_id": "q1", "keywords": ["gone"]}, status=400)
+        self.assertEqual(err["error"], "unknown_keyword")
+
     def test_position_is_remembered(self):
         self.post("/api/position", {"question_id": "q2", "student_id": "s002"})
         self.post("/api/session/close")

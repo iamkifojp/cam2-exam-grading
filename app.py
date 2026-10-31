@@ -19,8 +19,8 @@ import threading
 from flask import Flask, abort, jsonify, request, send_file, send_from_directory
 
 from appstate import AppState
-from engine import (gradebook_xlsx, grading_summary, i18n, model, reports, rubrics, roster,
-                    slicer, storage, tables, workflow)
+from engine import (gradebook_xlsx, grading_summary, i18n, keywords, model, reports, roster,
+                    rubrics, slicer, storage, tables, workflow)
 from engine.errors import SaveError, UserError
 from engine.pickers import documents_folder, open_in_file_manager, pick_folder, pick_pdf
 from engine.slicer import Layout
@@ -68,7 +68,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         grades = state.grades or {}
         return {
             "folder": state.session.folder,
-            "config": dict(config, students=students),
+            "config": dict(config, students=students,
+                           keywords=keywords.keyword_list(config, language())),
             "grid": {"cols": layout.cols, "rows": layout.rows},
             "grades": {"grades": grades.get("grades") or {}, "overall": grades.get("overall") or {}},
             "progress": grading_summary.progress(config, grades),
@@ -427,6 +428,14 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         state.save_config()
         return ok()
 
+    @app.post("/api/setup/keywords")
+    def setup_keywords():
+        """The exam's quick-comment list: [{label, type: strength|growth}]."""
+        state.require_session()
+        keywords.set_list(state.config, body().get("keywords") or [])
+        state.save_config()
+        return ok()
+
     @app.post("/api/setup/rubrics/check")
     def check_rubric():
         """Validate one rubric card without saving (for inline messages)."""
@@ -526,6 +535,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
 
         Leave out "value" to change only the comment; "value": null clears it.
         "rubric_id" says which criterion of a question assessed on several.
+        "keywords" ticks exactly those quick comments and rebuilds the
+        comment's generated line.
         """
         state.require_session()
         data = body()
@@ -534,6 +545,9 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             grading_summary.set_grade(state.config, state.grades, str(data.get("student_id")),
                                       str(data.get("question_id")), value, data.get("comment"),
                                       rubric_id=data.get("rubric_id") or None)
+            if "keywords" in data:
+                keywords.apply(state.config, state.grades, str(data.get("student_id")),
+                               str(data.get("question_id")), data.get("keywords") or [], language())
             state.save_grades()
             state.remember()
         return ok()

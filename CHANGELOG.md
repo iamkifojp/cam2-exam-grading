@@ -6,6 +6,22 @@ year-month-day.
 
 ## [Unreleased]
 
+### Quick comments while grading (2026-10-31)
+
+#### Added
+- **Quick comments** on the Step 4 grading card: tick boxes for common
+  feedback. Ticking one writes a line at the top of that answer's comment
+  (*Areas to develop: check calculations.*); ticking more, or unticking,
+  rebuilds that line and keeps anything typed below it. The line is in the
+  app's language and appears on the student PDF with the rest of the comment.
+- Each exam starts with five *Areas to develop* (illegible handwriting, more
+  explanation needed, wrong format, incomplete answer, check calculations;
+  the same as CAM's grading workspace). **✎ Edit list** sets the exam's own
+  list, one per line, under *Strengths* and *Areas to develop*.
+- `engine/keywords.py`; `POST /api/setup/keywords`; `POST /api/grade` takes
+  `keywords`. The list is `keywords` in `cam2_session.json`; each grade entry
+  keeps its ticked `keywords` and the generated `keyword_text`.
+
 ### Choice questions: best N or teacher picks (2026-10-31)
 
 #### Added

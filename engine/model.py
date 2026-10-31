@@ -13,6 +13,7 @@
       "name_box": ["page1!A1:E2"] | [],
       "questions": [{"id": "q1", "label": "Q1", "boxes": ["page1!A4:J10"],
                      "max": 5, "rubric_ids": ["r1"]}],
+      "keywords": [{"label": "check calculations", "type": "growth" | "strength"}],
       "choice_groups": [{"id": "g1", "questions": ["q4", "q5", "q6"], "answer": 2,
                          "pick": "best" | "teacher"}],
       "students": [{"id": "s001", "scan": "scans/Student_001.pdf",
@@ -27,7 +28,8 @@
     {
       "format": "cam2-grades", "version": 1,
       "session_id": "<uuid>", "generation": 41, "saved_at": "...", "saved_by": "PC",
-      "grades":  {"s001": {"q1": {"value": 4, "comment": "Good"},
+      "grades":  {"s001": {"q1": {"value": 4, "comment": "Good",
+                                  "keywords": [], "keyword_text": ""},
                            "q2": {"value": "not_answered", "comment": ""},
                            "q3": {"value": null, "comment": "",
                                   "levels": {"r2": 5, "r3": 4}}}},
