@@ -72,7 +72,7 @@ Phase 5 adds the package builders.
 | `boxes.js` | box drawing: grid maths that mirrors `slicer.py`, drag-to-snap, multi-box questions, the check strip, and the "new question or move the box?" prompt |
 | `step3.js` | class-list upload with the column picker, paste, typed names, and the matcher combobox |
 | `step5.js` | review table, one column per question (and criterion): click any grade (or an amber "?") to open it in Step 4, which then offers "Back to review"; report-total or final-level overrides with ↺ reset; overall comments; class statistics; report language, export, and "Open the reports folder" |
-| `step4.js` | grading screen: one item per question, or per question and criterion in Rubric mode (tabs switch criterion on the same paper); question and paper navigation, paper strip, "Show ungraded only", the zoomable answer (wheel zooms, drag pans) or the whole page with the box outlined, the grade badge, and the grading card (mark buttons, a number box above 15 marks, or rubric bands with a button per level; Not answered; comment) |
+| `step4.js` | grading screen (paper order is the class order, or with **Shuffle papers** a seeded shuffle per question: `papers()`): one item per question, or per question and criterion in Rubric mode (tabs switch criterion on the same paper); question and paper navigation, paper strip, "Show ungraded only", the zoomable answer (wheel zooms, drag pans) or the whole page with the box outlined, the grade badge, and the grading card (mark buttons, a number box above 15 marks, or rubric bands with a button per level; Not answered; comment) |
 
 ### Routes
 

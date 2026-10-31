@@ -134,6 +134,7 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
   - Progress, e.g. **18 / 24 graded**.
   - A **Show ungraded only** toggle, on by default when resuming.
   - A **Hide student names** toggle for anonymous grading, remembered on this computer. While it is on, each paper has a **👁 Show name** button that reveals only that paper's name; the name is hidden again on the next paper.
+  - A separate **Shuffle papers** toggle, also remembered: a different paper order for each question (stable when the question is reopened). With names hidden too, a paper's number is a different student on each question.
   - Navigation buttons say what they do (**◀ Previous question / Next question ▶**, **◀ Previous paper / Next paper ▶**), and the numbered strip is labelled **Papers**.
   - **💾 Save** with *"Saved ✓ 15:42"* beside it.
   - **Save & close session**, which returns to the start screen.
