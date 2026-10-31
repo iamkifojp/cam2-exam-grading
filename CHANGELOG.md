@@ -6,6 +6,15 @@ year-month-day.
 
 ## [Unreleased]
 
+### Repository and licence (2026-10-31)
+
+#### Added
+- **MIT licence** (`LICENSE`), the same as CAM. The README has a Licence
+  section.
+- **`.gitattributes`** keeps line endings consistent between Windows and Mac
+  (CRLF for `.bat`/`.cmd`, LF for `.sh`/`.command`) and marks images, PDFs,
+  spreadsheets and zips as binary.
+
 ### One 5 mm grid and better box-drawing advice (2026-10-31)
 
 #### Changed

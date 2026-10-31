@@ -100,3 +100,7 @@ data (see `tests/helpers.py`).
 Forked from CAM (`criterion-assessment-metrics`). The grid geometry, the
 save-safety rules, the Windows folder picker and the portable-package builder
 come from CAM.
+
+## Licence
+
+CAM2 is released under the [MIT License](LICENSE), the same licence as CAM.
