@@ -6,6 +6,20 @@ year-month-day.
 
 ## [Unreleased]
 
+### Adjust a box while grading (2026-10-31)
+
+#### Added
+- **✎ Adjust this box** in Step 4, beside *See whole page*, for a box drawn
+  in the wrong place and only noticed while grading. It opens Step 2 on that
+  question and paper. Drag a new box (no "new question or move?" prompt
+  here), then **Save & slice Q2 again → back to grading**: only that question
+  is cropped again, for every paper, and CAM2 returns to the same question
+  and paper. Every grade and comment is kept. **Cancel** puts the box back.
+- The config now records which boxes each question's crops were cut from
+  (`crops_of`). Moving a box and then back needs no slicing, and sessions
+  sliced by an earlier CAM2 pick this up on their next edit.
+- `workflow.slice_question`, `workflow.stale_regions`; `POST /api/slice-question`.
+
 ### Shuffle papers while grading (2026-10-31)
 
 #### Added

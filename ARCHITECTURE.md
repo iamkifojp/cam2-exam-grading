@@ -81,7 +81,7 @@ Phase 5 adds the package builders.
 | Shell | `GET /`, `GET /api/ping`, `GET /api/i18n`, `POST /api/language`, `GET /api/state`, `POST /api/heartbeat`, `POST /api/quit` |
 | Sessions | `POST /api/session/{open,create,close,reopen,forget,restore-emergency}`, `POST /api/save`, `POST /api/step`, `GET /api/job/<id>` |
 | Step 1 | `POST /api/pick`, `POST /api/inspect`, `POST /api/preview-paper` (paper 1 as JPEG data URLs, no session needed), `GET /api/default-folder`, `POST /api/scans/replace`, `POST /api/scans/add` (a job: late papers), `POST /api/pages/edit` (`student`, `page`, `action`; returns `where` the page is now), `GET /api/thumb/<student>` |
-| Step 2 | `POST /api/setup/{layout,mode,rubrics,rubrics/check,rubrics/import,questions}`, `GET /api/setup/rubrics/template`, `POST /api/slice`, `GET /api/page/<student>/<page>`, `GET /api/preview-crop/<student>` |
+| Step 2 | `POST /api/setup/{layout,mode,rubrics,rubrics/check,rubrics/import,questions}`, `GET /api/setup/rubrics/template`, `POST /api/slice`, `POST /api/slice-question` (a job: one question for every paper), `GET /api/page/<student>/<page>`, `GET /api/preview-crop/<student>` |
 | Step 3 | `POST /api/roster/{upload,columns,paste,clear}`, `POST /api/students/<student>/match`, `GET /api/crop/<region>/<student>` |
 | Step 4 | `POST /api/grade` (value and/or comment and/or `keywords`; saves `grades.json` at once), `POST /api/setup/keywords` (the quick-comment list), `POST /api/position` (the question and paper on screen, for resuming) |
 | Step 5 | `POST /api/overall` (overall comment, report-only total or final levels; empty means "use the calculated value"), `POST /api/choice` (`student_id`, `group_id`, `questions`: the answers that count in a "teacher picks" choice), `POST /api/export` (a job: `what` is `all` or `excel`, plus `language`), `POST /api/open-folder` (shows `reports/` in Explorer or Finder) |
@@ -106,7 +106,13 @@ through `storage.resolve_path()`.
   one step on, and the server checks that the papers are sliced before Step 3.
 - **Editing boxes after slicing** marks the papers as needing slicing again,
   and Step 3 stays locked until they are re-sliced. Changing only labels,
-  marks or rubrics does not.
+  marks or rubrics does not. `crops_of` in the config records the boxes each
+  region's crops were cut from, so a box moved back needs no slicing, and
+  **✎ Adjust this box** in Step 4 re-slices only that question
+  (`workflow.slice_question`, `POST /api/slice-question`) before returning to
+  the same paper. Anything that changes the papers while they are not all
+  sliced (new scans, late papers, page fixes, a layout change) drops
+  `crops_of`, so only slicing everything makes them current again.
 - **Changing paper size or grid density** clears the boxes after asking, since
   they no longer fit the new grid. Labels and marks are kept.
 - **A box drawn where it doesn't overlap the current item's box** on that page

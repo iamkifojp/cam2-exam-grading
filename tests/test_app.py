@@ -300,6 +300,19 @@ class GradingTests(AppTestCase):
         err = self.grade({"student_id": "s001", "question_id": "q1", "keywords": ["gone"]}, status=400)
         self.assertEqual(err["error"], "unknown_keyword")
 
+    def test_adjust_one_box_after_grading(self):
+        self.grade({"student_id": "s001", "question_id": "q2", "value": 2})
+        session = self.post("/api/setup/questions", {"name_box": ["page1!B2"], "questions": [
+            {"id": "q1", "label": "Q1", "boxes": ["page1!B2:C3"], "max": 5},
+            {"id": "q2", "label": "Q2", "boxes": ["page2!A1:B2"], "max": 3}]})["session"]
+        self.assertFalse(session["config"]["sliced"])
+        self.post("/api/step", {"step": 4}, status=400)                  # not until it is sliced
+        job = self.wait(self.post("/api/slice-question", {"question_id": "q2"})["job"])
+        self.assertEqual(job["status"], "done", job.get("error"))
+        self.assertTrue(job["session"]["config"]["sliced"])
+        self.assertEqual(job["session"]["grades"]["grades"]["s001"]["q2"]["value"], 2)
+        self.post("/api/step", {"step": 4})
+
     def test_position_is_remembered(self):
         self.post("/api/position", {"question_id": "q2", "student_id": "s002"})
         self.post("/api/session/close")

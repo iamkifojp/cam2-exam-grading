@@ -285,6 +285,10 @@ function viewer(c, d, item, student) {
         button("−", () => zoom(d, -1), "small", { "aria-label": t("step4.zoom_out"), title: t("step4.zoom_out") }),
         button(t("step4.fit"), () => { d.zoom = 1; render(); }, "small"),
         button("+", () => zoom(d, 1), "small", { "aria-label": t("step4.zoom_in"), title: t("step4.zoom_in") })],
+      button(t("step4.adjust_box"), () => {
+        saveComment.flush();
+        goTo(2, { draft: { sub: "boxes", adjust: { qid: q.id, rid: item.r?.id || null, sid: student.id } } });
+      }, "small ghost", { title: t("step4.adjust_box_hint") }),
       d.wholePage
         ? button(t("step4.back_to_answer"), () => { d.wholePage = false; render(); }, "small on")
         : button(["🔍 ", t("grade.see_whole_page")], () => {

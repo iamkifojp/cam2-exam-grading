@@ -484,6 +484,26 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         job = state.start_job("slice", work)
         return ok(job=job.id)
 
+    @app.post("/api/slice-question")
+    def slice_one_question():
+        """Crop one question again for every paper, after its box was adjusted."""
+        session = state.require_session()
+        qid = str(body().get("question_id"))
+
+        def work(job):
+            config = dict(state.config)
+            config["crops_of"] = dict(config.get("crops_of") or {})
+            summary = workflow.slice_question(session, config, qid, job.progress)
+            with state.lock:
+                state.config = config
+                state.save_config()
+            return summary
+
+        if not workflow.crops_known(state.config):
+            raise UserError("not_sliced")
+        job = state.start_job("slice", work)
+        return ok(job=job.id)
+
     # --- Step 3: names ------------------------------------------------------------------
 
     @app.post("/api/roster/upload")

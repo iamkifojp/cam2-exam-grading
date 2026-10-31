@@ -361,7 +361,7 @@ cam2-exam-grading\
 ## 9. Deliberately Not Included
 - Built-in MYP rubrics: teachers bring their own.
 - Keyboard shortcuts.
-- Re-slicing a question after slicing: replaced by **See whole page**.
+- ~~Re-slicing a question after slicing: replaced by **See whole page**.~~ Added back (2026-10-31) as **✎ Adjust this box** in Step ④, for a box drawn in the wrong place early on: it opens Step 2 on that question and re-slices only that question, keeping every grade.
 - Matching names by paper order.
 - Half marks.
 - Google Drive API sync: a synced folder works through the normal save-folder rules.
