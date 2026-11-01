@@ -357,8 +357,8 @@ cam2-exam-grading\
 - **The first-run approval:** §5 has a launcher script clear the download flag, and a `.app` has no such script. Test **Open Anyway** on a freshly downloaded zip, and reword the Mac READ ME to match what actually happens.
 - **Documents:** `READ_ME` in `build_windows.py` and the text in `build_quick_guide.py` are written for Windows (SmartScreen, `%LOCALAPPDATA%`, `_internal`, right-click to extract). The Mac needs its own wording, with **Open Anyway** screenshots (§8).
 - **Check in the package:** the `osascript` pickers, output reaching `logs/cam2.log` when there is no terminal, and Japanese reports.
-- **Licences:** copy `licences/` and `LICENSE` into the package as `build_windows.py` does, and add the licence wording to the Mac READ ME. `licences/THIRD-PARTY-NOTICES.txt` was written from the Windows build, so check the Mac bundle's libraries against `licences/NOTICE.txt`. Add anything that differs.
-- **Releasing it:** the Windows zip is on the pre-release `v0.2.0-dev`. If the app's code hasn't changed, attach the Mac zip to that release with `gh release upload v0.2.0-dev <zip>`. If it has, make a new version.
+- **Licences:** copy `licences/` and `LICENSE` into the package as `build_windows.py` does, and add the licence wording to the Mac READ ME. Both downloads carry the same files, and `licences/THIRD-PARTY-NOTICES.txt` has Pillow's Windows and Apple Silicon licence texts. Check the finished Mac bundle's libraries against `licences/NOTICE.txt`, and add anything missing to the shared files. An Intel build needs the same check.
+- **Releasing it:** the pre-release `v0.2.0-dev` holds only a private Windows test build, and both it and its tag predate the licence files. Build the Windows and Mac zips from one commit that has `build_mac.py`, and tag that commit with the version in the zip names: either move the tag and replace the zip, or change `VERSION` and make a new release. Attach both zips to the release, with the two source archives `licences/NOTICE.txt` names: `pymupdf-2.0.tar.gz` (PyPI) and `mupdf-1.28.5-source.tar.gz` (mupdf.com).
 
 ---
 
@@ -368,7 +368,7 @@ cam2-exam-grading\
 - **Mac signing:** the Mac package ships **unsigned**. Teachers approve it once with **Open Anyway** (§5), and the launcher clears the download flag from the rest of the folder.
   - The `READ ME FIRST` and the quick guide show this step with screenshots, in EN and JA.
   - Signing and notarising (Apple Developer account, US$99/year) can be added later without changing the app.
-- **Licence (2026-11-02):** keep PyMuPDF and use it under the GNU AGPL version 3. CAM2's own code stays MIT, and each download as a whole is under the AGPL. `licences/` holds the AGPL text and the other libraries' notices, and the build copies them into the zip.
+- **Licence (2026-11-02):** keep PyMuPDF and use it under the GNU AGPL version 3. CAM2's own code stays MIT, and each download as a whole is under the AGPL. `licences/` holds the AGPL text and the other libraries' notices, the same for Windows and Mac, and the build copies them into the zip. Each release also carries the PyMuPDF and MuPDF source.
 
 **Still needed**
 1. **Make the repo public before anyone else gets a download.** The AGPL requires that people who receive a download can get its source, and the link in `READ ME FIRST` and `licences/NOTICE.txt` only works for people with access while the repo is private. Each public download needs a tag matching its version.

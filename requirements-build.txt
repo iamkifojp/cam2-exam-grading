@@ -6,3 +6,12 @@ Pillow==13.0.0
 PyMuPDF==2.0
 openpyxl==3.1.5
 pyinstaller==6.22.3
+# What the libraries above bring with them, listed so that licences/NOTICE.txt
+# stays true for a build made on another day or computer.
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+Werkzeug==3.1.9
+blinker==1.9.0
+click==8.5.0
+et_xmlfile==2.0.0
+itsdangerous==2.2.0

@@ -32,9 +32,9 @@ training**:
 **The app is finished; the downloads are not.** Everything a teacher does in
 CAM2 is built and tested, from the start screen to the student PDFs and
 the Excel gradebook. The Windows package has been tested on the computer that
-built it, and is on the Releases page as the pre-release `v0.2.0-dev`. This repo
-is private, so only people with access to it can download that. The Mac package
-and the tests on other computers are still to do.
+built it, and a private test build is on the Releases page as the pre-release
+`v0.2.0-dev`. That build predates the licence files, so it isn't for passing on.
+The Mac package and the tests on other computers are still to do.
 
 | Stage | | State |
 |---|---|---|

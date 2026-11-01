@@ -8,17 +8,19 @@ year-month-day.
 
 ### Phase 5: Windows package (2026-11-02)
 
-The Windows download can now be built, and is on the Releases page as the
-pre-release `v0.2.0-dev`. The repo is private, so only people with access to it
-can download that. The Mac package and the run-through on other computers are
-still to do.
+The Windows download can now be built. A private test build is on the Releases
+page as the pre-release `v0.2.0-dev`. It was made before the licence files were
+added, so it isn't for passing on. The Mac package and the run-through on other
+computers are still to do.
 
 #### Added
 - **`licences/`**: the zip now has a `Licences` folder with the GNU AGPL text,
   an overview notice, CAM2's MIT licence and the licence texts of the other
   bundled libraries. The download includes PyMuPDF, so as a whole it is under
   the AGPL; CAM2's own code stays MIT. `READ ME FIRST.txt` says this in English
-  and Japanese, with the link to the source code.
+  and Japanese, with the link to the source code. The Windows and Mac downloads
+  share these files, and the notice says where to get the PyMuPDF and MuPDF
+  source.
 - **`tools/build_windows.py`** builds
   `dist/CAM2-exam-grading-Windows-v<version>.zip` (about 38 MB, 77 MB unzipped)
   in its own clean environment, and starts the packaged app to check it before
