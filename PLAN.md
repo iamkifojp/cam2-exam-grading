@@ -357,6 +357,8 @@ cam2-exam-grading\
 - **The first-run approval:** §5 has a launcher script clear the download flag, and a `.app` has no such script. Test **Open Anyway** on a freshly downloaded zip, and reword the Mac READ ME to match what actually happens.
 - **Documents:** `READ_ME` in `build_windows.py` and the text in `build_quick_guide.py` are written for Windows (SmartScreen, `%LOCALAPPDATA%`, `_internal`, right-click to extract). The Mac needs its own wording, with **Open Anyway** screenshots (§8).
 - **Check in the package:** the `osascript` pickers, output reaching `logs/cam2.log` when there is no terminal, and Japanese reports.
+- **Licences:** copy `licences/` and `LICENSE` into the package as `build_windows.py` does, and add the licence wording to the Mac READ ME. `licences/THIRD-PARTY-NOTICES.txt` was written from the Windows build, so check the Mac bundle's libraries against `licences/NOTICE.txt`. Add anything that differs.
+- **Releasing it:** the Windows zip is on the pre-release `v0.2.0-dev`. If the app's code hasn't changed, attach the Mac zip to that release with `gh release upload v0.2.0-dev <zip>`. If it has, make a new version.
 
 ---
 
@@ -366,10 +368,12 @@ cam2-exam-grading\
 - **Mac signing:** the Mac package ships **unsigned**. Teachers approve it once with **Open Anyway** (§5), and the launcher clears the download flag from the rest of the folder.
   - The `READ ME FIRST` and the quick guide show this step with screenshots, in EN and JA.
   - Signing and notarising (Apple Developer account, US$99/year) can be added later without changing the app.
+- **Licence (2026-11-02):** keep PyMuPDF and use it under the GNU AGPL version 3. CAM2's own code stays MIT, and each download as a whole is under the AGPL. `licences/` holds the AGPL text and the other libraries' notices, and the build copies them into the zip.
 
 **Still needed**
-1. **Mac testing:** a Mac (ideally Apple Silicon) is needed for Phase 5. PyInstaller can't build a Mac package from Windows, so it is built and tested on the Mac. The test must include the first-launch Open Anyway step on a freshly downloaded zip.
-2. **Japanese UI wording:** a native check of `i18n/ja.json` before release.
+1. **Make the repo public before anyone else gets a download.** The AGPL requires that people who receive a download can get its source, and the link in `READ ME FIRST` and `licences/NOTICE.txt` only works for people with access while the repo is private. Each public download needs a tag matching its version.
+2. **Mac testing:** a Mac (ideally Apple Silicon) is needed for Phase 5. PyInstaller can't build a Mac package from Windows, so it is built and tested on the Mac. The test must include the first-launch Open Anyway step on a freshly downloaded zip.
+3. **Japanese UI wording:** a native check of `i18n/ja.json` before release.
 
 ## 9. Deliberately Not Included
 - Built-in MYP rubrics: teachers bring their own.

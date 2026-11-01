@@ -304,6 +304,7 @@ only listens on `127.0.0.1`.
 | `tools/build_windows.py` | Makes a clean `build/venv`, runs PyInstaller, adds `READ ME FIRST.txt` and the quick guide, starts the packaged app to check it, and zips the folder to `dist/CAM2-exam-grading-Windows-v<version>.zip`. The version comes from `VERSION` in `app.py`. |
 | `tools/build_quick_guide.py` | Makes the quick guide PDF with PyMuPDF: one page of English, one of Japanese. It is built each time, not kept in the repository. |
 | `requirements-build.txt` | Exact library and PyInstaller versions for the builds. |
+| `licences/` | The AGPL text (for PyMuPDF), the overview notice and the other libraries' licence texts. The build copies them into the zip's `Licences` folder, with `LICENSE` as `CAM2-MIT.txt`. Kept by hand: change it when a library in `requirements-build.txt` changes. |
 
 How the package differs from running from source:
 

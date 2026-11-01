@@ -31,9 +31,10 @@ training**:
 
 **The app is finished; the downloads are not.** Everything a teacher does in
 CAM2 is built and tested, from the start screen to the student PDFs and
-the Excel gradebook. The Windows package can now be built, and has been tested
-on the computer that built it. The Mac package and the tests on other computers
-are still to do, and nothing has been published yet.
+the Excel gradebook. The Windows package has been tested on the computer that
+built it, and is on the Releases page as the pre-release `v0.2.0-dev`. This repo
+is private, so only people with access to it can download that. The Mac package
+and the tests on other computers are still to do.
 
 | Stage | | State |
 |---|---|---|
@@ -145,4 +146,12 @@ come from CAM.
 
 ## Licence
 
-CAM2 is released under the [MIT License](LICENSE), the same licence as CAM.
+CAM2's own code is released under the [MIT License](LICENSE), the same licence
+as CAM.
+
+The downloads also include PyMuPDF, which CAM2 uses under the GNU AGPL version
+3, so each download as a whole is licensed under the
+[AGPL](licences/AGPL-3.0.txt). [licences/NOTICE.txt](licences/NOTICE.txt) lists
+every library in the downloads, and
+[licences/THIRD-PARTY-NOTICES.txt](licences/THIRD-PARTY-NOTICES.txt) has their
+licence texts. The zip carries the same files in its `Licences` folder.
