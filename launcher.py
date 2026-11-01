@@ -164,8 +164,9 @@ def main(argv=None) -> int:
         state.close_session()
         try:
             with open(_server_file(), encoding="utf-8") as fh:
-                if json.load(fh).get("pid") == os.getpid():
-                    os.remove(_server_file())
+                pid = json.load(fh).get("pid")
+            if pid == os.getpid():      # after closing it: Windows can't delete an open file
+                os.remove(_server_file())
         except (OSError, ValueError):
             pass
     return 0

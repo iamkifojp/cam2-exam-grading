@@ -39,14 +39,14 @@ This describes how CAM2 is built. For what it should do and why, see
 | `keywords.py` | Quick comments: the exam's list (`keywords` in the config, or five defaults in the app language), and `apply()`, which ticks keywords on one answer and rebuilds the generated first line of its comment. The line last written is kept as `keyword_text`, so it is replaced exactly and the teacher's own text below it is kept. |
 | `host.py` | Host mode (CAM opening one of its exams): reads and checks the handoff file, gives the session the host's class list keyed by `external_id` (ids stay put when a name changes), and stamps `host_ready_at` when the teacher sends the results. |
 | `i18n.py` | Looks up text in `i18n/en.json` / `i18n/ja.json`; translates `UserError`s. |
-| `pickers.py` | Native folder / PDF dialogs: Windows IFileOpenDialog (in a child process: `python -c <boot> <app folder>`, which puts CAM2's folder first on `sys.path`, or `CAM2.exe --pick` when packaged) with a PowerShell fallback, macOS `osascript`. Finds the Documents folder. |
+| `pickers.py` | Native folder / PDF dialogs: Windows IFileOpenDialog (in a child process: `python -c <boot> <app folder>`, which puts CAM2's folder first on `sys.path`, or the app's own `.exe --pick` when packaged) with a PowerShell fallback, macOS `osascript`. Finds the Documents folder. |
 | `pages.py` | Turning scans into one PDF per paper: a page is a `Ref` (file, page, turn). It joins several PDFs or page photos into one stack and groups it into papers. It also unfolds booklets scanned open: each side is cut in half with `show_pdf_page(clip=…)`, so quality is kept, and pages are put in reading order by `booklet_layout`. A page with a stored rotation is first baked upright with `remove_rotation`. Photos are turned upright from their phone orientation and reduced to about 200 dpi. Also makes the Step 1 preview of paper 1. |
 | `workflow.py` | Steps 1–3 as operations on an open session: check and import scans (`check_source`, `import_scans`), late papers (`add_papers`), page fixes (`edit_pages`), choose the real session folder, layout/mode/rubric/question set-up, `check_ready`, slicing (all papers, or `slice_students` for some), class list and matching, display names. |
 
 | `reports.py` | One PDF per student. A cursor flows blocks down A4 pages with PyMuPDF. Text goes through `insert_htmlbox` (wrapping, and Japanese through MuPDF's built-in CJK font), answer images are re-encoded as JPEG, and fonts are subset before saving. Each question is one row (label · answer · grade beside it, then the comment); in Rubric mode the rubric's descriptors are printed once under the header rather than under each answer. It shows the *reported* total or final level. File names are `<Student>_<Exam>.pdf`, or `UNMATCHED_<scan>.pdf` for a paper not matched to the class list. Old reports are replaced on each export. |
 | `gradebook_xlsx.py` | Master Excel gradebook (openpyxl), with sheet names and headings in the report language. Values come from `grading_summary`, not Excel formulas, so they match CAM2's rounding. Adjusted cells are yellow and ungraded cells red. An open file gives `report_file_open`. |
 
-Phase 5 adds the package builders.
+The package builders are in `tools/` (see [Packaging](#packaging-phase-5)).
 
 ## Server and browser
 
@@ -288,11 +288,36 @@ crop positions can be checked by colour. No real student data is used.
 
 ## Packaging (Phase 5)
 
+Each download is a PyInstaller build with its own Python and libraries, in one
+folder rather than one file. A single-file `.exe` would unpack itself to a temp
+folder on every start, which is slow and upsets antivirus programs. The server
+only listens on `127.0.0.1`.
+
 | | Windows | Mac |
 |---|---|---|
-| Python runtime | python.org's embeddable Python 3.14 | `python-build-standalone`, both Apple Silicon and Intel |
-| Builder | `tools/build_windows.py`, ported from CAM's `build_windows_bundle.py` | `tools/build_mac.py` |
-| Launcher | `Start CAM2 Exam Grading.bat` | `Start CAM2 Exam Grading.command`, which picks the runtime with `uname -m` and clears the quarantine flag after the one-time **Open Anyway** |
+| State | ✅ built by `tools/build_windows.py` | ⏳ not built yet (see [PLAN.md](PLAN.md), Phase 5) |
+| Start | `Start CAM2 Exam Grading.exe`, with `_internal/` beside it | a `.app`, from `tools/build_mac.py` |
 
-Each package ships its libraries pre-installed. The server only listens on
-`127.0.0.1`.
+| File | Job |
+|---|---|
+| `tools/cam2.spec` | The PyInstaller recipe: entry point `launcher.py`, the data folders, what to leave out, no console window. |
+| `tools/build_windows.py` | Makes a clean `build/venv`, runs PyInstaller, adds `READ ME FIRST.txt` and the quick guide, starts the packaged app to check it, and zips the folder to `dist/CAM2-exam-grading-Windows-v<version>.zip`. The version comes from `VERSION` in `app.py`. |
+| `tools/build_quick_guide.py` | Makes the quick guide PDF with PyMuPDF: one page of English, one of Japanese. It is built each time, not kept in the repository. |
+| `requirements-build.txt` | Exact library and PyInstaller versions for the builds. |
+
+How the package differs from running from source:
+
+- **Bundled files:** `i18n/`, `static/` and `templates/` are found through
+  `__file__`, which PyInstaller points inside `_internal/`, so the code needs
+  no `sys._MEIPASS`. The app writes nothing there: sessions go in the chosen
+  save folder, and everything else in the app-data folder.
+- **No console:** output goes to `<app data>/logs/cam2.log`. A crash at startup
+  shows a Windows error box with the traceback.
+- **Pickers:** the `.exe` starts itself with `--pick` to open a Windows dialog.
+- **PyMuPDF's AI add-on is left out.** PyMuPDF 2.0 requires `pymupdf_layout`,
+  `pymupdf4llm`, `onnxruntime`, `numpy` and others, and imports them if it finds
+  them. CAM2 uses none of them. In a package, the import crashes on a model
+  file PyInstaller doesn't collect, and they would add about 100 MB, so the
+  spec excludes them. PyMuPDF carries on without them. **If a new PyMuPDF adds
+  more of these, the package grows or crashes at startup**, which the builder's
+  start-up check catches.

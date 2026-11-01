@@ -31,8 +31,9 @@ training**:
 
 **The app is finished; the downloads are not.** Everything a teacher does in
 CAM2 is built and tested, from the start screen to the student PDFs and
-the Excel gradebook. What is left is packaging it so that teachers can run it
-without installing anything.
+the Excel gradebook. The Windows package can now be built, and has been tested
+on the computer that built it. The Mac package and the tests on other computers
+are still to do, and nothing has been published yet.
 
 | Stage | | State |
 |---|---|---|
@@ -42,9 +43,9 @@ without installing anything.
 | Phase 4 | Step ⑤ review, student PDFs and Excel gradebook | ✅ done |
 | Phase 4b | Scanning guide, booklets, page fixes, late papers | ✅ done |
 | Phase 4c | Questions assessed on several criteria | ✅ done |
-| Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ next |
+| Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Windows package built; Mac next |
 
-All 187 automated tests pass, and every finished stage was also tried out in a
+All 216 automated tests pass, and every finished stage was also tried out in a
 browser with sample papers, in English and Japanese. Until the downloads are
 ready, CAM2 can be run from the source code (see
 [For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
@@ -58,7 +59,7 @@ When they are, they will be on this repository's
 
 | Computer | Download | First start |
 |---|---|---|
-| Windows 10 / 11 | `CAM2-exam-grading-Windows-vX.zip` | Unzip, then double-click **Start CAM2 Exam Grading** |
+| Windows 10 / 11 | `CAM2-exam-grading-Windows-vX.zip` | Unzip, then double-click **Start CAM2 Exam Grading**. If Windows says it protected your PC, click **More info**, then **Run anyway** |
 | Mac (Apple Silicon or Intel) | `CAM2-exam-grading-Mac-vX.zip` | Unzip, double-click **Start CAM2 Exam Grading**, then approve it once in System Settings → Privacy & Security → **Open Anyway** |
 
 You will need:
@@ -108,6 +109,22 @@ This makes 8 fake two-page papers (made-up names), the same papers as one
 combined PDF, the same again as A3 booklets scanned open (one sheet upside
 down and one booklet stacked inside sheet first, to try the page fixes), one late student's paper, and a class list. In Step 1, use **Or paste the path…** if you
 would rather not click through the folder picker.
+
+### Building the Windows download
+
+On Windows, with Python 3.14:
+
+```bash
+python tools/build_windows.py
+```
+
+This makes `dist/CAM2-exam-grading-Windows-v<version>.zip`, with the version
+taken from `VERSION` in `app.py`. It installs what it needs into its own
+`build/venv`, and starts the packaged app once to check that it works. `build/`
+and `dist/` are not committed. The Mac build is still to come; the notes for it
+are under Phase 5 in [PLAN.md](PLAN.md).
+
+### More documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) explains how the code and the session
   folder are organised.

@@ -1,0 +1,7 @@
+# Exact versions for building the downloads (tools/build_windows.py), so that a
+# package holds the libraries the tests passed with. Teachers never see this.
+Flask==3.1.3
+Pillow==13.0.0
+PyMuPDF==2.0
+openpyxl==3.1.5
+pyinstaller==6.22.3

@@ -221,12 +221,14 @@ The session folder may live on a local disk, a USB stick, or any synced cloud fo
 
 The app is a small local web server (Flask) plus the teacher's browser, so the same code runs on both systems. Each package carries its own private Python, so nothing has to be installed.
 
+> **Changed in Phase 5 (2026-11-02):** the packages are PyInstaller executables, not an embedded Python started by a `.bat` or `.command` script. The Mac column below is the earlier plan where it mentions a launcher script or two runtimes: see the Mac notes under Phase 5.
+
 | | **Windows** `CAM2-exam-grading-Windows-vX.zip` | **Mac** `CAM2-exam-grading-Mac-vX.zip` |
 |---|---|---|
-| Python | python.org's "embeddable" Python, the same version as CAM (3.14.x). The builder is ported from `tools/build_windows_bundle.py`. | `python-build-standalone`, the same version. **Both Apple Silicon and Intel runtimes are inside one zip**; the launcher picks the right one, so the teacher never has to know which Mac they have. |
-| Libraries | Flask, Pillow, PyMuPDF and openpyxl, pre-installed into the bundle by the builder. | The same. The builder can fetch the Mac wheels from Windows with `pip --platform … --only-binary=:all:`, but it **must be tested on a real Mac**. |
-| Start | `Start CAM2 Exam Grading.bat`: starts the server hidden and opens the browser. `Start CAM2 Exam Grading (troubleshooting).bat` shows the log. | `Start CAM2 Exam Grading.command`: opens a small Terminal window ("CAM2 is running. Close this window to quit."). |
-| First-run warnings | Windows may show *"Open File – Security Warning"* for files from a downloaded zip. The READ ME says to click **Run**, or right-click the zip → Properties → **Unblock** before extracting. | The package is unsigned (decided, see §8), so macOS blocks it at first. The teacher approves it **once** in System Settings → Privacy & Security → **Open Anyway**. The launcher then clears the download flag from the rest of the folder (`xattr -dr com.apple.quarantine`), so there is only one approval. macOS will also ask once to allow access to Documents/Desktop. |
+| Python | PyInstaller bundles Python 3.14 (`tools/cam2.spec`, `tools/build_windows.py`). | `python-build-standalone`, the same version. **Both Apple Silicon and Intel runtimes are inside one zip**; the launcher picks the right one, so the teacher never has to know which Mac they have. |
+| Libraries | Flask, Pillow, PyMuPDF and openpyxl, at the versions in `requirements-build.txt`. | The same. Build it on a real Mac. |
+| Start | `Start CAM2 Exam Grading.exe`: starts the server with no window and opens the browser. Output goes to `logs/cam2.log` in the app-data folder. | `Start CAM2 Exam Grading.command`: opens a small Terminal window ("CAM2 is running. Close this window to quit."). |
+| First-run warnings | The package is unsigned, so SmartScreen may say *"Windows protected your PC"*. The READ ME and quick guide say to click **More info**, then **Run anyway**. | The package is unsigned (decided, see §8), so macOS blocks it at first. The teacher approves it **once** in System Settings → Privacy & Security → **Open Anyway**. The launcher then clears the download flag from the rest of the folder (`xattr -dr com.apple.quarantine`), so there is only one approval. macOS will also ask once to allow access to Documents/Desktop. |
 | File & folder pickers | Native picker, ported from `engine/folder_dialog.py` and extended to pick a single PDF. | `osascript` (`choose folder` / `choose file of type pdf`). |
 
 **Both systems:**
@@ -335,15 +337,26 @@ cam2-exam-grading\
 **Phase 4c: Questions assessed on several criteria** ✅ done 2026-10-31 (184 tests; a rubric exam with Q2 on Criteria B and C graded in the browser, reviewed, and exported to PDF and Excel)
 - Criteria tick boxes in Step 2, per-criterion grading items and tabs in Step 4, per-criterion columns in Step 5, the reports and the gradebook.
 
-**Phase 5: Packaging and end-to-end testing**
-- `build_windows.py`, `build_mac.py`, launchers, READ ME FIRST (EN/JA) and the quick guide.
+**Phase 5: Packaging and end-to-end testing** ⏳ Windows package built 2026-11-02; Mac package and the run-through on real computers still to do
+- ✅ `tools/build_windows.py`, `tools/cam2.spec`, READ ME FIRST (EN/JA) and the quick guide.
+- ✅ Checked on the Windows build computer, on the unzipped package in a folder with a Japanese name and spaces: a combined PDF through to reports in English and Japanese and the gradebook, with a Japanese exam name and save folder; booklet and photo previews; Excel and Shift-JIS class lists; quit and resume; a late paper; the folder picker, chosen and cancelled; the screens in a browser.
+- `tools/build_mac.py` and a Mac READ ME FIRST and quick guide.
 - Full run-through on Windows and on a Mac (Apple Silicon, plus Intel if one is available):
+  - **Windows only:** double-click a zip downloaded from the internet on a computer that has never run CAM2, through the SmartScreen warning. This has not been tried yet.
   - pause and resume across two sittings
   - session folder on USB and on OneDrive
   - A4, B5 and A3 papers
   - a combined PDF with a missing page, fixed with a blank page
   - a real A3 booklet scan from the school copier (front/back orientation)
   - Japanese report output
+
+**Notes for building the Mac package.** Do this on the Mac, with Python 3.14. None of it has been tried yet:
+- **Reuse:** `tools/cam2.spec` (its data folders and excludes apply as they are) and `requirements-build.txt`. Model `tools/build_mac.py` on `tools/build_windows.py`; the venv's Python is at `build/venv/bin/python`.
+- **Add to the spec:** a `BUNDLE(...)` step for a Mac `.app`, only when building on a Mac. Check whether the app sits in the Dock with no window, as it has no window of its own to show. If it does, try `LSUIElement` in `info_plist`.
+- **One runtime, not two:** PyInstaller builds for the Mac it runs on, so the "both runtimes in one zip" idea in §5 no longer holds. Either make two zips (Apple Silicon and Intel, the Intel one needing an Intel Python) or ship Apple Silicon only. Update §5 and the README with what is decided.
+- **The first-run approval:** §5 has a launcher script clear the download flag, and a `.app` has no such script. Test **Open Anyway** on a freshly downloaded zip, and reword the Mac READ ME to match what actually happens.
+- **Documents:** `READ_ME` in `build_windows.py` and the text in `build_quick_guide.py` are written for Windows (SmartScreen, `%LOCALAPPDATA%`, `_internal`, right-click to extract). The Mac needs its own wording, with **Open Anyway** screenshots (§8).
+- **Check in the package:** the `osascript` pickers, output reaching `logs/cam2.log` when there is no terminal, and Japanese reports.
 
 ---
 
@@ -355,7 +368,7 @@ cam2-exam-grading\
   - Signing and notarising (Apple Developer account, US$99/year) can be added later without changing the app.
 
 **Still needed**
-1. **Mac testing:** a Mac (ideally Apple Silicon) is needed for Phase 5. The Mac package can be built from Windows but not tested there. The test must include the first-launch Open Anyway step on a freshly downloaded zip.
+1. **Mac testing:** a Mac (ideally Apple Silicon) is needed for Phase 5. PyInstaller can't build a Mac package from Windows, so it is built and tested on the Mac. The test must include the first-launch Open Anyway step on a freshly downloaded zip.
 2. **Japanese UI wording:** a native check of `i18n/ja.json` before release.
 
 ## 9. Deliberately Not Included

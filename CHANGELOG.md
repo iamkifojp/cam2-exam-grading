@@ -6,6 +6,46 @@ year-month-day.
 
 ## [Unreleased]
 
+### Phase 5: Windows package (2026-11-02)
+
+The Windows download can now be built. The Mac package and the run-through on
+other computers are still to do, and nothing has been published.
+
+#### Added
+- **`tools/build_windows.py`** builds
+  `dist/CAM2-exam-grading-Windows-v<version>.zip` (about 38 MB, 77 MB unzipped)
+  in its own clean environment, and starts the packaged app to check it before
+  zipping.
+- **`tools/cam2.spec`**, the PyInstaller recipe: one folder, no console window.
+- **`requirements-build.txt`** pins the library and PyInstaller versions for builds.
+- **`READ ME FIRST.txt`** and **`CAM2 Quick Guide.pdf`** (`tools/build_quick_guide.py`)
+  in the zip, each in English and Japanese.
+
+#### Changed
+- **The packages are now PyInstaller executables**, not an embedded Python
+  started by a `.bat` file as PLAN.md first said. Teachers double-click
+  `Start CAM2 Exam Grading.exe`. With no console window, output goes to
+  `logs/cam2.log` in the app-data folder, so there is no separate troubleshooting
+  launcher.
+- **The first-run warning is now SmartScreen's** *Windows protected your PC*,
+  because the `.exe` is unsigned. The READ ME and the quick guide explain
+  **More info** → **Run anyway**.
+
+#### Fixed
+- **A stopped CAM2 left `server.json` behind on Windows.** It tried to delete
+  the file while it still had it open. This did no harm, since the next start
+  checks that the port really answers, but the file now goes.
+
+#### Tested
+- On the Windows build computer, with the package unzipped to a folder with a
+  Japanese name and spaces: a combined PDF through to English and Japanese
+  reports and the gradebook; booklet and photo previews; Excel and Shift-JIS
+  class lists; quit and resume; a late paper; the folder picker returning a
+  Japanese folder name, and cancelled; and the screens in a browser.
+- **Not yet tried:** a zip downloaded from the internet and the SmartScreen
+  warning, a computer that has never run CAM2, and a USB stick or OneDrive
+  session folder from the package.
+
 ### Pickers inside CAM's portable bundle (2026-11-01)
 
 #### Fixed
