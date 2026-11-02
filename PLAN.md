@@ -372,7 +372,7 @@ cam2-exam-grading\
 - **Licence (2026-11-02):** keep PyMuPDF and use it under the GNU AGPL version 3. CAM2's own code stays MIT, and each download as a whole is under the AGPL. `licences/` holds the AGPL text and the other libraries' notices, the same for Windows and Mac, and the build copies them into the zip. Each release also carries the PyMuPDF and MuPDF source.
 
 **Still needed**
-1. **Make the repo public before anyone else gets a download.** The AGPL requires that people who receive a download can get its source, and the link in `READ ME FIRST` and `licences/NOTICE.txt` only works for people with access while the repo is private. Each public download needs a tag matching its version.
+1. **Keep the source available.** The repo went public on 2026-11-02, because the AGPL requires that people who receive a download can get its source. Each public download needs a tag matching its version, with the two source archives on its release.
 2. **Mac testing:** the rest of the Mac run-through under Phase 5.
 3. **Japanese UI wording:** a native check of `i18n/ja.json` before release.
 
