@@ -161,17 +161,21 @@ def header(w):
 
 def results(w):
     w.html("<h2>Results</h2>", gap=4)
-    head = ["Section", "Result", "Weighting"]
+    head = ["Section", "Result", "Weighted marks"]
     rows = [[f"<p class='label'>{h}</p>" for h in head]]
     for s in SECTIONS:
         marks = marks_of(s)
         result = (f"{marks[0]} / {marks[1]} · {marks[2]:g}%" if marks else
                   " &nbsp;·&nbsp; ".join(f"Q{x['label']} <b>{_e(grade_text(x))}</b>" for x in s["questions"]))
-        weight = f"{s['weight']}%" if s["weight"] is not None else ""
-        rows.append([f"<p><b>{_e(s['name'])}</b> {_e(s['title'])}</p>", f"<p>{result}</p>", f"<p>{weight}</p>"])
-    rows.append(["<p><b>Overall</b> (Sections A and B)</p>", f"<p><b>{overall_percent():g}%</b></p>", "<p>100%</p>"])
+        weighted = ""
+        if marks:
+            points = round_half_up(Decimal(marks[0]) / marks[1] * s["weight"], 1)
+            weighted = f"{points:g} / {s['weight']}"
+        rows.append([f"<p><b>{_e(s['name'])}</b> {_e(s['title'])}</p>", f"<p>{result}</p>", f"<p>{weighted}</p>"])
+    overall = overall_percent()
+    rows.append(["<p><b>Overall</b> (Sections A and B)</p>", f"<p><b>{overall:g}%</b></p>", f"<p><b>{overall:g} / 100</b></p>"])
     fills = [HEADING] + [None] * len(SECTIONS) + [HEADING]
-    table(w, [176, CONTENT_W - 234, 58], rows, fills)
+    table(w, [176, CONTENT_W - 266, 90], rows, fills)
     w.y += GAP * 1.5
 
 

@@ -10,7 +10,8 @@
 Many MYP exam papers are divided into sections. A section of multiple-choice questions is marked, its total becomes a percentage, and the teacher uses that to help decide a rubric level. Giving a rubric level to each multiple-choice question makes no sense.
 
 So CAM2 should let a teacher:
-- divide a paper into sections, each graded with marks or a rubric;
+- divide a paper into sections;
+- grade each question with marks or a rubric, mixed in any way, and go back during set-up to add marks or criteria they left out;
 - report each criterion's grades as they were given, and optionally decide an overall level per criterion;
 - choose how much each section counts towards the final percentage;
 - produce a clearer, shorter report that can leave out answer images.
@@ -31,19 +32,35 @@ So CAM2 should let a teacher:
 ### Step ② Set up the questions
 - **Sections are optional.** With none, the whole paper is one section and the screens look as they do today.
 - **Adding one:** in the question list, **Start a new section here** adds a divider. Sections follow the order of the paper, so a question always sits inside one section. Moving a question past a divider moves it into that section.
-- **Each section has:**
-  - a name, which is optional (blank shows as `Section 1`);
-  - **Marks** or **Rubric**.
-- **Criteria are ticked per question**, so one section can cover several criteria.
-  - A question in a rubric section must have at least one criterion, and gets a level for each.
-  - A question in a marks section needs no criterion. The ticks appear only if the teacher has added a rubric.
-- **Rubrics** are required only for rubric sections. In a marks exam they sit behind a small **Add criteria (optional)** link, and a teacher who ignores it sees no rubric screens anywhere.
+- **A section has only an optional name** (blank shows as `Section 1`). It groups questions for the report and for weightings. It does not decide how they are graded.
+- **The first screen still asks Marks or Rubric,** but only as a starting point: it sets what the question card asks for first. Choosing the other card later changes no question and no grade, so "You can change it later" becomes true.
+- **Every question card has both:** a **Marks** box and **Criteria** ticks. The ticks appear once the exam has a rubric, and until then a small **Add criteria (optional)** link opens the rubric screen. A marks teacher who ignores it sees no rubric screens anywhere.
+- **What is filled in decides how a question is graded:**
+
+| Marks box | Criteria | Graded with | Reported as |
+|---|---|---|---|
+| Filled in | None | Marks | `6 / 10` |
+| Filled in | Ticked | Marks | `6 / 10`, and counted in that criterion's marks total |
+| Empty | Ticked | Rubric levels, one per criterion | `B5` |
+| Empty | None | Not ready: CAM2 asks for one or the other before slicing | |
+
+- **Each question gets one grade,** so a teacher never grades the same answer twice. On a question with marks, criteria are used only at the reporting stage. A paper with half marks and half rubric needs no extra setting, with or without sections.
+- One section can cover several criteria, because criteria are ticked per question.
 - **A question is whatever the teacher draws a box around.** A printed "Question 1" of 24 multiple-choice items can be one question worth 24 marks, or 24 questions. A "Question 2" with parts A and B can be two questions. No separate "parts" feature is needed.
 - **Choice questions** ("answer 2 of 3") must stay inside one section, because otherwise a section's total has no clear meaning.
-- **Locks:** a section's marks or rubric choice is fixed once one of its questions has a grade. A graded question cannot move into a section of the other kind, because marks and levels cannot be converted.
+
+### Going back to fill in what was left out
+The exam paper is already set, so this is about finishing set-up in whatever order suits the teacher, not about regrading.
+
+- **Marks first, criteria later:** add the rubric, then tick each question's criteria. Marks and grades are not affected, so ticks can be added or changed at any time, even during grading.
+- **Rubric first, marks later:** type marks into the question's box. It then grades with marks, and its criteria stay ticked, so its marks count towards that criterion.
+- **One table for all of it:** the Slice screen's question list becomes editable, with one row per question, its **Marks** box, a tick per criterion, and how it will be graded. A teacher can finish in one place instead of opening each question.
+- **No re-slicing** is needed for any of this, because the boxes have not changed.
+- **A mixed paper gets a check:** before slicing, if some questions have marks and some do not, CAM2 names those graded with rubric levels, so a forgotten marks box is not mistaken for a rubric question.
+- **One lock:** once a question has a grade, it cannot change between marks and rubric levels, because the two cannot be converted. Its marks box is locked with a short note. Every other question stays open.
 
 ### Step ④ Grade
-- Each question shows marks buttons or rubric levels, according to its section. Otherwise this is unchanged.
+- Each question shows marks buttons or rubric levels, according to the table above. Otherwise this is unchanged.
 - A rubric level is reported as given, with its criterion: Q5 is `B5`, Q6 is `A3`. CAM2 does not average them.
 
 ### Step ⑤ Review & export
@@ -62,11 +79,12 @@ Yui Suzuki   Marks 46/55 · 83.6%  [   ]   Marks 6/10 · 60.0%; Grades B6, B5  [
 - The final level starts blank, and a final level left blank does not print.
 - **Export warning:** if a final level is filled in for some students but not others, the teacher is told which before the reports are made.
 
-**A level for each section:** a tick inside Overall criterion results, off by default. It adds one blank level per criterion for each section, for teachers who turn a section's percentage into a band and then decide the final level from those. CAM2 never calculates it. It prints on that section's row, so ticking it also turns on Section results.
+**Criterion levels are only decided for the whole paper.** A criterion can have questions in several sections, so a level for one section could say 8 while a later Criterion A question scored 1.
 
-**Section percentages** apply to marks only. CAM2 never works out a section total for rubric grades.
-- **Count sections by percentage** is off by default, and the total is simply the marks added up.
-- When on, the marks sections start with equal shares: 50 and 50, or 34, 33 and 33 for three sections. Rubric sections have none.
+**Section weightings** apply to marks only. CAM2 never works out a section total for rubric grades.
+- **No weighting** is the default: every question has its own marks, and the total is simply those marks added up.
+- **Weighting sections:** each section's marks become a percentage, and that percentage is applied to the section's share of the paper. A student with 24 / 24 in a section worth 20% has 100% of that section, so they get 20 marks out of 100 for it.
+- When on, sections with marks questions start with equal shares: 50 and 50, or 34, 33 and 33 for three sections. A section with only rubric questions has none.
 - **The shares always add up to exactly 100.** When a teacher types a percentage, that section keeps it and the sections not yet typed share the rest equally, with any leftover going to the first of them. One section always stays automatic, so the teacher never has to do the sum.
 - The shares do not stop at 99, because then a student with full marks would get 99%.
 - The **Total on report** override then changes the final percentage instead of the marks total.
@@ -89,11 +107,12 @@ Yui Suzuki   Marks 46/55 · 83.6%  [   ]   Marks 6/10 · 60.0%; Grades B6, B5  [
 
 | Item | Rule |
 |---|---|
-| Section marks | The section's counted marks over its maximum, added up from its questions and never typed in. Choice groups count as they do today, inside their section. |
+| Section marks | The counted marks of the section's marks questions over their maximum, added up and never typed in. Choice groups count as they do today, inside their section. |
+| Weighted marks for a section | Section percentage × the section's share, shown as `44.0 / 50`. A student with 24 / 24 in a section worth 20 gets `20.0 / 20`. |
 | Section percentage | Marks over maximum, shown to 1 decimal place. |
-| Total, no weighting | All marks sections added together, shown as `52 / 65 · 80.0%`. |
+| Total, no weighting | Every marks question added together, shown as `52 / 65 · 80.0%`. |
 | Total, with weighting | The sum of (section marks ÷ section maximum × weighting). It is worked out from unrounded figures and **rounded half up only once, at the end**. The report shows only the percentage, because it would not agree with a total out of 65. |
-| Equal shares | 100 divided by the number of marks sections. Any leftover goes to the first sections, one point each, so the shares add up to exactly 100. |
+| Equal shares | 100 divided by the number of sections with marks questions. Any leftover goes to the first sections, one point each, so the shares add up to exactly 100. |
 | Mixed paper | Rubric levels are never added to marks. The overall line says which sections it covers. |
 | Criterion marks, no weighting | The marks of the questions on that criterion, added together: `46 / 55 · 83.6%`. A question on two criteria counts in both. |
 | Criterion marks, with weighting | Each question counts as much here as it does in the overall percentage: its share is section weighting × question maximum ÷ section maximum. The criterion's percentage is the sum of (marks ÷ question maximum × share), divided by the sum of those shares, and rounded once at the end. The report shows only the percentage. |
@@ -120,11 +139,11 @@ Yui Suzuki   Marks 46/55 · 83.6%  [   ]   Marks 6/10 · 60.0%; Grades B6, B5  [
 
 ```json
 {
-  "sections": [{"id": "sec1", "name": "Scientific knowledge", "mode": "marks", "weight": 50},
-               {"id": "sec2", "name": "", "mode": "rubric", "weight": null}],
-  "questions": [{"id": "q1", "section_id": "sec1", "rubric_ids": ["r1"]}],
+  "sections": [{"id": "sec1", "name": "Scientific knowledge", "weight": 50},
+               {"id": "sec2", "name": "", "weight": null}],
+  "questions": [{"id": "q1", "section_id": "sec1", "max": 24, "rubric_ids": ["r1"]}],
   "weighted": true,
-  "report_options": {"section_results": true, "overall_criteria": false, "section_levels": false,
+  "report_options": {"section_results": false, "overall_criteria": false,
                      "rubric_table": true, "overall_marks": true, "no_images_for": ["sec1"]}
 }
 ```
@@ -132,15 +151,18 @@ Yui Suzuki   Marks 46/55 · 83.6%  [   ]   Marks 6/10 · 60.0%; Grades B6, B5  [
 `grades.json` gains, under `overall.<student>`:
 
 ```json
-{"section_levels": {"sec1": {"r1": 7}}, "report_percent": null}
+{"report_percent": null}
 ```
 
+- **A question has no separate marks-or-rubric field.** It grades with marks if it has a `max`, and with rubric levels if not. Grade entries keep their current shape.
+- **Upgrading old rubric sessions:** a question can still hold a `max` from before the teacher chose Rubric, which would now make it a marks question and read its levels as marks. When an old rubric session opens, those `max` values are cleared before anything else reads them.
+- **`config.mode` stays** as the starting choice only. Grading never reads it.
 - **`final_levels` stays** as the overall level for each criterion. Only its meaning changes: blank now means no level, not "use the average".
 - **Typed shares:** a section's `weight` holds the share and each section also records whether the teacher typed it (`"weight_typed": true`), so the app knows which ones to rebalance.
 - **Grades stay keyed by question and student ids**, so sections can change without a grade moving to another question or student.
-- **Old sessions** have no `sections`. They read as one section using the existing `mode`, and open and grade as before. A final level the teacher did not type starts blank.
+- **Old sessions** have no `sections`. They read as one section, every question uses the existing `mode`, and they open and grade as before. A final level the teacher did not type starts blank.
 - **`model.VERSION` goes to 2**, so an older CAM2 refuses a session it would misread.
-- **The wipe guard** (`model.grades_mass`) also counts section and final levels, because they are now teacher work that nothing can recalculate.
+- **The wipe guard** (`model.grades_mass`) also counts final levels, because they are now teacher work that nothing can recalculate.
 
 ---
 
@@ -149,13 +171,14 @@ Yui Suzuki   Marks 46/55 · 83.6%  [   ]   Marks 6/10 · 60.0%; Grades B6, B5  [
 | File | Change |
 |---|---|
 | `engine/model.py` | Document the new shapes, bump the version, extend `grades_mass`. |
-| `engine/grading_summary.py` | Add `sections()` and `question_mode()`, and use `question_mode()` for every exam-wide `mode` check (`slots`, `set_grade`, `question_values`, `student_summary`, `class_summary`). Add per-section and per-criterion marks, weighting with equal shares and rebalancing, and `set_section_level`. Remove `average`, `suggested` and the rubric `adjusted`. Choice groups must stay inside a section (`check_choice_groups`). `marks_maximum` works per section. `set_final_level` uses `rubrics.check_level`. |
-| `engine/workflow.py` | Save sections and options. Move the `mode_locked` check to each section, and refuse to move a graded question between section kinds. `check_ready` checks each question by its section's mode, and only asks for rubrics when a rubric section exists. |
-| `engine/reports.py` | The new order and layout (§6), using a small drawn-table helper: MuPDF's HTML ignores table column widths. A rubric prints if any question ticks it, in marks or rubric sections. |
-| `engine/gradebook_xlsx.py` | Add section marks, percentages and weightings, the section and final levels, and the overall percentage. Remove the average columns. List sections on the second sheet. Show the class average, maximum and minimum for each section. |
-| `app.py` | Routes for sections, section and final levels, weighting, report options and the one-report preview. |
-| `static/js/step2.js`, `step4.js`, `step5.js`, `store.js` | The screens in §2. |
-| `i18n/en.json`, `i18n/ja.json` | Every new string in both languages. |
+| `engine/grading_summary.py` | Add `sections()` and `question_mode()`, and use `question_mode()` for every exam-wide `mode` check (`slots`, `set_grade`, `question_values`, `student_summary`, `class_summary`). Add per-section and per-criterion marks, and weighting with equal shares and rebalancing. Remove `average`, `suggested` and the rubric `adjusted`. Choice groups must stay inside a section (`check_choice_groups`). `marks_maximum` works per section. `set_final_level` uses `rubrics.check_level`. |
+| `engine/workflow.py` | Save sections and options. `set_mode` no longer locks. `set_questions` refuses to add or remove the `max` of a question that has a grade. `check_ready` asks each question for marks or a criterion, replacing its exam-wide checks. |
+| `engine/storage.py` | Clear stale `max` values when an old rubric session opens. |
+| `engine/reports.py` | The new order and layout (§6), using a small drawn-table helper: MuPDF's HTML ignores table column widths. A rubric prints if any question ticks it, whether graded by marks or rubric. |
+| `engine/gradebook_xlsx.py` | Add section marks, percentages and weighted marks, the final levels, and the overall percentage. Remove the average columns. List sections on the second sheet. Show the class average, maximum and minimum for each section's marks. |
+| `app.py` | Routes for sections, final levels, weighting, report options and the one-report preview. |
+| `static/js/step2.js`, `boxes.js`, `step4.js`, `step5.js`, `store.js` | The screens in §2. The rubric tab is always available, and the question card always shows the Marks box. |
+| `i18n/en.json`, `i18n/ja.json` | Every new string in both languages. Reword `step2.mode.coach`, `step2.mode.rubric_hint` ("Averages are worked out for you") and `step5.coach_rubric`, and replace `error.mode_locked` with the per-question lock. |
 
 Nothing here adds a dependency or a bundled file, so packaging is unaffected.
 
@@ -166,9 +189,8 @@ Nothing here adds a dependency or a bundled file, so packaging is unaffected.
 Printed in this order:
 1. **Header:** exam name, date, student.
 2. **Results:** the overall line, with one row per section above it if Section results is on.
-   - The format follows the section: a marks section shows marks and percentage (`22 / 25 · 88.0%`), and a rubric section lists each question's grades with no total (`Q5 B6 · Q6 B5 C5 · Q7 C6`).
-   - A level for the section, if the teacher decided one, prints on that section's row.
-   - The Weighting column appears only when section percentages are on.
+   - The format follows the questions: marks questions show a total and percentage (`22 / 25 · 88.0%`), rubric questions list their grades with no total (`Q5 B6 · Q6 B5 C5 · Q7 C6`), and a section with both shows both.
+   - The Weighted marks column (`44.0 / 50`) appears only when weighting is on.
    - With no sections, only the overall line prints.
 3. **Rubric:** one copy of each table, only for criteria used in this exam, and only if the Rubric table option is on.
    - With Overall criterion results on, **one box per criterion** holds everything together beside its table: the **Final level** if the teacher decided one, the marks total, and the rubric grades (`B6, B5`). The final level's band is shaded.
@@ -186,7 +208,7 @@ Printed in this order:
 Per-section images matter because answer images are capped at 330 points tall (`IMAGE_MAX_H`). A multiple-choice question boxed across several pages would shrink until it can't be read, so a teacher can turn off images for that section and keep the written answers.
 
 ### Mock-up
-Made by `tools/make_report_mockup.py` from made-up data, with sample rubric wording. CAM2 still ships no rubric text. It shows a full report, with Section results and Overall criterion results on, final levels decided, and without the optional level for each section.
+Made by `tools/make_report_mockup.py` from made-up data, with sample rubric wording. CAM2 still ships no rubric text. It shows a full report, with Section results and Overall criterion results on and final levels decided.
 
 **No answer images (2 pages)**
 
@@ -205,7 +227,7 @@ Made by `tools/make_report_mockup.py` from made-up data, with sample rubric word
 Each phase ends with its tests passing, and with `CHANGELOG.md` and `ARCHITECTURE.md` updated.
 
 **Phase 1: Engine**
-- Sections, per-question mode, section totals, weighting, section and final levels, removing the averages.
+- Sections, how each question is graded, section totals, weighting, final levels, removing the averages.
 - Tests:
   - an old marks session and an old rubric session give the same marks and levels as before;
   - a marks exam with no sections or rubrics needs nothing new;
@@ -214,13 +236,18 @@ Each phase ends with its tests passing, and with `CHANGELOG.md` and `ARCHITECTUR
   - the criterion examples in §3, a criterion spread across sections, one with both marks and rubric grades, and one reaching 100% on full marks;
   - equal shares and rebalancing always add up to exactly 100, for one to seven sections;
   - a choice group across two sections is refused;
-  - the mode lock works per section, and a graded question cannot change section kind.
+  - each row of the question table in §2 grades the right way;
+  - adding criteria after marks, or marks after criteria, keeps every box and needs no re-slicing;
+  - ticking criteria on a graded marks question leaves its marks alone;
+  - a question with a grade cannot gain or lose its `max`, and other questions still can;
+  - a mark is never read as a level, or a level as a mark, including in an upgraded old rubric session with a stale `max`;
+  - a paper with marks and rubric questions in one section, and with no sections at all.
 
 **Phase 2: Step ② screens**
-- Dividers, section cards and per-question criteria in both kinds of section.
+- Dividers, section names, both fields on every question card, the always-available rubric tab, the editable question table, and the check before slicing a mixed paper.
 
 **Phase 3: Step ④ grading**
-- Each question grades by its own section's mode, including on a mixed paper.
+- Each question grades the right way, including on a mixed paper.
 
 **Phase 4: Step ⑤**
 - Overall criterion results, section percentages, new review columns, report options, the export warning.
@@ -236,7 +263,8 @@ Each phase ends with its tests passing, and with `CHANGELOG.md` and `ARCHITECTUR
 - In a browser, in English and Japanese, on Windows and a Mac:
   - a marks-only exam with no sections, checking that no rubric screens appear;
   - all one criterion across three marks sections;
-  - several criteria with a mix of marks and rubric sections;
+  - several criteria with a mix of marks and rubric questions;
+  - marks entered first with criteria added later, and rubrics entered first with marks added later;
   - a real scanned paper. **Real papers stay out of the repository.**
 
 ---
@@ -257,7 +285,9 @@ Sources: [The Codrington School policy](https://codrington.edu.bb/wp-content/upl
 
 - Averages, totals or suggested levels for rubric grades.
 - Required rubrics or final levels in a marks exam.
-- Levels for a hand-picked group of questions. A level belongs to one question, one section or the whole paper.
+- Criterion levels for a section or a hand-picked group of questions. A level belongs to one question, or to the whole paper as its final level.
+- Converting between marks and rubric levels, or changing how a question is graded once it has a grade.
+- Giving one question both a mark and a rubric level.
 - Automatic conversion from a percentage to a level (`85% = 7`).
 - The MYP 1–7 grade.
 - A separate strand layer. Teachers type the strands into the criterion's descriptors and can name sections after them.
