@@ -40,17 +40,17 @@ OVERALL_COMMENT = ("A strong term. You know the content well and apply it confid
 
 # Sample wording only: CAM2 ships no rubric text, and teachers enter their own.
 RUBRICS = {
-    "Criterion A": {"final": 7, "also": [("Q2A, Q3", 7)], "bands": [
+    "Criterion A": {"final": 7, "bands": [
         ("7–8", 7, 8, "Explains ideas fully and applies them to unfamiliar problems."),
         ("5–6", 5, 6, "Outlines ideas and applies them to familiar and some unfamiliar problems."),
         ("3–4", 3, 4, "States ideas and applies them to familiar problems."),
         ("1–2", 1, 2, "Recalls some ideas and suggests solutions with help.")]},
-    "Criterion B": {"final": 6, "also": [], "bands": [
+    "Criterion B": {"final": 6, "bands": [
         ("7–8", 7, 8, "Plans a fair method and justifies every choice."),
         ("5–6", 5, 6, "Plans a workable method and explains most choices."),
         ("3–4", 3, 4, "Describes a simple method with some reasons."),
         ("1–2", 1, 2, "States part of a method.")]},
-    "Criterion C": {"final": 5, "also": [], "bands": [
+    "Criterion C": {"final": 5, "bands": [
         ("7–8", 7, 8, "Analyses data and draws a conclusion that the evidence fully supports."),
         ("5–6", 5, 6, "Interprets data and draws a conclusion with some evidence."),
         ("3–4", 3, 4, "Describes patterns in data and draws a simple conclusion."),
@@ -58,31 +58,28 @@ RUBRICS = {
 }
 
 
-def q(label, got=None, top=None, levels=None, comment="", ask="", answer=()):
+def q(label, got=None, top=None, levels=None, comment="", ask="", answer=(), crit=None):
     return {"label": label, "got": got, "top": top, "levels": levels, "comment": comment,
-            "ask": ask, "answer": answer}
+            "ask": ask, "answer": answer, "crit": crit}
 
 
 WRONG = {7, 15, 22}
 SECTIONS = [
     {"name": "Section A", "title": "Scientific knowledge", "weight": 50,
-     "levels": [("Criterion A", 8)],
-     "questions": [q(f"1.{n}", 0 if n in WRONG else 1, 1) for n in range(1, 26)]},
+     "questions": [q(f"1.{n}", 0 if n in WRONG else 1, 1, crit="Criterion A") for n in range(1, 26)]},
     {"name": "Section B", "title": "Applying knowledge", "weight": 50,
-     "levels": [("Criterion A", 7), ("Criterion B", 6)],
      "questions": [
-         q("2A", 10, 12, ask="2A. Complete the table of plant parts and their functions.",
+         q("2A", 10, 12, crit="Criterion A", ask="2A. Complete the table of plant parts and their functions.",
            answer=("Roots take in water and minerals.", "Leaves make food by photosynthesis.")),
-         q("2B", 6, 8, comment="Good idea. Give a reason for each change you suggest.",
+         q("2B", 6, 8, crit="Criterion A", comment="Good idea. Give a reason for each change you suggest.",
            ask="2B. Design a plant for a dry planet. What would you change?",
            answer=("Smaller leaves, so less water is lost.", "Longer roots to reach deep water.")),
-         q("3", 8, 10, ask="3. Balance the equation and name each product.",
+         q("3", 8, 10, crit="Criterion A", ask="3. Balance the equation and name each product.",
            answer=("6CO2 + 6H2O gives C6H12O6 + 6O2", "The products are glucose and oxygen.")),
-         q("4", 6, 10, comment="Your method tests one variable. Say what you keep the same.",
+         q("4", 6, 10, crit="Criterion B", comment="Your method tests one variable. Say what you keep the same.",
            ask="4. Plan how to test the effect of light on plant growth.",
            answer=("Grow plants at three light levels for two weeks.", "Measure the height every day."))]},
     {"name": "Section C", "title": "Investigation", "weight": None,
-     "levels": [("Criterion B", 6), ("Criterion C", 5)],
      "questions": [
          q("5", levels=[("Criterion B", 6)], ask="5. Write a testable question and a hypothesis.",
            answer=("Does more light mean more bubbles of gas?", "I think that more light gives more bubbles.")),
@@ -112,6 +109,22 @@ def overall_percent():
             top = sum(x["top"] for x in section["questions"])
             total += Decimal(got) / Decimal(top) * section["weight"]
     return round_half_up(total, 1)
+
+
+def criterion_percent(name):
+    """Each question counts as much here as it does in the overall percentage,
+    so only the questions on this criterion share the 100%."""
+    earned = counted = Decimal(0)
+    for section in SECTIONS:
+        if section["weight"] is None:
+            continue
+        section_max = sum(x["top"] for x in section["questions"])
+        for x in section["questions"]:
+            if x["crit"] == name:
+                share = Decimal(section["weight"]) * x["top"] / section_max
+                earned += Decimal(x["got"]) / x["top"] * share
+                counted += share
+    return round_half_up(earned * 100 / counted, 1) if counted else None
 
 
 def height_of(text: str, width: float, css: str = TABLE_CSS) -> float:
@@ -148,18 +161,17 @@ def header(w):
 
 def results(w):
     w.html("<h2>Results</h2>", gap=4)
-    head = ["Section", "Marks", "Weighting", "Rubric levels"]
+    head = ["Section", "Result", "Weighting"]
     rows = [[f"<p class='label'>{h}</p>" for h in head]]
     for s in SECTIONS:
         marks = marks_of(s)
-        marks_text = f"{marks[0]} / {marks[1]} · {marks[2]:g}%" if marks else "<span class='muted'>Rubric</span>"
+        result = (f"{marks[0]} / {marks[1]} · {marks[2]:g}%" if marks else
+                  " &nbsp;·&nbsp; ".join(f"Q{x['label']} <b>{_e(grade_text(x))}</b>" for x in s["questions"]))
         weight = f"{s['weight']}%" if s["weight"] is not None else ""
-        levels = " &nbsp;·&nbsp; ".join(f"{_e(n)}: <b>{v}</b>" for n, v in s["levels"])
-        rows.append([f"<p><b>{_e(s['name'])}</b> {_e(s['title'])}</p>", f"<p>{marks_text}</p>",
-                     f"<p>{weight}</p>", f"<p>{levels}</p>"])
-    rows.append(["<p><b>Overall</b> (Sections A and B)</p>", f"<p><b>{overall_percent():g}%</b></p>", "<p>100%</p>", "<p></p>"])
+        rows.append([f"<p><b>{_e(s['name'])}</b> {_e(s['title'])}</p>", f"<p>{result}</p>", f"<p>{weight}</p>"])
+    rows.append(["<p><b>Overall</b> (Sections A and B)</p>", f"<p><b>{overall_percent():g}%</b></p>", "<p>100%</p>"])
     fills = [HEADING] + [None] * len(SECTIONS) + [HEADING]
-    table(w, [176, 92, 58, CONTENT_W - 326], rows, fills)
+    table(w, [176, CONTENT_W - 234, 58], rows, fills)
     w.y += GAP * 1.5
 
 
@@ -182,8 +194,13 @@ def rubric_block(w, name, rubric):
     top_level = max(hi for _, _, hi, _ in rubric["bands"])
     side = (f"<p class='label'>Final level</p><p class='grade'>{rubric['final']}"
             f"<span class='of'> / {top_level}</span></p>")
-    for scope, level in rubric["also"]:
-        side += f"<p class='label'>{_e(scope)}: <b>{level}</b></p>"
+    given = [f"{name[-1]}{v}" for s in SECTIONS for x in s["questions"]
+             for n, v in x["levels"] or [] if n == name]
+    percent = criterion_percent(name)
+    if percent is not None:
+        side += f"<p class='label'>Marks: <b>{percent:g}%</b></p>"
+    if given:
+        side += f"<p class='label'>Grades: <b>{', '.join(given)}</b></p>"
     w.at(fitz.Rect(box.x0 + PAD, box.y0 + PAD, box.x1 - PAD, box.y1 - PAD), side, css=GRADE_CSS, shrink=True)
     w.y += GAP
 
@@ -207,17 +224,13 @@ def answer_image(question):
 def grade_html(question):
     if question["levels"] is None:
         return f"<p class='grade'>{question['got']}<span class='of'> / {question['top']}</span></p>"
-    if len(question["levels"]) == 1:
-        return f"<p class='grade'>{question['levels'][0][1]}</p>"
-    return "".join(f"<p class='label'>{_e(n)}</p><p class='grade'>{v}</p>" for n, v in question["levels"])
+    return "".join(f"<p class='grade'>{n[-1]}{v}</p>" for n, v in question["levels"])
 
 
 def grade_text(question):
     if question["levels"] is None:
         return f"{question['got']} / {question['top']}"
-    if len(question["levels"]) == 1:
-        return f"Level {question['levels'][0][1]}"
-    return " · ".join(f"{n}: {v}" for n, v in question["levels"])
+    return " ".join(f"{n[-1]}{v}" for n, v in question["levels"])
 
 
 def section_heading(w, section, room):
@@ -267,7 +280,7 @@ def compact(w, section):
         w.y += 20
     commented = [x for x in section["questions"] if x["comment"]]
     if commented:
-        table(w, [40, 150, CONTENT_W - 190],
+        table(w, [40, 66, CONTENT_W - 106],
               [[f"<p><b>{_e(x['label'])}</b></p>", f"<p>{_e(grade_text(x))}</p>", f"<p>{_e(x['comment'])}</p>"]
                for x in commented])
     w.y += GAP
