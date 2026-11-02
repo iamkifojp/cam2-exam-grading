@@ -19,6 +19,9 @@ on other computers is still to do.
   its own READ ME FIRST and quick guide wording, and checks the app from a copy
   unzipped again. The app has no Dock icon. Macs with an Intel chip aren't
   covered for now.
+- **The Mac documents walk through the first-run approval**, tried on a really
+  downloaded zip. They warn against **Move to Trash** and explain the malware
+  message, and the quick guide has screenshots of each step.
 - **`licences/`**: the zip now has a `Licences` folder with the GNU AGPL text,
   an overview notice, CAM2's MIT licence and the licence texts of the other
   bundled libraries. The download includes PyMuPDF, so as a whole it is under

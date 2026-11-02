@@ -33,13 +33,16 @@ This download is for Macs with an Apple chip (M1 or later).
 
 1. Double-click the zip to unzip it.
 2. Open the unzipped folder and double-click "Start CAM2 Exam Grading".
-3. The first time, your Mac stops it, because CAM2 is free and not signed with
-   a paid Apple certificate. Click "Done", then:
+3. The first time, your Mac says it could not verify that CAM2 is free of
+   malware. It says this because CAM2 is free and not signed with a paid Apple
+   certificate, so Apple has not checked it. Click "Done", not "Move to Trash".
+   (If you did click "Move to Trash", just unzip the download again.) Then:
      a. Open System Settings > Privacy & Security.
      b. Scroll down to Security and click "Open Anyway" beside CAM2.
-     c. Enter your password, and click "Open Anyway" again if asked.
+     c. In the message that appears, click "Open Anyway".
+     d. Enter your password and click "OK".
    You only do this once. Moving the folder or downloading a new version may
-   bring it back.
+   bring it back. The quick guide has pictures of these steps.
 4. If your Mac asks whether CAM2 may use a folder such as Documents, click
    "Allow". CAM2 needs this to read your scans and save your work there.
 5. CAM2 opens in your web browser. Nothing is installed and nothing leaves this
@@ -71,14 +74,19 @@ CAM2 Exam Grading - 最初にお読みください
 
 1. zipをダブルクリックして展開します。
 2. 展開したフォルダーを開き、「Start CAM2 Exam Grading」をダブルクリックします。
-3. 初回はMacに止められます。CAM2は無料のソフトで、Appleの有料の証明書で署名して
-   いないためです。「完了」をクリックしてから、次の操作をしてください。
+3. 初回は、CAM2にマルウェアが含まれていないことを検証できなかった、という
+   メッセージが表示されます。CAM2は無料のソフトで、Appleの有料の証明書で署名して
+   おらず、Appleの確認を受けていないためです。「ゴミ箱に入れる」ではなく「完了」を
+   クリックしてください（「ゴミ箱に入れる」をクリックした場合は、ダウンロードした
+   zipをもう一度展開してください）。続いて、次の操作をします。
      a. 「システム設定」＞「プライバシーとセキュリティ」を開きます。
      b. 「セキュリティ」まで下へスクロールし、CAM2の横の「このまま開く」を
         クリックします。
-     c. パスワードを入力し、確認が出たらもう一度「このまま開く」をクリックします。
+     c. 表示されたメッセージで「このまま開く」をクリックします。
+     d. パスワードを入力し、「OK」をクリックします。
    これは最初の1回だけです。フォルダーを移動したときや新しいバージョンをダウン
-   ロードしたときには、再度必要になることがあります。
+   ロードしたときには、再度必要になることがあります。手順の画像はクイックガイドに
+   あります。
 4. 書類フォルダーなどへのアクセスを求められたら、「許可」をクリックしてください。
    スキャンを読み込み、作業内容をそこへ保存するために必要です。
 5. CAM2はWebブラウザーで開きます。インストールは不要で、データがこのコンピューター

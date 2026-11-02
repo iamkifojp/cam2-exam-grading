@@ -8,8 +8,11 @@ Uses PyMuPDF and its built-in Japanese font, like the student reports.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 import pymupdf as fitz
+
+PICTURES = Path(__file__).resolve().parent / "guide_images"
 
 CSS = """
 * { font-family: sans-serif; color: #1f2937; }
@@ -102,24 +105,61 @@ START_STEPS = {
     "mac": (
         """
 <li>Double-click the download to unzip it, open the folder and double-click <b>Start CAM2 Exam Grading</b>.</li>
-<li>The first time, your Mac stops it because it isn't signed. Click <b>Done</b>, open <b>System Settings &gt; Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>, then enter your password. You only do this once.</li>
+<li>The first time, your Mac says it could not verify CAM2, because CAM2 isn't signed. Click <b>Done</b>, not <b>Move to Trash</b>, and follow the pictures below. You only do this once.</li>
 <li>If your Mac asks whether CAM2 may use a folder such as Documents, click <b>Allow</b>.</li>
 """,
         """
 <li>ダウンロードしたファイルをダブルクリックして展開し、フォルダーを開いて<b>「Start CAM2 Exam Grading」</b>をダブルクリックします。</li>
-<li>初回は、署名がないためMacに止められます。<b>「完了」</b>をクリックし、<b>「システム設定」＞「プライバシーとセキュリティ」</b>を開いて下へスクロールし、<b>「このまま開く」</b>をクリックしてパスワードを入力します。これは最初の1回だけです。</li>
+<li>初回は、署名がないためMacが確認できないと表示されます。<b>「ゴミ箱に入れる」</b>ではなく<b>「完了」</b>をクリックし、下の画像のとおりに進めます。これは最初の1回だけです。</li>
 <li>書類フォルダーなどへのアクセスを求められたら、<b>「許可」</b>をクリックします。</li>
 """),
 }
 
 
+# Screenshots of the first-run approval, in tools/guide_images: file, width on the page.
+MAC_PICTURES = (("mac_blocked.png", 128), ("mac_settings.png", 203), ("mac_confirm.png", 128))
+MAC_PICTURES_HEIGHT = 128
+MAC_CAPTIONS = (
+    ("Opening CAM2 for the first time on a Mac",
+     ("1. Click <b>Done</b>.",
+      "2. In <b>System Settings &gt; Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>.",
+      "3. Click <b>Open Anyway</b>, then enter your password and click <b>OK</b>.")),
+    ("Macで初めてCAM2を開くとき（画面は英語表示の例）",
+     ("1. <b>「完了」</b>をクリックします。",
+      "2. <b>「システム設定」＞「プライバシーとセキュリティ」</b>を下へスクロールし、<b>「このまま開く」</b>をクリックします。",
+      "3. <b>「このまま開く」</b>をクリックし、パスワードを入力して<b>「OK」</b>をクリックします。")),
+)
+CONTENT = fitz.Rect(48, 48, 547, 794)
+
+
+def add_mac_pictures(page, heading: str, captions) -> None:
+    """Three pictures in a row at the foot of the page, each with its caption above."""
+    top = CONTENT.y1 - MAC_PICTURES_HEIGHT - 72
+    spare, _scale = page.insert_htmlbox(fitz.Rect(CONTENT.x0, top, CONTENT.x1, top + 24),
+                                        f"<h2>{heading}</h2>", css=CSS + "h2 { margin: 0; }", scale_low=1)
+    assert spare >= 0, "the Mac pictures' heading no longer fits"
+    gap = (CONTENT.width - sum(width for _name, width in MAC_PICTURES)) / (len(MAC_PICTURES) - 1)
+    left = CONTENT.x0
+    for (name, width), caption in zip(MAC_PICTURES, captions):
+        spare, _scale = page.insert_htmlbox(
+            fitz.Rect(left, top + 24, left + width, top + 72), f"<p>{caption}</p>",
+            css=CSS + "p { font-size: 8.5pt; line-height: 1.25; }", scale_low=1)
+        assert spare >= 0, "a Mac picture's caption no longer fits"
+        page.insert_image(fitz.Rect(left, top + 72, left + width, CONTENT.y1),
+                          filename=str(PICTURES / name))
+        left += width + gap
+
+
 def build(output: str, system: str = "windows") -> None:
     doc = fitz.open()
-    for body, steps in zip((ENGLISH, JAPANESE), START_STEPS[system]):
+    for body, steps, (heading, captions) in zip((ENGLISH, JAPANESE), START_STEPS[system], MAC_CAPTIONS):
         page = doc.new_page(width=595, height=842)
         body = body.replace("{start_steps}", steps)
-        spare, _scale = page.insert_htmlbox(fitz.Rect(48, 48, 547, 794), body, css=CSS, scale_low=1)
+        spare, _scale = page.insert_htmlbox(CONTENT, body, css=CSS, scale_low=1)
         assert spare >= 0, "the quick guide no longer fits on its page"
+        if system == "mac":
+            assert spare >= MAC_PICTURES_HEIGHT + 72, "the Mac pictures no longer fit on the page"
+            add_mac_pictures(page, heading, captions)
     doc.subset_fonts()
     doc.save(output, garbage=4, deflate=True)
     doc.close()

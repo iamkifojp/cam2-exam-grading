@@ -344,7 +344,7 @@ cam2-exam-grading\
 - ✅ Checked on the Apple Silicon Mac that built it, on the unzipped package in a folder with a Japanese name and spaces, started as a double-click through macOS: a combined PDF through to reports in English and Japanese and the gradebook, with a Japanese exam name and save folder and totals matching the grades given; quit and resume; starting it again while it runs; the log; the folder picker opening and cancelling; the screens in a browser. The test used a separate data folder, not the real Documents.
 - Full run-through on Windows and on a Mac (Apple Silicon):
   - **Windows only:** double-click a zip downloaded from the internet on a computer that has never run CAM2, through the SmartScreen warning. This has not been tried yet.
-  - **Mac only:** the same, through **Open Anyway**, with the real Documents folder and its permission question, and choosing a folder in the picker. This has not been tried yet.
+  - **Mac only:** ✅ on the Mac that built it, a downloaded zip through **Open Anyway**; opening and closing it; choosing folders in the picker; an old real scanned exam imported and sliced, saved in a OneDrive folder. Still to try: a Mac that has never run CAM2, and the Documents permission question.
   - pause and resume across two sittings
   - session folder on USB and on OneDrive
   - A4, B5 and A3 papers
@@ -357,7 +357,7 @@ cam2-exam-grading\
 - **No Dock icon:** CAM2 has no window of its own, so the `.app` sets `LSUIElement`.
 - **The double-click hands over to a child:** macOS starts nothing when a running app is double-clicked, so a teacher who closed the tab could not get back. The double-clicked process starts the server as a child and ends, so the next double-click runs afresh and opens the browser (`launcher.py`).
 - **The zip:** made with `ditto`, because `shutil.make_archive` would break the links and signature inside the `.app`. The builder checks the app from a copy unzipped again.
-- **Still to do with the first-run approval:** try **Open Anyway** on a really downloaded zip, and correct the READ ME and quick guide wording to match, in both languages. Macs block the `.app` only, and the other files in the folder open normally. Then add the screenshots (§8).
+- **The first-run approval:** tried on 2026-11-02 with a zip really downloaded through a browser, on macOS 27 in English. The Mac blocks the `.app` (**Done**); System Settings → Privacy & Security → Security has **Open Anyway**; a message asks again (**Open Anyway**); then the password; then CAM2 opens. The READ ME and quick guide follow this, and the guide shows it with screenshots from `tools/guide_images`. The Japanese button names haven't been seen on a Mac in Japanese yet, and the screenshots are in English.
 - **Licences:** both downloads carry the same files. The finished bundle's Python packages and libraries were checked against `licences/NOTICE.txt` and `licences/THIRD-PARTY-NOTICES.txt`.
 - **Releasing it:** the pre-release `v0.2.0-dev` holds only a private Windows test build, and both it and its tag predate the licence files. Build the Windows and Mac zips from one commit that has `build_mac.py`, and tag that commit with the version in the zip names: either move the tag and replace the zip, or change `VERSION` and make a new release. Attach both zips to the release, with the two source archives `licences/NOTICE.txt` names: `pymupdf-2.0.tar.gz` (PyPI) and `mupdf-1.28.5-source.tar.gz` (mupdf.com).
 
@@ -367,13 +367,13 @@ cam2-exam-grading\
 
 **Decided**
 - **Mac signing:** the Mac package ships **unsigned**. Teachers approve it once with **Open Anyway** (§5).
-  - The `READ ME FIRST` and the quick guide show this step with screenshots, in EN and JA.
+  - The `READ ME FIRST` explains this step in EN and JA, and the quick guide shows it with screenshots.
   - Signing and notarising (Apple Developer account, US$99/year) can be added later without changing the app.
 - **Licence (2026-11-02):** keep PyMuPDF and use it under the GNU AGPL version 3. CAM2's own code stays MIT, and each download as a whole is under the AGPL. `licences/` holds the AGPL text and the other libraries' notices, the same for Windows and Mac, and the build copies them into the zip. Each release also carries the PyMuPDF and MuPDF source.
 
 **Still needed**
 1. **Make the repo public before anyone else gets a download.** The AGPL requires that people who receive a download can get its source, and the link in `READ ME FIRST` and `licences/NOTICE.txt` only works for people with access while the repo is private. Each public download needs a tag matching its version.
-2. **Mac testing:** a Mac (ideally Apple Silicon) is needed for Phase 5. PyInstaller can't build a Mac package from Windows, so it is built and tested on the Mac. The test must include the first-launch Open Anyway step on a freshly downloaded zip.
+2. **Mac testing:** the rest of the Mac run-through under Phase 5.
 3. **Japanese UI wording:** a native check of `i18n/ja.json` before release.
 
 ## 9. Deliberately Not Included

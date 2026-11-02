@@ -303,7 +303,7 @@ only listens on `127.0.0.1`.
 | `tools/cam2.spec` | The PyInstaller recipe: entry point `launcher.py`, the data folders, what to leave out, no console window and, on a Mac, the `.app`. |
 | `tools/build_windows.py` | Makes a clean `build/venv`, runs PyInstaller, adds `READ ME FIRST.txt` and the quick guide, starts the packaged app to check it, and zips the folder to `dist/CAM2-exam-grading-Windows-v<version>.zip`. The version comes from `VERSION` in `app.py`. |
 | `tools/build_mac.py` | Does the same on a Mac, using the shared parts of `build_windows.py`, and zips to `dist/CAM2-exam-grading-Mac-AppleSilicon-v<version>.zip` with `ditto`. It checks the signature and starts the app from a copy unzipped again, because a careless zip breaks a `.app`. |
-| `tools/build_quick_guide.py` | Makes the quick guide PDF with PyMuPDF: one page of English, one of Japanese, with the starting steps for Windows or Mac. It is built each time, not kept in the repository. |
+| `tools/build_quick_guide.py` | Makes the quick guide PDF with PyMuPDF: one page of English, one of Japanese, with the starting steps for Windows or Mac and, on the Mac guide, screenshots from `tools/guide_images` of the first-run approval. It is built each time, not kept in the repository. |
 | `requirements-build.txt` | Exact versions of the libraries, what they bring with them and PyInstaller, for the builds. |
 | `licences/` | The AGPL text (for PyMuPDF), the overview notice and the other libraries' licence texts, the same for the Windows and Mac downloads. The build copies them into the zip's `Licences` folder, with `LICENSE` as `CAM2-MIT.txt`. Kept by hand: change it when a library in `requirements-build.txt` changes. |
 
