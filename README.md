@@ -32,10 +32,8 @@ training**:
 **The app is finished; the downloads are not.** Everything a teacher does in
 CAM2 is built and tested, from the start screen to the student PDFs and
 the Excel gradebook. The Windows and Apple Silicon Mac packages have each been
-tested on the computer that built them, and a private Windows test build is on
-the Releases page as the pre-release `v0.2.0-dev`. That build predates the
-licence files, so it isn't for passing on. The tests on other computers are
-still to do.
+tested on the computer that built them, and both are on the Releases page as the
+pre-release `v0.2.0-dev`. The tests on other computers are still to do.
 
 | Stage | | State |
 |---|---|---|
@@ -48,15 +46,14 @@ still to do.
 | Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Packages built; tests on other computers next |
 
 All 218 automated tests pass, and every finished stage was also tried out in a
-browser with sample papers, in English and Japanese. Until the downloads are
-ready, CAM2 can be run from the source code (see
-[For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
+browser with sample papers, in English and Japanese. CAM2 can also be run from
+the source code (see [For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
 [CHANGELOG.md](CHANGELOG.md) the details of each stage.
 
 ## For teachers
 
-The downloads are being built in Phase 5 and are **not available yet**.
-When they are, they will be on this repository's
+The downloads are test builds for now, as they are still being tried on other
+computers. They are on this repository's
 [Releases](https://github.com/iamkifojp/cam2-exam-grading/releases) page:
 
 | Computer | Download | First start |

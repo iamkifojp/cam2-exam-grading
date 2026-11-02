@@ -8,10 +8,9 @@ year-month-day.
 
 ### Phase 5: Windows and Mac packages (2026-11-02)
 
-The Windows and Apple Silicon Mac downloads can now be built. A private Windows
-test build is on the Releases page as the pre-release `v0.2.0-dev`. It was made
-before the licence files were added, so it isn't for passing on. The run-through
-on other computers is still to do.
+The Windows and Apple Silicon Mac downloads can now be built. Both are on the
+Releases page as the pre-release `v0.2.0-dev`, with the PyMuPDF and MuPDF source.
+The run-through on other computers is still to do.
 
 #### Added
 - **`tools/build_mac.py`** builds
