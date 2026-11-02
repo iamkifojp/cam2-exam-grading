@@ -105,18 +105,22 @@ def app_version() -> str:
     return re.search(r'^VERSION = "([^"]+)"', source, re.MULTILINE).group(1)
 
 
-def make_environment() -> None:
-    if not VENV_PYTHON.exists():
+def make_environment(python: Path = VENV_PYTHON) -> None:
+    if not python.exists():
         venv.create(BUILD / "venv", with_pip=True)
-    run(VENV_PYTHON, "-m", "pip", "install", "--quiet", "-r", ROOT / "requirements-build.txt")
+    run(python, "-m", "pip", "install", "--quiet", "-r", ROOT / "requirements-build.txt")
+
+
+def add_licences(bundle: Path) -> None:
+    shutil.copytree(ROOT / "licences", bundle / "Licences")
+    shutil.copy(ROOT / "LICENSE", bundle / "Licences" / "CAM2-MIT.txt")
 
 
 def add_documents() -> None:
     # Notepad needs the byte-order mark to read the Japanese half correctly.
     (BUNDLE / "READ ME FIRST.txt").write_text(READ_ME, encoding="utf-8-sig", newline="\r\n")
     run(VENV_PYTHON, ROOT / "tools" / "build_quick_guide.py", BUNDLE / "CAM2 Quick Guide.pdf")
-    shutil.copytree(ROOT / "licences", BUNDLE / "Licences")
-    shutil.copy(ROOT / "LICENSE", BUNDLE / "Licences" / "CAM2-MIT.txt")
+    add_licences(BUNDLE)
 
 
 def _get(url: str) -> bytes:
@@ -124,14 +128,14 @@ def _get(url: str) -> bytes:
         return resp.read()
 
 
-def check_packaged_app() -> None:
-    """Start the real .exe and fetch what a browser needs from the bundle."""
+def check_packaged_app(exe: Path = EXE) -> None:
+    """Start the real program and fetch what a browser needs from the bundle."""
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
     url = f"http://127.0.0.1:{port}/"
     with tempfile.TemporaryDirectory(prefix="cam2-build-") as data_dir:
-        process = subprocess.Popen([str(EXE), "--no-browser", "--idle", "0",
+        process = subprocess.Popen([str(exe), "--no-browser", "--idle", "0",
                                     "--port", str(port), "--data-dir", data_dir])
         try:
             deadline = time.monotonic() + 60

@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -91,12 +92,32 @@ def free_port(start: int) -> int:
 
 
 def _log_to_file_if_windowless() -> None:
-    """pythonw has no console: send output to the app-data log instead."""
-    if sys.stdout is None or sys.stderr is None:
+    """No console: send output to the app-data log instead.
+
+    pythonw has no sys.stdout at all. The packaged Mac app has one that goes
+    nowhere, so being packaged has to count too.
+    """
+    if sys.stdout is None or sys.stderr is None or pickers._frozen():
         logs = os.path.join(storage.app_data_dir(), "logs")
         os.makedirs(logs, exist_ok=True)
         log = open(os.path.join(logs, "cam2.log"), "a", encoding="utf-8", buffering=1)
         sys.stdout = sys.stderr = log
+
+
+def start_in_background_if_mac_double_click() -> bool:
+    """Run the packaged Mac app's server in a child, and let this process end.
+
+    macOS starts nothing when a running app is double-clicked, and CAM2 has no
+    window to bring forward, so a teacher who closed the tab could not get back
+    for 10 minutes. With this process gone, each double-click starts afresh, and
+    the child opens the browser on the server that is already running.
+    The double-click passes no arguments; the child is given one so it stays.
+    """
+    if sys.platform != "darwin" or not pickers._frozen() or sys.argv[1:]:
+        return False
+    subprocess.Popen([sys.executable, "--idle", str(IDLE_SECONDS)], start_new_session=True,
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return True
 
 
 def main(argv=None) -> int:
@@ -175,4 +196,6 @@ def main(argv=None) -> int:
 if __name__ == "__main__":
     if sys.argv[1:2] == [pickers.PICK_FLAG]:      # packaged app: a Windows file dialog
         raise SystemExit(pickers._main(sys.argv[2:]))
+    if start_in_background_if_mac_double_click():
+        raise SystemExit(0)
     raise SystemExit(main())

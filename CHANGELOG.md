@@ -6,14 +6,19 @@ year-month-day.
 
 ## [Unreleased]
 
-### Phase 5: Windows package (2026-11-02)
+### Phase 5: Windows and Mac packages (2026-11-02)
 
-The Windows download can now be built. A private test build is on the Releases
-page as the pre-release `v0.2.0-dev`. It was made before the licence files were
-added, so it isn't for passing on. The Mac package and the run-through on other
-computers are still to do.
+The Windows and Apple Silicon Mac downloads can now be built. A private Windows
+test build is on the Releases page as the pre-release `v0.2.0-dev`. It was made
+before the licence files were added, so it isn't for passing on. The run-through
+on other computers is still to do.
 
 #### Added
+- **`tools/build_mac.py`** builds
+  `dist/CAM2-exam-grading-Mac-AppleSilicon-v<version>.zip` (about 40 MB), with
+  its own READ ME FIRST and quick guide wording, and checks the app from a copy
+  unzipped again. The app has no Dock icon. Macs with an Intel chip aren't
+  covered for now.
 - **`licences/`**: the zip now has a `Licences` folder with the GNU AGPL text,
   an overview notice, CAM2's MIT licence and the licence texts of the other
   bundled libraries. The download includes PyMuPDF, so as a whole it is under
@@ -41,6 +46,10 @@ computers are still to do.
   **More info** → **Run anyway**.
 
 #### Fixed
+- **Double-clicking the running Mac app did nothing**, so a teacher who closed
+  the tab could not get back for 10 minutes. It now opens the browser again.
+- **The packaged Mac app wrote nothing to `logs/cam2.log`.** Its output went
+  nowhere, instead of being missing as on Windows.
 - **A stopped CAM2 left `server.json` behind on Windows.** It tried to delete
   the file while it still had it open. This did no harm, since the next start
   checks that the port really answers, but the file now goes.

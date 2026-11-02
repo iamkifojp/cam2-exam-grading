@@ -1,6 +1,6 @@
 """Make the quick guide that goes in each download: one page of English, one of Japanese.
 
-    python tools/build_quick_guide.py <output.pdf>
+    python tools/build_quick_guide.py <output.pdf> [windows|mac]
 
 Uses PyMuPDF and its built-in Japanese font, like the student reports.
 """
@@ -24,8 +24,7 @@ ENGLISH = """
 
 <h2>Starting CAM2</h2>
 <ol>
-<li>Unzip the download, open the folder and double-click <b>Start CAM2 Exam Grading</b>.</li>
-<li>If Windows says <i>Windows protected your PC</i>, click <b>More info</b>, then <b>Run anyway</b>.</li>
+{start_steps}
 <li>CAM2 opens in your web browser. Nothing is installed, and your papers stay on this computer.</li>
 </ol>
 
@@ -60,8 +59,7 @@ JAPANESE = """
 
 <h2>CAM2の起動</h2>
 <ol>
-<li>ダウンロードしたzipを展開し、フォルダーを開いて<b>「Start CAM2 Exam Grading」</b>をダブルクリックします。</li>
-<li>「WindowsによってPCが保護されました」と表示されたら、<b>「詳細情報」</b>、<b>「実行」</b>の順にクリックします。</li>
+{start_steps}
 <li>CAM2はWebブラウザーで開きます。インストールは不要で、答案はこのコンピューターの中だけで扱います。</li>
 </ol>
 
@@ -91,10 +89,35 @@ JAPANESE = """
 """
 
 
-def build(output: str) -> None:
+START_STEPS = {
+    "windows": (
+        """
+<li>Unzip the download, open the folder and double-click <b>Start CAM2 Exam Grading</b>.</li>
+<li>If Windows says <i>Windows protected your PC</i>, click <b>More info</b>, then <b>Run anyway</b>.</li>
+""",
+        """
+<li>ダウンロードしたzipを展開し、フォルダーを開いて<b>「Start CAM2 Exam Grading」</b>をダブルクリックします。</li>
+<li>「WindowsによってPCが保護されました」と表示されたら、<b>「詳細情報」</b>、<b>「実行」</b>の順にクリックします。</li>
+"""),
+    "mac": (
+        """
+<li>Double-click the download to unzip it, open the folder and double-click <b>Start CAM2 Exam Grading</b>.</li>
+<li>The first time, your Mac stops it because it isn't signed. Click <b>Done</b>, open <b>System Settings &gt; Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>, then enter your password. You only do this once.</li>
+<li>If your Mac asks whether CAM2 may use a folder such as Documents, click <b>Allow</b>.</li>
+""",
+        """
+<li>ダウンロードしたファイルをダブルクリックして展開し、フォルダーを開いて<b>「Start CAM2 Exam Grading」</b>をダブルクリックします。</li>
+<li>初回は、署名がないためMacに止められます。<b>「完了」</b>をクリックし、<b>「システム設定」＞「プライバシーとセキュリティ」</b>を開いて下へスクロールし、<b>「このまま開く」</b>をクリックしてパスワードを入力します。これは最初の1回だけです。</li>
+<li>書類フォルダーなどへのアクセスを求められたら、<b>「許可」</b>をクリックします。</li>
+"""),
+}
+
+
+def build(output: str, system: str = "windows") -> None:
     doc = fitz.open()
-    for body in (ENGLISH, JAPANESE):
+    for body, steps in zip((ENGLISH, JAPANESE), START_STEPS[system]):
         page = doc.new_page(width=595, height=842)
+        body = body.replace("{start_steps}", steps)
         spare, _scale = page.insert_htmlbox(fitz.Rect(48, 48, 547, 794), body, css=CSS, scale_low=1)
         assert spare >= 0, "the quick guide no longer fits on its page"
     doc.subset_fonts()
@@ -103,4 +126,4 @@ def build(output: str) -> None:
 
 
 if __name__ == "__main__":
-    build(sys.argv[1])
+    build(*sys.argv[1:])

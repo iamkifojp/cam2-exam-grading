@@ -295,26 +295,34 @@ only listens on `127.0.0.1`.
 
 | | Windows | Mac |
 |---|---|---|
-| State | ✅ built by `tools/build_windows.py` | ⏳ not built yet (see [PLAN.md](PLAN.md), Phase 5) |
-| Start | `Start CAM2 Exam Grading.exe`, with `_internal/` beside it | a `.app`, from `tools/build_mac.py` |
+| State | ✅ built by `tools/build_windows.py` | ✅ built by `tools/build_mac.py`, for Apple Silicon |
+| Start | `Start CAM2 Exam Grading.exe`, with `_internal/` beside it | `Start CAM2 Exam Grading.app`, with no Dock icon (`LSUIElement`) |
 
 | File | Job |
 |---|---|
-| `tools/cam2.spec` | The PyInstaller recipe: entry point `launcher.py`, the data folders, what to leave out, no console window. |
+| `tools/cam2.spec` | The PyInstaller recipe: entry point `launcher.py`, the data folders, what to leave out, no console window and, on a Mac, the `.app`. |
 | `tools/build_windows.py` | Makes a clean `build/venv`, runs PyInstaller, adds `READ ME FIRST.txt` and the quick guide, starts the packaged app to check it, and zips the folder to `dist/CAM2-exam-grading-Windows-v<version>.zip`. The version comes from `VERSION` in `app.py`. |
-| `tools/build_quick_guide.py` | Makes the quick guide PDF with PyMuPDF: one page of English, one of Japanese. It is built each time, not kept in the repository. |
+| `tools/build_mac.py` | Does the same on a Mac, using the shared parts of `build_windows.py`, and zips to `dist/CAM2-exam-grading-Mac-AppleSilicon-v<version>.zip` with `ditto`. It checks the signature and starts the app from a copy unzipped again, because a careless zip breaks a `.app`. |
+| `tools/build_quick_guide.py` | Makes the quick guide PDF with PyMuPDF: one page of English, one of Japanese, with the starting steps for Windows or Mac. It is built each time, not kept in the repository. |
 | `requirements-build.txt` | Exact versions of the libraries, what they bring with them and PyInstaller, for the builds. |
 | `licences/` | The AGPL text (for PyMuPDF), the overview notice and the other libraries' licence texts, the same for the Windows and Mac downloads. The build copies them into the zip's `Licences` folder, with `LICENSE` as `CAM2-MIT.txt`. Kept by hand: change it when a library in `requirements-build.txt` changes. |
 
 How the package differs from running from source:
 
 - **Bundled files:** `i18n/`, `static/` and `templates/` are found through
-  `__file__`, which PyInstaller points inside `_internal/`, so the code needs
-  no `sys._MEIPASS`. The app writes nothing there: sessions go in the chosen
-  save folder, and everything else in the app-data folder.
+  `__file__`, which PyInstaller points inside `_internal/` (or the `.app`), so
+  the code needs no `sys._MEIPASS`. The app writes nothing there: sessions go in
+  the chosen save folder, and everything else in the app-data folder.
 - **No console:** output goes to `<app data>/logs/cam2.log`. A crash at startup
-  shows a Windows error box with the traceback.
+  shows a Windows error box with the traceback. On a Mac it shows nothing, and
+  only a crash after the log has opened reaches the log; the builders' start-up
+  check is what catches one.
 - **Pickers:** the `.exe` starts itself with `--pick` to open a Windows dialog.
+  The Mac uses `osascript`, as it does from source.
+- **A Mac double-click starts a child and ends.** macOS starts nothing when a
+  running app is double-clicked, so a teacher who closed the tab could not get
+  back. With the first process gone, each double-click starts afresh and opens
+  the browser on the server already running.
 - **PyMuPDF's AI add-on is left out.** PyMuPDF 2.0 requires `pymupdf_layout`,
   `pymupdf4llm`, `onnxruntime`, `numpy` and others, and imports them if it finds
   them. CAM2 uses none of them. In a package, the import crashes on a model

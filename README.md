@@ -31,10 +31,11 @@ training**:
 
 **The app is finished; the downloads are not.** Everything a teacher does in
 CAM2 is built and tested, from the start screen to the student PDFs and
-the Excel gradebook. The Windows package has been tested on the computer that
-built it, and a private test build is on the Releases page as the pre-release
-`v0.2.0-dev`. That build predates the licence files, so it isn't for passing on.
-The Mac package and the tests on other computers are still to do.
+the Excel gradebook. The Windows and Apple Silicon Mac packages have each been
+tested on the computer that built them, and a private Windows test build is on
+the Releases page as the pre-release `v0.2.0-dev`. That build predates the
+licence files, so it isn't for passing on. The tests on other computers are
+still to do.
 
 | Stage | | State |
 |---|---|---|
@@ -44,9 +45,9 @@ The Mac package and the tests on other computers are still to do.
 | Phase 4 | Step ⑤ review, student PDFs and Excel gradebook | ✅ done |
 | Phase 4b | Scanning guide, booklets, page fixes, late papers | ✅ done |
 | Phase 4c | Questions assessed on several criteria | ✅ done |
-| Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Windows package built; Mac next |
+| Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Packages built; tests on other computers next |
 
-All 216 automated tests pass, and every finished stage was also tried out in a
+All 218 automated tests pass, and every finished stage was also tried out in a
 browser with sample papers, in English and Japanese. Until the downloads are
 ready, CAM2 can be run from the source code (see
 [For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
@@ -61,7 +62,7 @@ When they are, they will be on this repository's
 | Computer | Download | First start |
 |---|---|---|
 | Windows 10 / 11 | `CAM2-exam-grading-Windows-vX.zip` | Unzip, then double-click **Start CAM2 Exam Grading**. If Windows says it protected your PC, click **More info**, then **Run anyway** |
-| Mac (Apple Silicon or Intel) | `CAM2-exam-grading-Mac-vX.zip` | Unzip, double-click **Start CAM2 Exam Grading**, then approve it once in System Settings → Privacy & Security → **Open Anyway** |
+| Mac with an Apple chip (M1 or later) | `CAM2-exam-grading-Mac-AppleSilicon-vX.zip` | Unzip, double-click **Start CAM2 Exam Grading**, then approve it once in System Settings → Privacy & Security → **Open Anyway** |
 
 You will need:
 - your scanned papers. Nothing has to be set up before the exam: scan the
@@ -111,19 +112,26 @@ combined PDF, the same again as A3 booklets scanned open (one sheet upside
 down and one booklet stacked inside sheet first, to try the page fixes), one late student's paper, and a class list. In Step 1, use **Or paste the path…** if you
 would rather not click through the folder picker.
 
-### Building the Windows download
+### Building the downloads
 
-On Windows, with Python 3.14:
+Each download is built on its own system, with Python 3.14. On Windows:
 
 ```bash
 python tools/build_windows.py
 ```
 
-This makes `dist/CAM2-exam-grading-Windows-v<version>.zip`, with the version
-taken from `VERSION` in `app.py`. It installs what it needs into its own
+On an Apple Silicon Mac:
+
+```bash
+python3 tools/build_mac.py
+```
+
+These make `dist/CAM2-exam-grading-Windows-v<version>.zip` and
+`dist/CAM2-exam-grading-Mac-AppleSilicon-v<version>.zip`, with the version taken
+from `VERSION` in `app.py`. Each installs what it needs into its own
 `build/venv`, and starts the packaged app once to check that it works. `build/`
-and `dist/` are not committed. The Mac build is still to come; the notes for it
-are under Phase 5 in [PLAN.md](PLAN.md).
+and `dist/` are not committed. The notes on the Mac package are under Phase 5 in
+[PLAN.md](PLAN.md).
 
 ### More documents
 
