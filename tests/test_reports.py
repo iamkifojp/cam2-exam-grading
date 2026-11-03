@@ -80,8 +80,8 @@ class MarksReportTests(ReportTestCase):
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0],
                                   "en", path, day=date(2026, 10, 30))
         text = self.text_of(path)
-        for expected in ("Y8: Science / Test", "Ken Sato", "30 October 2026", "8 / 8",      # reported total
-                         "Good use of evidence.", "A strong paper.", "次も頑張りましょう", "not counted"):
+        for expected in ("Y8: Science / Test", "Ken Sato", "30 October 2026", "8 / 8 · 100.0%",   # reported total
+                         "Good use of evidence.", "A strong paper.", "次も頑張りましょう", "Not counted"):
             self.assertIn(expected, text)
         self.assertLess(os.path.getsize(path), 400_000)
         with fitz.open(path) as doc:          # one image per answer; no handwritten name crop
@@ -96,7 +96,7 @@ class MarksReportTests(ReportTestCase):
                                       "en", path, day=date(2026, 10, 30))
             return " ".join(self.text_of(path).split())
 
-        self.assertNotIn("not counted", text())             # both answered: waiting for a pick
+        self.assertNotIn("Not counted", text())             # both answered: waiting for a pick
         gs.set_choice(self.config, self.grades, "s001", self.config["choice_groups"][0]["id"], ["q2"])
         self.assertIn("your teacher chose which answers count", text())
 
@@ -105,7 +105,7 @@ class MarksReportTests(ReportTestCase):
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][1],
                                   "ja", path, day=date(2026, 10, 30))
         text = self.text_of(path)
-        for expected in ("2026年10月30日", "合計", "無回答", "未採点"):
+        for expected in ("2026年10月30日", "全体", "無回答", "未採点"):
             self.assertIn(expected, text)
 
     def test_export_names_and_errors(self):
@@ -166,7 +166,7 @@ class RubricReportTests(ReportTestCase):
         path = os.path.join(self.root, "r.pdf")
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
         text = self.text_of(path)
-        for expected in ("Criterion A", "3 / 4", "Explains with examples.", "Nice example.",
+        for expected in ("Criterion A", "A3", "Explains with examples.", "Nice example.",
                          "States facts.", "Nothing yet."):           # the whole rubric, once
             self.assertIn(expected, text)
         self.assertEqual(text.count("Explains with examples."), 1)
@@ -194,12 +194,13 @@ class RubricReportTests(ReportTestCase):
         gs.set_grade(self.config, self.grades, "s001", "q1", 3)
         path = os.path.join(self.root, "r.pdf")
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
-        self.assertNotIn("/ 4", self.text_of(path).replace("3 / 4", "", 1))     # only Q1's level
+        self.assertNotIn("/ 4", self.text_of(path))
+        self.assertNotIn("Final level", self.text_of(path))
         self.assertNotIn("—", self.text_of(path))
 
 
 class MixedPaperReportTests(ReportTestCase):
-    """Question by question, whatever was chosen first. The full layout comes later."""
+    """Question by question, whatever was chosen first."""
 
     def setUp(self):
         super().setUp()
@@ -217,7 +218,8 @@ class MixedPaperReportTests(ReportTestCase):
         path = os.path.join(self.root, "r.pdf")
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
         text = " ".join(self.text_of(path).split())
-        for expected in ("6 / 8", "75%", "Q1 4 / 5", "Q2 3 / 4", "Q3 2 / 3", "Explains with examples."):
+        for expected in ("Overall (marks questions)", "6 / 8", "75.0%", "Q1 4 / 5", "Q2 A3", "Q3 2 / 3",
+                         "Explains with examples."):
             self.assertIn(expected, text)
 
     def test_gradebook(self):
@@ -261,11 +263,12 @@ class MultiCriterionReportTests(ReportTestCase):
         path = os.path.join(self.root, "r.pdf")
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
         text = self.text_of(path)
-        self.assertIn("Criterion A 4 / 4 · Criterion B 7 / 8", " ".join(text.split()))
+        self.assertIn("A4 B7", " ".join(text.split()))
         self.assertIn("Designs a method.", text)
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][1], "en", path)
         text = self.text_of(path)
-        self.assertNotIn("Criterion A Not answered", " ".join(text.split()))
+        self.assertIn("Not answered", text)
+        self.assertNotIn("A Not answered", " ".join(text.split()))
 
     def test_gradebook_has_a_column_per_criterion(self):
         wb = load_workbook(gradebook_xlsx.export_gradebook(self.session, self.config, self.grades, "en"))
@@ -281,6 +284,260 @@ class MultiCriterionReportTests(ReportTestCase):
         self.assertEqual(averages[header.index("Q2 · Criterion B")], 3.5)
         ref = wb["Questions & Rubrics"]
         self.assertEqual(ref.cell(3, 3).value, "Criterion A, Criterion B")
+
+
+class ReportLayoutTests(ReportTestCase):
+    """The layout in Exam-Section-Plan.md section 6, on a paper with two sections:
+    q1 marks on Criterion A; q2 rubric on A and B; q3 marks with no criterion."""
+
+    BANDS = {"A": [("0", "A nothing."), ("1-4", "A some."), ("5-8", "A strong.")],
+             "B": [("0", "B nothing."), ("1-8", "B method.")],
+             "C": [("0", "C nothing."), ("1-8", "C never used.")]}
+
+    def setUp(self):
+        super().setUp()
+        workflow.set_rubrics(self.config, [
+            {"name": f"Criterion {name}", "bands": [{"levels": lv, "descriptor": d} for lv, d in bands]}
+            for name, bands in self.BANDS.items()])
+        workflow.set_questions(self.config, {
+            "name_box": ["page1!A1:B2"],
+            "sections": [{"id": "sec1", "name": "Knowledge"}, {"id": "sec2", "name": ""}],
+            "questions": [
+                {"id": "q1", "label": "Q1", "boxes": ["page1!C4"], "max": 5, "rubric_ids": ["r1"], "section_id": "sec1"},
+                {"id": "q3", "label": "Q3", "boxes": ["page2!C3"], "max": 3, "section_id": "sec1"},
+                {"id": "q2", "label": "Q2", "boxes": ["page2!A1:B2"], "rubric_ids": ["r1", "r2"], "section_id": "sec2"}]})
+        self.give("s001", 4, 2, 6, 3)
+        self.give("s002", 1, 3, 2, 7)
+
+    def give(self, sid, q1, q3, q2a, q2b):
+        gs.set_grade(self.config, self.grades, sid, "q1", q1)
+        gs.set_grade(self.config, self.grades, sid, "q3", q3)
+        gs.set_grade(self.config, self.grades, sid, "q2", q2a, rubric_id="r1")
+        gs.set_grade(self.config, self.grades, sid, "q2", q2b, rubric_id="r2")
+
+    def options(self, **change):
+        workflow.set_report_options(self.config, change)
+
+    def report(self, student=0, language="en"):
+        path = os.path.join(self.root, f"report-{student}.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][student], language, path)
+        return path
+
+    def text(self, student=0, language="en"):
+        return " ".join(self.text_of(self.report(student, language)).split())
+
+    def images(self):
+        with fitz.open(self.report()) as doc:
+            return sum(len(page.get_images()) for page in doc)
+
+    def shaded(self, path):
+        """The text of every shaded band."""
+        found = []
+        with fitz.open(path) as doc:
+            for page in doc:
+                for drawing in page.get_drawings():
+                    if drawing.get("fill") and all(abs(a - b) < 0.01 for a, b in zip(drawing["fill"], reports.AWARDED)):
+                        found.append(page.get_textbox(drawing["rect"]).strip())
+        return found
+
+    def test_each_grade_reaches_the_right_students_report(self):
+        self.options(section_results=True, overall_criteria=True)
+        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        gs.set_final_level(self.config, self.grades, "s002", "r1", 2)
+        gs.set_overall_comment(self.grades, "s002", "Comment for the second paper.")
+        first, second = self.text(0), self.text(1)
+        self.assertIn("A6 B3", first)
+        self.assertIn("A2 B7", second)
+        self.assertIn("6 / 8 · 75.0%", first)
+        self.assertIn("4 / 8 · 50.0%", second)
+        self.assertIn("7 / 8", first.replace("6 / 8", ""))
+        self.assertIn("2 / 8", second)
+        self.assertNotIn("Comment for the second paper.", first)
+        self.assertIn("Comment for the second paper.", second)
+
+    def test_the_results_table_lists_sections_and_what_the_overall_covers(self):
+        self.options(section_results=True)
+        text = self.text()
+        for expected in ("Results", "Section Result", "Knowledge 6 / 8 · 75.0%", "Section 2 Q2 A6 B3",
+                         "Overall (Knowledge) 6 / 8 · 75.0%"):
+            self.assertIn(expected, text)
+        self.assertNotIn("Weighted marks", text)
+
+    def test_without_section_results_only_the_overall_line_prints(self):
+        text = self.text()
+        self.assertIn("Overall (Knowledge) 6 / 8 · 75.0%", text)
+        self.assertNotIn("Results", text)
+        self.assertNotIn("Section Result", text)
+        self.assertNotIn("Knowledge 6 / 8", text)      # not on the section heading either
+        self.assertIn("Section 2", text)               # questions stay grouped
+
+    def test_overall_marks_can_be_left_out(self):
+        self.options(overall_marks=False)
+        self.assertNotIn("6 / 8", self.text())
+
+    def test_weighted_marks_print_only_with_weighting_on(self):
+        self.give("s001", 5, 3, 6, 3)
+        self.config["questions"].append({"id": "q9", "label": "Q9", "boxes": ["page1!C4"], "max": 10, "section_id": "sec2"})
+        gs.set_grade(self.config, self.grades, "s001", "q9", 5)
+        workflow.set_weighted(self.config, True)
+        self.options(section_results=True)
+        text = self.text()
+        self.assertIn("Weighted marks", text)
+        self.assertIn("50.0 / 50", text)               # all of Knowledge
+        self.assertIn("25.0 / 50", text)               # half of the other section
+        self.assertIn("75.0 / 100", text)
+        self.assertNotIn("13 / 18", text)              # no total out of the paper's marks
+
+    def test_only_criteria_this_exam_uses_are_printed(self):
+        text = self.text()
+        self.assertIn("A strong.", text)
+        self.assertIn("B method.", text)
+        self.assertNotIn("Criterion C", text)
+        self.assertNotIn("C never used.", text)
+
+    def test_blanks_do_not_print(self):
+        self.options(overall_criteria=True)
+        text = self.text()
+        self.assertNotIn("Final level", text)
+        self.assertNotIn("Overall comment", text)
+        self.assertNotIn("Teacher’s comment", text)
+        self.assertEqual(self.shaded(self.report()), [])
+
+    def test_the_right_band_is_shaded(self):
+        self.options(overall_criteria=True)
+        gs.set_final_level(self.config, self.grades, "s001", "r1", 3)
+        gs.set_final_level(self.config, self.grades, "s001", "r2", 8)
+        shaded = self.shaded(self.report())
+        self.assertEqual(len(shaded), 4)                 # the levels cell and the words cell of each band
+        self.assertTrue(any("A some." in text for text in shaded))
+        self.assertTrue(any("B method." in text for text in shaded))
+        self.assertFalse(any("A strong." in text for text in shaded))
+
+    def test_a_final_level_needs_overall_criterion_results_on(self):
+        gs.set_final_level(self.config, self.grades, "s001", "r1", 3)
+        self.assertNotIn("Final level", self.text())
+        self.assertEqual(self.shaded(self.report()), [])
+
+    def test_the_criterion_box_gathers_marks_and_grades(self):
+        self.options(overall_criteria=True)
+        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        text = self.text()
+        self.assertIn("Final level", text)
+        self.assertIn("Marks: 4 / 5 · 80.0%", text)
+        self.assertIn("Grades: A6", text)
+        self.assertIn("Grades: B3", text)
+        self.assertLess(text.index("Marks: 4 / 5"), text.index("Questions"))
+
+    def test_the_boxes_print_on_their_own_with_the_table_off(self):
+        self.options(overall_criteria=True, rubric_table=False)
+        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        text = self.text()
+        self.assertIn("Final level", text)
+        self.assertIn("Grades: A6", text)
+        self.assertNotIn("A strong.", text)
+
+    def test_the_rubric_table_can_be_left_out(self):
+        self.options(rubric_table=False)
+        text = self.text()
+        self.assertNotIn("A strong.", text)
+        self.assertNotIn("Criterion A", text)
+
+    def test_the_overall_comment_comes_after_the_rubrics(self):
+        gs.set_overall_comment(self.grades, "s001", "Well done.")
+        text = self.text()
+        self.assertLess(text.index("A strong."), text.index("Well done."))
+        self.assertLess(text.index("Well done."), text.index("Questions"))
+
+    def test_images_can_be_turned_off_per_section(self):
+        self.assertEqual(self.images(), 3)
+        self.options(no_images_for=["sec1"])
+        self.assertEqual(self.images(), 1)
+        self.options(no_images_for=["sec1", "sec2"])
+        self.assertEqual(self.images(), 0)
+        text = self.text()
+        self.assertIn("Q1 4 / 5", text)
+        self.assertIn("Q3 2 / 3", text)
+        self.assertIn("Q2 A6 B3", text)
+
+    def test_images_off_on_a_paper_with_no_sections(self):
+        workflow.set_questions(self.config, {"name_box": ["page1!A1:B2"], "sections": [], "questions": [
+            {"id": "q1", "label": "Q1", "boxes": ["page1!C4"], "max": 5}]})
+        self.options(no_images_for=["sec1"])
+        self.assertEqual(self.images(), 0)
+        self.assertIn("Q1 4 / 5", self.text())
+
+    def test_the_grid_gives_a_comment_its_own_row(self):
+        self.options(no_images_for=["sec1", "sec2"])
+        gs.set_grade(self.config, self.grades, "s001", "q3", 2, "Show your working.")
+        text = self.text()
+        self.assertIn("Q3 2 / 3", text)
+        self.assertIn("Show your working.", text)
+
+    def test_section_marks_show_on_the_heading_only_with_section_results_on(self):
+        self.options(section_results=True)
+        heading = self.text().split("Questions", 1)[1]
+        self.assertIn("Knowledge", heading)
+        self.assertIn("6 / 8 · 75.0%", heading)
+
+    def test_japanese(self):
+        self.options(section_results=True, overall_criteria=True)
+        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        text = self.text(language="ja")
+        for expected in ("結果", "セクション2", "全体（Knowledge）", "最終レベル", "設問"):
+            self.assertIn(expected, text)
+
+    def test_how_a_grade_names_its_criterion(self):
+        for name, value, shown in (("Criterion B", 5, "B5"), ("基準B", 5, "B5"), ("B", 5, "B5"),
+                                   ("Knowledge", 5, "Knowledge 5"), ("Plan A2", 5, "Plan A2 5")):
+            self.assertEqual(reports._level_text({"name": name}, value, "en"), shown)
+        self.assertEqual(reports._level_text({"name": "Criterion B"}, model.NOT_ANSWERED, "en"), "B Not answered")
+
+    def test_a_rubric_too_long_for_one_page_still_prints_whole(self):
+        long_words = "A long descriptor that carries on and on. " * 12
+        workflow.set_rubrics(self.config, [{"name": "Criterion A", "bands": [
+            {"levels": str(n), "descriptor": f"Band {n}. {long_words}"} for n in range(9)]}])
+        self.options(overall_criteria=True)
+        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        path = self.report()
+        with fitz.open(path) as doc:
+            self.assertGreater(doc.page_count, 1)
+            for page in doc:
+                self.assertLessEqual(max(d["rect"].y1 for d in page.get_drawings()), reports.PAGE.height)
+        text = " ".join(self.text_of(path).split())
+        for n in range(9):
+            self.assertIn(f"Band {n}.", text)
+        self.assertIn("Final level", text)
+
+
+class ReportKindsTests(ReportTestCase):
+    def test_a_marks_exam_prints_no_rubric_or_section_parts(self):
+        gs.set_grade(self.config, self.grades, "s001", "q1", 4)
+        path = os.path.join(self.root, "r.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
+        text = " ".join(self.text_of(path).split())
+        self.assertIn("Overall 4 / 8 · 50.0%", text)
+        for absent in ("Results", "Section", "Final level", "Rubric", "Overall comment"):
+            self.assertNotIn(absent, text)
+
+    def test_a_preview_is_the_same_report_and_leaves_no_file(self):
+        gs.set_grade(self.config, self.grades, "s001", "q1", 4)
+        data = reports.preview_pdf(self.session, self.config, self.grades, self.config["students"][0], "en")
+        self.assertTrue(data.startswith(b"%PDF"))
+        with fitz.open(stream=data, filetype="pdf") as doc:
+            self.assertIn("Ken Sato", doc[0].get_text())
+        self.assertFalse(os.path.exists(self.session.path(storage.REPORTS_DIR)))
+
+
+class RubricOnlyReportTests(ReportTestCase):
+    mode = "rubric"
+
+    def test_a_rubric_exam_has_no_overall_line(self):
+        gs.set_grade(self.config, self.grades, "s001", "q1", 3)
+        path = os.path.join(self.root, "r.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
+        text = " ".join(self.text_of(path).split())
+        self.assertNotIn("Overall", text)
+        self.assertIn("A3", text)
 
 
 if __name__ == "__main__":

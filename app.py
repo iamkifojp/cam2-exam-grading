@@ -740,6 +740,20 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         job = state.start_job("export", work)
         return ok(job=job.id)
 
+    @app.get("/api/report-preview/<student_id>")
+    def report_preview(student_id):
+        """One student's PDF, to check before making the whole class's reports."""
+        session = state.require_session()
+        lang = request.args.get("lang") or language()
+        if lang not in i18n.LANGUAGES:
+            raise UserError("unknown_language", language=lang)
+        student = workflow.find_student(state.config, student_id)
+        with state.lock:
+            config, grades = dict(state.config), dict(state.grades)
+        return send_file(io.BytesIO(reports.preview_pdf(session, config, grades, student, lang)),
+                         mimetype="application/pdf", max_age=0,
+                         download_name=reports.report_filename(config, student, set()))
+
     @app.post("/api/open-folder")
     def open_folder_in_os():
         session = state.require_session()

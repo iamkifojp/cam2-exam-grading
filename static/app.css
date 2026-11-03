@@ -416,6 +416,7 @@ table.preview tr.header-row td { color: var(--muted); font-style: italic; }
 .criterion-cell { white-space: nowrap; }
 .report-options { margin: 12px 0; }
 .report-options h3 { margin: 0 0 4px; }
+.preview-row { margin: 12px 0; }
 .actions.left { justify-content: flex-start; margin-top: 16px; }
 .export-card .banner { margin-top: 16px; }
 

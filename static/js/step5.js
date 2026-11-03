@@ -334,6 +334,7 @@ function reportOptions(c, used, hasMarks) {
 function exportPanel(c, incomplete, used, hasMarks) {
   const d = exportDraft();
   const result = d.result;
+  const previewId = d.previewId || c.students[0].id;
   return h("section", { class: "card export-card" },
     h("h2", {}, t("step5.export_title")),
     h("p", { class: "muted" }, t("step5.export_hint")),
@@ -342,6 +343,12 @@ function exportPanel(c, incomplete, used, hasMarks) {
       h("div", { class: "seg" }, ["en", "ja"].map((lang) => h("button", {
         type: "button", class: d.language === lang ? "on" : "", "aria-pressed": d.language === lang ? "true" : "false",
         onclick: () => { d.language = lang; render(); } }, lang === "en" ? "🇬🇧 English" : "🇯🇵 日本語")))),
+    h("div", { class: "row preview-row" },
+      h("label", { class: "inline" }, t("step5.preview_label"),
+        h("select", { id: "preview-student", onchange: (e) => { d.previewId = e.target.value; render(); } },
+          c.students.map((s) => h("option", { value: s.id, selected: s.id === previewId ? "selected" : null }, s.display_name)))),
+      h("a", { class: "btn", target: "_blank", rel: "noopener",
+        href: `/api/report-preview/${encodeURIComponent(previewId)}?lang=${d.language}` }, t("step5.preview"))),
     h("div", { class: "actions left" },
       button(t("step5.make_all"), () => runExport("all", incomplete), "primary big"),
       button(t("step5.make_excel"), () => runExport("excel", incomplete)),

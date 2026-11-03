@@ -6,6 +6,35 @@ year-month-day.
 
 ## [Unreleased]
 
+### Exam sections, Phase 5: the report (2026-11-03)
+
+The student PDF for [Exam-Section-Plan.md](Exam-Section-Plan.md). Every report
+option now takes effect. The gradebook's new columns come in Phase 6.
+
+#### Added
+- **See one report first** on the export card opens the chosen student's PDF in the
+  browser, in the chosen language, and writes nothing to the reports folder.
+- **A results table,** with one row per section if Section results is on, and a
+  Weighted marks column when weighting is on. On a mixed paper the overall line says
+  what it covers.
+- **A box beside each rubric table** with the final level, the criterion's marks and
+  its grades, when Overall criterion results is on. The final level's band is
+  shaded. With the Rubric table option off, the boxes print on their own.
+- **Questions grouped by section,** with a heading. A section with its images turned
+  off prints a grid of five grades per row, and a row for any question with a
+  comment or a note.
+
+#### Changed
+- **The report's order** is now header, results, rubrics, overall comment, questions.
+- **Rubric grades print with their criterion:** `B5`, or `Knowledge 5` when the name
+  doesn't end in a single letter. The list of every question's grade near the top is
+  gone, because the questions already show them.
+- **Percentages print to 1 decimal place.**
+
+#### Removed
+- **The mock-up** (`tools/make_report_mockup.py` and `doc/mockups/`), now that real
+  reports replace it.
+
 ### Exam sections, Phase 4: Step ⑤ review (2026-11-03)
 
 The review screen for [Exam-Section-Plan.md](Exam-Section-Plan.md). A mixed paper

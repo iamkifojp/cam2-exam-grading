@@ -584,6 +584,16 @@ class ReviewTests(AppTestCase):
         options = self.post("/api/session/open", {"folder": self.folder})["session"]["config"]["report_options"]
         self.assertEqual((options["section_results"], options["no_images_for"]), (True, ["sec2"]))
 
+    def test_one_report_can_be_seen_first(self):
+        res = self.fetch("/api/report-preview/s001?lang=en")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.mimetype, "application/pdf")
+        self.assertTrue(res.get_data().startswith(b"%PDF"))
+        self.assertNotIn("attachment", res.headers.get("Content-Disposition", ""))     # opens in the browser
+        self.assertFalse(os.path.exists(os.path.join(self.folder, "reports")))
+        self.assertEqual(self.fetch("/api/report-preview/nobody").status_code, 400)
+        self.assertEqual(self.fetch("/api/report-preview/s001?lang=xx").status_code, 400)
+
     def test_teacher_picks_a_choice(self):
         self.post("/api/setup/questions", {"name_box": ["page1!B2"], "questions": [
             {"id": "q1", "label": "Q1", "boxes": ["page1!B2:C3"], "max": 5},

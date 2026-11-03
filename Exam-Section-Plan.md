@@ -1,7 +1,6 @@
 # CAM2 — Exam Sections & Report Options (Implementation Plan)
 
-> **Status:** agreed design (2026-11-02). Phases 1 to 4, the engine and the Step ②, ④ and ⑤ screens, are built (2026-11-03); the report layout and the gradebook's new columns are not. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
-> **Mock-up:** see §6. Everything in it is made up.
+> **Status:** agreed design (2026-11-02). Phases 1 to 5, the engine, the screens and the report, are built (2026-11-03); the gradebook's new columns are not. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
 
 ---
 
@@ -209,19 +208,6 @@ Printed in this order:
 
 Per-section images matter because answer images are capped at 330 points tall (`IMAGE_MAX_H`). A multiple-choice question boxed across several pages would shrink until it can't be read, so a teacher can turn off images for that section and keep the written answers.
 
-### Mock-up
-Made by `tools/make_report_mockup.py` from made-up data, with sample rubric wording. CAM2 still ships no rubric text. It shows a full report, with Section results and Overall criterion results on and final levels decided.
-
-**No answer images (2 pages)**
-
-![Page 1 of the report: results table, three rubric tables with final levels, overall comment](doc/mockups/report-no-images-p1.png)
-![Page 2 of the report: compact grids of question grades, grouped by section](doc/mockups/report-no-images-p2.png)
-
-**Images for Sections B and C only (3 pages).** Page 1 is the same as above.
-
-![Page 2: Section A as a grid, Section B with answer images](doc/mockups/report-images-by-section-p2.png)
-![Page 3: Section C with answer images](doc/mockups/report-images-by-section-p3.png)
-
 ---
 
 ## 7. Build Phases
@@ -255,7 +241,7 @@ Each phase ends with its tests passing, and with `CHANGELOG.md` and `ARCHITECTUR
 - Overall criterion results, section percentages, new review columns, report options, the export warning.
 
 **Phase 5: Report**
-- The layout in §6 and the one-report preview. Delete `tools/make_report_mockup.py` and `doc/mockups/` once real reports replace the mock-up.
+- The layout in §6 and the one-report preview.
 - Tests: each grade and level reaches the right student's report; blanks do not print; only criteria used are printed; the right band is shaded; each image option works.
 
 **Phase 6: Gradebook**
