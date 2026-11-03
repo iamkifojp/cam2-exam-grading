@@ -32,7 +32,7 @@ training**.
   pick.
 
 **Divide a paper into sections, if you want to.** Add a divider in the question list,
-and name the section if you like. Sections can be given shares of the paper, which
+and name the section if you like. Sections can be given different weightings, which
 always add up to 100%, so a section of 24 multiple-choice marks can count as much as
 a section of 40 written marks.
 

@@ -6,6 +6,11 @@ year-month-day.
 
 ## [Unreleased]
 
+### Changed
+- **The README says "weightings"** rather than "shares of the paper", which confused
+  teachers.
+- **No Intel Mac download is planned,** as there is no Intel Mac to build and test on.
+
 ## [0.3.0-dev] - 2026-11-03
 
 The test build for colleagues, with exam sections, mixed papers and the new report.

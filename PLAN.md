@@ -373,7 +373,7 @@ cam2-exam-grading\
   - Japanese report output
 
 **Notes on the Mac package.**
-- **Apple Silicon only, for now (2026-11-02):** PyInstaller builds for the Mac it runs on, so the "both runtimes in one zip" idea no longer holds. An Intel zip would need its own build and test, and a check of its libraries against `licences/`.
+- **Apple Silicon only (decided 2026-11-03):** PyInstaller builds for the Mac it runs on, so the "both runtimes in one zip" idea no longer holds. There is no Intel Mac to build and test on, so no Intel download is planned.
 - **No Dock icon:** CAM2 has no window of its own, so the `.app` sets `LSUIElement`.
 - **The double-click hands over to a child:** macOS starts nothing when a running app is double-clicked, so a teacher who closed the tab could not get back. The double-clicked process starts the server as a child and ends, so the next double-click runs afresh and opens the browser (`launcher.py`).
 - **The zip:** made with `ditto`, because `shutil.make_archive` would break the links and signature inside the `.app`. The builder checks the app from a copy unzipped again.
