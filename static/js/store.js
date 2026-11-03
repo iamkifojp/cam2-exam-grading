@@ -23,13 +23,21 @@ export function render() { renderFn(); }
 
 export function config() { return app.session?.config; }
 
-// The criteria (rubrics) a question is assessed on, in rubric order, or the
-// only rubric when none was picked (as grading_summary.question_rubric_ids).
+// The criteria (rubrics) a question is assessed on, in rubric order. Without
+// marks, the only rubric when none was picked; a question with marks counts
+// towards only what is really ticked (as grading_summary.question_rubric_ids).
 export function criteriaOf(c, q) {
   const list = c.rubrics || [];
   const picked = new Set(q.rubric_ids ?? (q.rubric_id ? [q.rubric_id] : []));
   const found = list.filter((r) => picked.has(r.id));
-  return found.length || list.length !== 1 ? found : [list[0]];
+  return found.length || list.length !== 1 || q.max ? found : [list[0]];
+}
+
+// How a question is graded: marks, rubric levels, or null while it has neither
+// (as grading_summary.question_mode).
+export function gradedWith(c, q) {
+  if (q.max) return "marks";
+  return criteriaOf(c, q).length ? "rubric" : null;
 }
 
 // One grade on one paper: marks or a level, "not_answered", or null (ungraded).

@@ -6,6 +6,7 @@ import { act, app, config, handleError, onRender, render } from "./store.js";
 import { button, confirmBox, formatTime, h } from "./ui.js";
 import { renderStart, openHostExam, openSession } from "./start.js";
 import { renderNewSession, renderScanCheck } from "./step1.js";
+import { saveQuestions } from "./boxes.js";
 import { renderStep2 } from "./step2.js";
 import { renderStep3 } from "./step3.js";
 import { renderStep4 } from "./step4.js";
@@ -33,6 +34,7 @@ export function canGoTo(step) {
 
 export async function goTo(step, { next = false, draft = null } = {}) {
   if (!next && !canGoTo(step)) return;
+  await saveQuestions.flush();          // leaving the step drops the draft a waiting save needs
   const data = await act(post("/api/step", { step }), { rerender: false });
   if (data) {
     app.step = step;

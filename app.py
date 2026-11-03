@@ -72,6 +72,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
                            keywords=keywords.keyword_list(config, language())),
             "grid": {"cols": layout.cols, "rows": layout.rows},
             "grades": {"grades": grades.get("grades") or {}, "overall": grades.get("overall") or {}},
+            "locked_questions": [q["id"] for q in config.get("questions") or []
+                                 if grading_summary.question_has_grade(grades, q["id"])],
             "progress": grading_summary.progress(config, grades),
             "summary": grading_summary.class_summary(config, grades),
             "saved_at": state.last_saved_at(),

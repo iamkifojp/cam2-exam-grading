@@ -275,7 +275,13 @@ details.advanced .row { margin-top: 8px; }
 .tick-list { display: flex; flex-wrap: wrap; gap: 4px 0; margin-bottom: 12px; }
 table.summary { width: 100%; border-collapse: collapse; margin: 12px 0; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
 table.summary th, table.summary td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); }
-table.summary td:nth-child(2) { font-family: ui-monospace, Consolas, monospace; font-size: .85rem; }
+.table-scroll { overflow-x: auto; }
+.question-table .num { width: 5em; }
+.question-table th.tick, .question-table td.tick { text-align: center; }
+.question-table .section-row td { background: var(--surface-2); }
+.section-heading { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.section-heading .section-name { flex: 1; min-width: 0; font-weight: 600; }
+.link-btn { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
 
 @media (max-width: 900px) {
   .boxes-layout { grid-template-columns: 1fr; }

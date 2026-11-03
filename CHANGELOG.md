@@ -6,6 +6,45 @@ year-month-day.
 
 ## [Unreleased]
 
+### Exam sections, Phase 2: Step ② screens (2026-11-03)
+
+The set-up screens for [Exam-Section-Plan.md](Exam-Section-Plan.md). A teacher can
+now set up a mixed paper with sections, but Steps ④ and ⑤ still follow the
+exam-wide choice until Phases 3 and 4, so only marks-only or rubric-only exams can
+be graded properly for now.
+
+#### Added
+- **Sections in the question list.** **Start a new section here** adds a divider,
+  each section has an optional name, and moving a question past a divider moves it
+  into that section. A section with no questions left goes away, and so does the
+  last divider when only one section would remain.
+- **The Slice screen's question list is now an editable table,** with one row per
+  question: its marks box, a tick per criterion and how it will be graded. Filling
+  these in never needs slicing again.
+- **A check on mixed papers.** The Slice screen names the questions graded with
+  rubric levels, so a forgotten marks box isn't taken for one. It also names any
+  question with neither marks nor a criterion.
+- **`locked_questions`** in the session view, so the screens can show which
+  questions already have grades.
+
+#### Changed
+- **Every question card has both a marks box and criteria.** The first screen only
+  decides which comes first, and the card says how the question will be graded as
+  you fill it in. Until the exam has a rubric, criteria show as a small **Add
+  criteria (optional)** link.
+- **The rubric tab is always there.** A teacher who starts from Marks is never sent
+  to it, sees it marked optional and can leave with **Not now, go back**. The last
+  rubric can be removed unless levels have been given on it.
+- **Once a question has grades,** a rubric question's marks box is disabled. A marks
+  question stays a marks question, but its number can still be corrected.
+- **In a one-rubric exam, a question with marks only counts as ticked if it really
+  is ticked.** The screens now show this too, and a new question is only ticked for
+  you if you started from Rubric.
+
+#### Fixed
+- **A change was lost if you left Step 2 within half a second of making it.** Going
+  to another step now saves it first.
+
 ### Exam sections, Phase 1: engine (2026-11-03)
 
 The engine for [Exam-Section-Plan.md](Exam-Section-Plan.md). The screens come in

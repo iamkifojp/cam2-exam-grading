@@ -65,12 +65,12 @@ The package builders are in `tools/` (see [Packaging](#packaging-phase-5)).
 | `api.js` | `fetch` wrapper and job polling |
 | `i18n.js` | `t()` with text loaded from the server |
 | `ui.js` | the `h()` element builder, modals, toasts, progress overlay, picker-wait message |
-| `store.js` | the browser's state and `act()`, which runs a server call, updates the session and sends errors to a toast or the red banner; `criteriaOf()` (a question's criteria) and `gradeOf()` (one grade on one paper; Rubric-mode levels come from the server's summary, so old and new grade layouts read the same) |
+| `store.js` | the browser's state and `act()`, which runs a server call, updates the session and sends errors to a toast or the red banner; `criteriaOf()` (a question's criteria), `gradedWith()` (how it is graded, as `question_mode`) and `gradeOf()` (one grade on one paper; Rubric-mode levels come from the server's summary, so old and new grade layouts read the same) |
 | `main.js` | header, step bar, banners, routing, heartbeat |
 | `start.js` | start screen: recent sessions, open a folder, "open on another computer?", emergency restore |
 | `step1.js` | new-session form: the source (joined PDFs, one file per student, page photos), layout (pages or booklet) and live preview of paper 1. Also the thumbnail check, with the page-fix tools in each paper's viewer and **Add more papers** |
-| `step2.js` | marks or rubric, rubric builder, choice questions, slicing |
-| `boxes.js` | box drawing: grid maths that mirrors `slicer.py`, drag-to-snap, multi-box questions, the check strip, and the "new question or move the box?" prompt |
+| `step2.js` | where to start, rubric builder, choice questions, the editable question table with its mixed-paper check, slicing |
+| `boxes.js` | box drawing: grid maths that mirrors `slicer.py`, drag-to-snap, multi-box questions, the check strip, the "new question or move the box?" prompt, the question card, and section dividers |
 | `step3.js` | class-list upload with the column picker, paste, typed names, and the matcher combobox |
 | `step5.js` | review table, one column per question (and criterion): click any grade (or an amber "?") to open it in Step 4, which then offers "Back to review"; report-total or final-level overrides with ↺ reset; overall comments; class statistics; report language, export, and "Open the reports folder" |
 | `step4.js` | grading screen (paper order is the class order, or with **Shuffle papers** a seeded shuffle per question: `papers()`): one item per question, or per question and criterion in Rubric mode (tabs switch criterion on the same paper); question and paper navigation, paper strip, "Show ungraded only", the zoomable answer (wheel zooms, drag pans) or the whole page with the box outlined, the grade badge, and the grading card (mark buttons, a number box above 15 marks, or rubric bands with a button per level; Not answered; comment) |
@@ -134,8 +134,10 @@ through `storage.resolve_path()`.
 - **A question with a grade can't gain or lose its marks**
   (`question_marks_locked`), since marks and levels can't be converted into each
   other. Every other question stays open, and choosing Marks or Rubric on the
-  first screen is only a starting point. The screens still follow that choice
-  until Phases 2 to 4 of `Exam-Section-Plan.md` are built.
+  first screen is only a starting point. The session view lists these questions
+  in `locked_questions`. A marks question's number can still be corrected. Steps 4
+  and 5 still follow that first choice until Phases 3 and 4 of
+  `Exam-Section-Plan.md` are built.
 
 ## The session folder
 
@@ -170,7 +172,8 @@ through `storage.resolve_path()`.
   `scans/Student_001.pdf`). `storage.resolve_path()` refuses anything that
   would leave the folder.
 - **Sections are optional.** With none, `grading_summary.sections()` gives one
-  section for the whole paper. A section's `weight` is its share of the paper,
+  section for the whole paper. The screens never leave a section empty, and drop
+  the sections when only one would remain (`tidySections` in `boxes.js`). A section's `weight` is its share of the paper,
   `weight_typed` says the teacher typed it, and a section with no marks questions
   has none.
 - **Older sessions are upgraded when opened.** `model.upgrade_session` runs once,
@@ -279,7 +282,7 @@ python -m unittest discover -s tests -t .
 | `test_pickers.py` | Picker launching on Windows and macOS (ported from CAM's `test_folder_dialog.py`), the packaged app's `--pick`, UTF-8 output |
 | `test_launcher.py` | The idle watchdog: stopping with no tab open, and starting the wait again after the computer sleeps |
 | `test_workflow.py` | Import from a folder and a combined PDF, re-import, set-up drafts vs. `check_ready`, the per-question lock, sections, typed shares, report options, layout changes, slicing a two-page question, matching names |
-| `test_app.py` | The server through Flask's test client: the whole Steps 1–3 flow, translated errors, a save failure kept in memory and then retried, the other-computer prompt, emergency restore, file-serving safety |
+| `test_app.py` | The server through Flask's test client: the whole Steps 1–3 flow, translated errors, marks, criteria and sections saved from the question table without slicing again, `locked_questions`, a save failure kept in memory and then retried, the other-computer prompt, emergency restore, file-serving safety |
 
 `test_i18n.py` also checks that every `t("…")` key in `static/js/` exists in
 both languages.

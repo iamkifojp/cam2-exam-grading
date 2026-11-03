@@ -44,12 +44,12 @@ pre-release `v0.2.0-dev`. The tests on other computers are still to do.
 | Phase 4b | Scanning guide, booklets, page fixes, late papers | ✅ done |
 | Phase 4c | Questions assessed on several criteria | ✅ done |
 | Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Packages built; tests on other computers next |
-| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ⏳ Phase 1 of 7 (the engine) done; the screens are next |
+| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ⏳ Phases 1 and 2 of 7 (the engine and the set-up screens) done; grading is next |
 
-All 269 automated tests pass, and every finished stage was also tried out in a
-browser with sample papers, in English and Japanese. Until the screens for exam
-sections are built, a paper that mixes marks and rubric questions works in the
-engine only, so use the code on `main` for marks-only or rubric-only exams. CAM2 can also be run from
+All 274 automated tests pass, and every finished stage was also tried out in a
+browser with sample papers, in English and Japanese. A paper that mixes marks and
+rubric questions can be set up, but not yet graded, so use the code on `main` for
+marks-only or rubric-only exams. CAM2 can also be run from
 the source code (see [For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
 [CHANGELOG.md](CHANGELOG.md) the details of each stage.
 

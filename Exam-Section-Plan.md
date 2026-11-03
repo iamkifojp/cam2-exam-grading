@@ -1,6 +1,6 @@
 # CAM2 — Exam Sections & Report Options (Implementation Plan)
 
-> **Status:** agreed design (2026-11-02). Phase 1, the engine, is built (2026-11-03); the screens and the report layout are not. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
+> **Status:** agreed design (2026-11-02). Phases 1 and 2, the engine and the Step ② screens, are built (2026-11-03); the other screens and the report layout are not. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
 > **Mock-up:** see §6. Everything in it is made up.
 
 ---
@@ -59,7 +59,7 @@ The exam paper is already set, so this is about finishing set-up in whatever ord
 - **One table for all of it:** the Slice screen's question list becomes editable, with one row per question, its **Marks** box, a tick per criterion, and how it will be graded. A teacher can finish in one place instead of opening each question.
 - **No re-slicing** is needed for any of this, because the boxes have not changed.
 - **A mixed paper gets a check:** before slicing, if some questions have marks and some do not, CAM2 names those graded with rubric levels, so a forgotten marks box is not mistaken for a rubric question.
-- **One lock:** once a question has a grade, it cannot change between marks and rubric levels, because the two cannot be converted. Its marks box is locked with a short note. Every other question stays open.
+- **One lock:** once a question has a grade, it cannot change between marks and rubric levels, because the two cannot be converted. A rubric question's marks box is locked with a short note. A marks question stays a marks question, but its number can still be corrected if it was typed wrongly. Every other question stays open.
 
 ### Step ④ Grade
 - Each question shows marks buttons or rubric levels, according to the table above. Otherwise this is unchanged.

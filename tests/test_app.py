@@ -335,6 +335,58 @@ class GradingTests(AppTestCase):
             {"id": "q2", "label": "Q2", "boxes": ["page2!A1:B2"], "max": 3}]}, status=400)
         self.assertEqual(err["error"], "question_marks_locked")
 
+    def question_payload(self, q1=None, q2=None, **extra):
+        return dict({"name_box": ["page1!B2"], "questions": [
+            dict({"id": "q1", "label": "Q1", "boxes": ["page1!B2:C3"], "max": 5}, **(q1 or {})),
+            dict({"id": "q2", "label": "Q2", "boxes": ["page2!A1"], "max": 3}, **(q2 or {}))]}, **extra)
+
+    def test_screens_are_told_which_questions_are_locked(self):
+        session = self.grade({"student_id": "s001", "question_id": "q1", "value": 2})["session"]
+        self.assertEqual(session["locked_questions"], ["q1"])
+        session = self.grade({"student_id": "s001", "question_id": "q1", "value": None})["session"]
+        self.assertEqual(session["locked_questions"], [])
+        session = self.grade({"student_id": "s001", "question_id": "q2", "comment": "neat"})["session"]
+        self.assertEqual(session["locked_questions"], [])
+
+    def test_a_locked_marks_question_can_correct_its_number(self):
+        self.grade({"student_id": "s001", "question_id": "q1", "value": 2})
+        session = self.post("/api/setup/questions", self.question_payload({"max": 6}))["session"]
+        self.assertEqual(session["config"]["questions"][0]["max"], 6)
+        self.assertEqual(session["grades"]["grades"]["s001"]["q1"]["value"], 2)
+
+    def test_marks_and_criteria_filled_in_after_slicing_need_no_slicing(self):
+        rubric = {"name": "A", "bands": [{"levels": "0"}, {"levels": "1-2"}]}
+        rid = self.post("/api/setup/rubrics", {"rubrics": [rubric]})["session"]["config"]["rubrics"][0]["id"]
+        session = self.post("/api/setup/questions", self.question_payload(
+            {"rubric_ids": [rid]}, {"max": None, "rubric_ids": [rid]}))["session"]
+        self.assertTrue(session["config"]["sliced"])
+        self.assertTrue(session["config"]["crops_of"])
+        session = self.post("/api/setup/questions", self.question_payload({"max": 7}, {"max": 4}))["session"]
+        self.assertTrue(session["config"]["sliced"])
+
+    def test_sections_from_the_question_list_are_saved(self):
+        session = self.post("/api/setup/questions", self.question_payload(
+            {"section_id": "sec1"}, {"section_id": "sec2"},
+            sections=[{"id": "sec1", "name": "Knowledge"}, {"id": "sec2", "name": ""}]))["session"]
+        config = session["config"]
+        self.assertTrue(config["sliced"])                          # sections don't move a box
+        self.assertEqual([s["id"] for s in config["sections"]], ["sec1", "sec2"])
+        self.assertEqual(config["sections"][0]["name"], "Knowledge")
+        self.assertEqual([q["section_id"] for q in config["questions"]], ["sec1", "sec2"])
+        self.post("/api/session/close")
+        config = self.post("/api/session/open", {"folder": self.folder})["session"]["config"]
+        self.assertEqual([q["section_id"] for q in config["questions"]], ["sec1", "sec2"])
+        session = self.post("/api/setup/questions", self.question_payload(sections=[]))["session"]
+        self.assertEqual(session["config"]["sections"], [])
+        self.assertNotIn("section_id", session["config"]["questions"][0])
+
+    def test_a_divider_cannot_split_a_choice_group(self):
+        groups = [{"id": "g1", "questions": ["q1", "q2"], "answer": 1}]
+        err = self.post("/api/setup/questions", self.question_payload(
+            {"section_id": "sec1"}, {"section_id": "sec2"}, choice_groups=groups,
+            sections=[{"id": "sec1", "name": ""}, {"id": "sec2", "name": ""}]), status=400)
+        self.assertEqual(err["error"], "choice_group_across_sections")
+
     def test_rubric_levels_are_checked(self):
         self.post("/api/setup/mode", {"mode": "rubric"})
         self.post("/api/setup/rubrics", {"rubrics": [{"name": "A", "bands": [
