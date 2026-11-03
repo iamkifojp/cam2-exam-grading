@@ -248,7 +248,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         with state.lock:
             newer = session.config_file.newer_emergency_copy()
             if newer:
-                state.config = newer
+                state.config = model.upgrade_session(newer)
                 state.save_config()
             newer = session.grades_file.newer_emergency_copy()
             if newer:
@@ -470,7 +470,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     @app.post("/api/setup/mode")
     def setup_mode():
         state.require_session()
-        workflow.set_mode(state.config, body().get("mode"), state.grades)
+        workflow.set_mode(state.config, body().get("mode"))
         set_step(2)
         state.save_config()
         return ok()

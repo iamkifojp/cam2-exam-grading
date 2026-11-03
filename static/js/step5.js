@@ -115,8 +115,7 @@ export function renderStep5() {
       multi ? h("div", { class: "muted small" }, r.name)
         : h("span", { class: "muted small" }, rubricMode ? "" : ` /${q.max}`))),
     rubricMode
-      ? (c.rubrics || []).map((r) => [h("th", { class: "num-col" }, t("step5.average", { name: r.name })),
-        h("th", { class: "num-col" }, t("step5.final", { name: r.name }))])
+      ? (c.rubrics || []).map((r) => h("th", { class: "num-col" }, t("step5.final", { name: r.name })))
       : [h("th", { class: "num-col" }, t("step5.calculated")), h("th", { class: "num-col" }, t("step5.on_report"))],
     h("th", {}, t("step5.overall_comment")));
 
@@ -144,10 +143,9 @@ ${action}` : action,
       ? (c.rubrics || []).map((r) => {
         const rr = res.rubrics[r.id];
         const top = Math.max(...r.bands.map((b) => b.max));
-        return [h("td", { class: "num-col muted" }, rr.average ?? "—"),
-          h("td", { class: `num-col ${rr.adjusted ? "adjusted" : ""}` },
-            overrideInput(`final-${s.id}-${r.id}`, rr.final, rr.suggested, top,
-              (v) => ({ student_id: s.id, final_levels: { [r.id]: v } }), rr.adjusted))];
+        return h("td", { class: "num-col" },
+          overrideInput(`final-${s.id}-${r.id}`, rr.final, null, top,
+            (v) => ({ student_id: s.id, final_levels: { [r.id]: v } }), false));
       })
       : [h("td", { class: "num-col muted" }, `${res.marks.total} / ${res.marks.max}`,
         h("div", { class: "small" }, res.marks.percent !== null ? `${res.marks.percent}%` : "")),
@@ -167,7 +165,7 @@ ${action}` : action,
     const label = { average: t("xlsx.average"), max: t("xlsx.max_row"), min: t("xlsx.min_row") }[key];
     const qCells = cols.map((col) => h("td", { class: "num-col" }, summary.questions[col.key]?.[key] ?? ""));
     const rest = rubricMode
-      ? (c.rubrics || []).map((r) => [h("td", {}), h("td", { class: "num-col" }, summary.overall[r.id]?.[key] ?? "")])
+      ? (c.rubrics || []).map((r) => h("td", { class: "num-col" }, summary.overall[r.id]?.[key] ?? ""))
       : [h("td", { class: "num-col" }, summary.overall.total?.[key] ?? ""), h("td", {})];
     return h("tr", { class: "stat-row" }, h("td", {}), h("td", { class: "sticky-col" }, label), qCells, rest, h("td", {}));
   };
@@ -205,7 +203,8 @@ function hostPanel(c, incomplete) {
 }
 
 // A number box for "Total on report" / "Final level". Empty, or the calculated
-// value, means "use the calculated value".
+// value, means "use the calculated value"; a final level has none, so empty
+// means no final level.
 function overrideInput(id, current, calculated, max, payload, adjusted) {
   const input = h("input", { type: "number", id, class: "num override", min: "0", step: "any",
     max: max === null ? null : String(max), value: current ?? "",

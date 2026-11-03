@@ -45,11 +45,13 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
     questions = config.get("questions") or []
     rubric_list = config.get("rubrics") or []
     rubric_names = {r["id"]: r["name"] for r in rubric_list}
-    mode = config.get("mode")
     na_text = t("grade.not_answered")
     # Per question: its grade columns (one per criterion it is assessed on), then its comment.
-    q_rids = {q["id"]: ([None] if mode != "rubric"
+    marks_q = {q["id"] for q in questions if grading_summary.question_mode(config, q) == "marks"}
+    q_rids = {q["id"]: ([None] if q["id"] in marks_q
                         else grading_summary.question_rubric_ids(config, q)) for q in questions}
+    used = {rid for q in questions for rid in grading_summary.question_rubric_ids(config, q)}
+    used_rubrics = [r for r in rubric_list if r["id"] in used]
 
     wb = Workbook()
     ws = wb.active
@@ -63,10 +65,8 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
                                                         name=rubric_names[rid]) for rid in rids]
         header.append(t("xlsx.comment_for", label=q["label"]))
         comment_cols.add(len(header))
-    if mode == "rubric":
-        for r in rubric_list:
-            header += [t("xlsx.average_for", name=r["name"]), t("xlsx.final_for", name=r["name"])]
-    else:
+    header += [t("xlsx.final_for", name=r["name"]) for r in used_rubrics]
+    if marks_q:
         header += [t("xlsx.total"), t("xlsx.max"), t("xlsx.percent"), t("xlsx.report_total")]
     header += [t("xlsx.adjusted"), t("xlsx.overall_comment"), t("xlsx.complete")]
     ws.append(header)
@@ -90,14 +90,8 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
             row.append(entry.get("comment") or None)
         adjusted = False
         adjusted_cols = []
-        if mode == "rubric":
-            for r in rubric_list:
-                rr = res["rubrics"][r["id"]]
-                row += [rr["average"], rr["final"]]
-                if rr["adjusted"]:
-                    adjusted = True
-                    adjusted_cols.append(len(row))
-        else:
+        row += [res["rubrics"][r["id"]]["final"] for r in used_rubrics]
+        if marks_q:
             m = res["marks"]
             row += [m["total"], m["max"], m["percent"], m["report_total"]]
             if m["adjusted"]:
@@ -124,12 +118,11 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
                 stats_rows[key].append(st[field] if st else None)
         for key in stats_rows:
             stats_rows[key].append(None)
-    if mode == "rubric":
-        for r in rubric_list:
-            st = summary["overall"].get(r["id"])
-            for key, field in (("average", "average"), ("max_row", "max"), ("min_row", "min")):
-                stats_rows[key] += [None, st[field] if st else None]
-    else:
+    for r in used_rubrics:
+        st = summary["overall"].get(r["id"])
+        for key, field in (("average", "average"), ("max_row", "max"), ("min_row", "min")):
+            stats_rows[key].append(st[field] if st else None)
+    if marks_q:
         st = summary["overall"].get("total")
         for key, field in (("average", "average"), ("max_row", "max"), ("min_row", "min")):
             stats_rows[key] += [st[field] if st else None, None, None, None]
@@ -149,8 +142,9 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
 
     # Sheet 2: questions and rubrics --------------------------------------------------------
     ref = wb.create_sheet(t("xlsx.sheet_reference")[:31])
-    ref.append([t("xlsx.question"), t("xlsx.boxes"),
-                t("xlsx.max") if mode != "rubric" else t("xlsx.rubric"), t("xlsx.choice")])
+    rubric_q = any(q["id"] not in marks_q for q in questions)
+    third_title = " / ".join(([t("xlsx.max")] if marks_q else []) + ([t("xlsx.rubric")] if rubric_q else []))
+    ref.append([t("xlsx.question"), t("xlsx.boxes"), third_title, t("xlsx.choice")])
     groups = {qid: g for g in config.get("choice_groups") or [] for qid in g["questions"]}
     labels = {q["id"]: q["label"] for q in questions}
     for q in questions:
@@ -158,21 +152,21 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
         choice = (t("xlsx.choice_text" if grading_summary.group_pick(g) == grading_summary.PICK_BEST
                     else "xlsx.choice_text_teacher", answer=g["answer"],
                     questions=", ".join(labels.get(x, x) for x in g["questions"])) if g else None)
-        if mode == "rubric":
-            third = ", ".join(rubric_names[rid] for rid in q_rids[q["id"]]) or None
-        else:
+        if q["id"] in marks_q:
             third = q.get("max")
+        else:
+            third = ", ".join(rubric_names[rid] for rid in q_rids[q["id"]]) or None
         ref.append([q["label"], ", ".join(q.get("boxes") or []), third, choice])
     for cell in ref[1]:
         cell.font = BOLD
         cell.fill = HEADER_FILL
-    if mode == "rubric" and rubric_list:
+    if used_rubrics:
         ref.append([])
         ref.append([t("xlsx.rubric"), t("xlsx.levels"), t("xlsx.descriptor")])
         for cell in ref[ref.max_row]:
             cell.font = BOLD
             cell.fill = HEADER_FILL
-        for r in rubric_list:
+        for r in used_rubrics:
             for band in r["bands"]:
                 ref.append([r["name"], band["levels"], band.get("descriptor") or None])
                 ref.cell(ref.max_row, 3).alignment = WRAP

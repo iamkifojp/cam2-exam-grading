@@ -153,7 +153,7 @@ def _grades(config: dict, grades: dict, student_id: str, question: dict) -> List
     The name is given only when the question is assessed on several criteria.
     """
     values = grading_summary.question_values(config, grades, student_id, question)
-    if config.get("mode") != "rubric":
+    if None in values:
         return [(None, values[None], question.get("max"))]
     by_id = {r["id"]: r for r in config.get("rubrics") or []}
     named = len(values) > 1
@@ -173,7 +173,7 @@ def _result_text(parts: List[tuple], language: str) -> str:
                       else _value_text(value, top, language) for name, value, top in parts)
 
 
-def _grade_html(config: dict, parts: List[tuple], language: str) -> str:
+def _grade_html(config: dict, question: dict, parts: List[tuple], language: str) -> str:
     """The grade beside an answer: just the level, or marks over the maximum.
     A question assessed on several criteria shows each level under its name."""
     if len(parts) > 1 and _all_not_answered(parts):
@@ -184,7 +184,7 @@ def _grade_html(config: dict, parts: List[tuple], language: str) -> str:
             out.append(f"<p class='label'>{_e(name)}</p>")
         if value is None or value == model.NOT_ANSWERED:
             out.append(f"<p class='muted'>{_e(_value_text(value, top, language))}</p>")
-        elif config.get("mode") == "rubric":
+        elif grading_summary.question_mode(config, question) == "rubric":
             out.append(f"<p class='grade'>{_e(value)}</p>")
         else:
             out.append(f"<p class='grade'>{_e(value)}<span class='of'> / {_e(top)}</span></p>")
@@ -219,23 +219,19 @@ def build_student_pdf(session: storage.Session, config: dict, grades: dict, stud
            f"<p class='muted'>{_e(_format_date(day or date.today(), language))}</p>", gap=4)
     w.html(f"<p class='label'>{_e(t('report.student'))}</p><h2>{_e(name)}</h2>", gap=GAP)
 
-    # Result box
-    if config.get("mode") == "rubric":
-        lines = []
-        for r in config.get("rubrics") or []:
-            res = summary["rubrics"][r["id"]]
-            top = rubrics.rubric_max(r)
-            final = res["final"] if res["final"] is not None else "—"
-            lines.append(f"<p><b>{_e(r['name'])}</b>&nbsp;&nbsp;&nbsp;<span class='big'>{_e(final)} / {top}</span></p>")
-        result_html = "".join(lines)
-    else:
-        marks = summary["marks"]
-        reported = marks["report_total"]
-        percent = (grading_summary.round_half_up(reported * 100 / marks["max"], 1)
-                   if marks["max"] else None)
-        pct = f" · {percent:g}%" if percent is not None else ""
-        result_html = (f"<p class='label'>{_e(t('report.total'))}</p>"
-                       f"<p class='big'>{_e(reported)} / {marks['max']}{pct}</p>")
+    # Result box: marks if there are any, and any final level the teacher decided
+    result_html = ""
+    marks = summary["marks"]
+    if marks["max"]:
+        shown = (f"{marks['report_percent']:g}%" if marks["weighted"]
+                 else f"{marks['report_total']} / {marks['max']} · {marks['report_percent']:g}%")
+        result_html += (f"<p class='label'>{_e(t('report.total'))}</p>"
+                        f"<p class='big'>{_e(shown)}</p>")
+    for r in config.get("rubrics") or []:
+        final = summary["rubrics"][r["id"]]["final"]
+        if final is not None:
+            result_html += (f"<p><b>{_e(r['name'])}</b>&nbsp;&nbsp;&nbsp;"
+                            f"<span class='big'>{_e(final)} / {rubrics.rubric_max(r)}</span></p>")
     rows = []
     for q in config.get("questions") or []:
         parts = _grades(config, grades, student["id"], q)
@@ -258,18 +254,17 @@ def build_student_pdf(session: storage.Session, config: dict, grades: dict, stud
         w.html(f"<p class='label'>{_e(t('report.overall_comment'))}</p><p>{_e(overall)}</p>", gap=GAP * 1.5)
 
     # The rubric, once, for the student to refer to -----------------------------------
-    if config.get("mode") == "rubric":
-        used = {rid for q in config.get("questions") or []
-                for rid in grading_summary.question_rubric_ids(config, q)}
-        for r in config.get("rubrics") or []:
-            bands = [b for b in r.get("bands") or [] if str(b.get("descriptor") or "").strip()]
-            if r["id"] not in used or not bands:
-                continue
-            lines = "".join(f"<p><b>{_e(t('report.descriptor', levels=b['levels']))}</b>&nbsp;&nbsp;"
-                            f"{_e(b['descriptor'])}</p>" for b in reversed(bands))
-            w.ensure(60)
-            w.html(f"<p class='label'>{_e(t('report.rubric'))}</p><h2>{_e(r['name'])}</h2>{lines}",
-                   gap=GAP * 1.5)
+    used = {rid for q in config.get("questions") or []
+            for rid in grading_summary.question_rubric_ids(config, q)}
+    for r in config.get("rubrics") or []:
+        bands = [b for b in r.get("bands") or [] if str(b.get("descriptor") or "").strip()]
+        if r["id"] not in used or not bands:
+            continue
+        lines = "".join(f"<p><b>{_e(t('report.descriptor', levels=b['levels']))}</b>&nbsp;&nbsp;"
+                        f"{_e(b['descriptor'])}</p>" for b in reversed(bands))
+        w.ensure(60)
+        w.html(f"<p class='label'>{_e(t('report.rubric'))}</p><h2>{_e(r['name'])}</h2>{lines}",
+               gap=GAP * 1.5)
 
     # Questions: label | answer | grade, then the comment ------------------------------
     for q in config.get("questions") or []:
@@ -288,7 +283,7 @@ def build_student_pdf(session: storage.Session, config: dict, grades: dict, stud
             w.page.draw_rect(rect, color=FRAME, width=0.8)
         x_grade = x_img + img_w + 10
         w.at(fitz.Rect(x_grade, top, x_grade + GRADE_W, top + row_h),
-             _grade_html(config, parts, language), css=GRADE_CSS, shrink=True)
+             _grade_html(config, q, parts, language), css=GRADE_CSS, shrink=True)
         w.y = top + row_h + 4
         notes = []
         if not_counted(q["id"]):

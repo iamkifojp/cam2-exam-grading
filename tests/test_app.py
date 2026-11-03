@@ -6,6 +6,7 @@ Run:  python -m unittest tests.test_app
 """
 
 import io
+import json
 import os
 import tempfile
 import time
@@ -16,7 +17,7 @@ from openpyxl import Workbook
 
 from app import create_app
 from appstate import AppState
-from engine import storage
+from engine import model, storage
 from engine.slicer import Layout
 from tests.helpers import make_pdf
 
@@ -324,16 +325,23 @@ class GradingTests(AppTestCase):
         self.assertEqual((config["resume"]["question_id"], config["resume"]["student_id"]), ("q2", "s002"))
         self.post("/api/position", {"question_id": "nope", "student_id": "s002"}, status=400)
 
-    def test_mode_is_fixed_once_grading_starts(self):
+    def test_starting_choice_can_change_but_a_graded_question_cannot(self):
         self.grade({"student_id": "s001", "question_id": "q1", "value": 2})
-        err = self.post("/api/setup/mode", {"mode": "rubric"}, status=400)
-        self.assertEqual(err["error"], "mode_locked")
-        self.post("/api/setup/mode", {"mode": "marks"})              # same mode is fine
+        session = self.post("/api/setup/mode", {"mode": "rubric"})["session"]
+        self.assertEqual(session["grades"]["grades"]["s001"]["q1"]["value"], 2)
+        self.assertEqual(session["summary"]["students"][0]["marks"]["total"], 2)
+        err = self.post("/api/setup/questions", {"name_box": ["page1!B2"], "questions": [
+            {"id": "q1", "label": "Q1", "boxes": ["page1!A1:B2"], "max": None},
+            {"id": "q2", "label": "Q2", "boxes": ["page2!A1:B2"], "max": 3}]}, status=400)
+        self.assertEqual(err["error"], "question_marks_locked")
 
     def test_rubric_levels_are_checked(self):
         self.post("/api/setup/mode", {"mode": "rubric"})
         self.post("/api/setup/rubrics", {"rubrics": [{"name": "A", "bands": [
             {"levels": "0"}, {"levels": "1-2"}, {"levels": "3-4"}]}]})
+        self.post("/api/setup/questions", {"name_box": ["page1!B2"], "questions": [
+            {"id": "q1", "label": "Q1", "boxes": ["page1!A1:B2"]},
+            {"id": "q2", "label": "Q2", "boxes": ["page2!A1:B2"]}]})
         self.grade({"student_id": "s001", "question_id": "q1", "value": 3})
         err = self.grade({"student_id": "s001", "question_id": "q1", "value": 5}, status=400)
         self.assertEqual(err["error"], "level_not_in_rubric")
@@ -449,6 +457,21 @@ class SafetyTests(AppTestCase):
         self.assertIn("config", data["emergency"])
         restored = self.post("/api/session/restore-emergency")["session"]
         self.assertEqual(restored["config"]["mode"], "rubric")
+
+    def test_old_emergency_copy_is_upgraded_when_restored(self):
+        session = self.create()
+        self.post("/api/setup/mode", {"mode": "rubric"})
+        self.post("/api/setup/rubrics", {"rubrics": [{"name": "A", "bands": [{"levels": "0-8"}]}]})
+        file = self.state.session.config_file
+        old = dict(self.state.config, version=1, generation=file.generation + 1,
+                   questions=[{"id": "q1", "label": "Q1", "boxes": [], "max": 5, "rubric_ids": ["r1"]}])
+        storage.atomic_write(file.emergency_path(), json.dumps(old).encode("utf-8"))
+        self.state.close_session()
+        data = self.post("/api/session/open", {"folder": session["folder"]})
+        self.assertIn("config", data["emergency"])
+        restored = self.post("/api/session/restore-emergency")["session"]["config"]
+        self.assertIsNone(restored["questions"][0]["max"])
+        self.assertEqual(restored["version"], model.VERSION)
 
     def test_files_cannot_be_fetched_from_outside(self):
         self.create()

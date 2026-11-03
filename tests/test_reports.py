@@ -176,8 +176,59 @@ class RubricReportTests(ReportTestCase):
         ws = wb["成績・コメント一覧"]
         header = [c.value for c in ws[1]]
         row = {h: c.value for h, c in zip(header, ws[2])}
-        self.assertEqual((row["Criterion A 平均"], row["Criterion A 最終レベル"], row["先生が調整"]),
-                         (3.5, 3, "はい"))
+        self.assertEqual(row["Criterion A 最終レベル"], 3)
+        self.assertNotIn("Criterion A 平均", header)
+
+    def test_a_final_level_left_blank_does_not_print(self):
+        gs.set_grade(self.config, self.grades, "s001", "q1", 3)
+        path = os.path.join(self.root, "r.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
+        self.assertNotIn("/ 4", self.text_of(path).replace("3 / 4", "", 1))     # only Q1's level
+        self.assertNotIn("—", self.text_of(path))
+
+
+class MixedPaperReportTests(ReportTestCase):
+    """Question by question, whatever was chosen first. The full layout comes later."""
+
+    def setUp(self):
+        super().setUp()
+        workflow.set_rubrics(self.config, [{"name": "Criterion A", "bands": [
+            {"levels": "0"}, {"levels": "1-4", "descriptor": "Explains with examples."}]}])
+        self.config["questions"][1]["rubric_ids"] = ["r1"]
+        self.config["questions"][1]["max"] = None
+        self.config["questions"][2]["rubric_ids"] = ["r1"]
+        self.config["choice_groups"] = []
+        gs.set_grade(self.config, self.grades, "s001", "q1", 4)
+        gs.set_grade(self.config, self.grades, "s001", "q2", 3)
+        gs.set_grade(self.config, self.grades, "s001", "q3", 2)
+
+    def test_report(self):
+        path = os.path.join(self.root, "r.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
+        text = " ".join(self.text_of(path).split())
+        for expected in ("6 / 8", "75%", "Q1 4 / 5", "Q2 3 / 4", "Q3 2 / 3", "Explains with examples."):
+            self.assertIn(expected, text)
+
+    def test_gradebook(self):
+        wb = load_workbook(gradebook_xlsx.export_gradebook(self.session, self.config, self.grades, "en"))
+        ws = wb["Grades & Comments"]
+        row = {c.value: v.value for c, v in zip(ws[1], ws[2])}
+        self.assertEqual((row["Q1"], row["Q2"], row["Q3"]), (4, 3, 2))
+        self.assertEqual((row["Calculated total"], row["Out of"]), (6, 8))
+        ref = wb["Questions & Rubrics"]
+        self.assertEqual([ref.cell(r, 3).value for r in range(2, 5)], [5, "Criterion A", 3])
+
+    def test_weighted_report_shows_only_the_percentage(self):
+        self.config["sections"] = [{"id": "sec1", "name": ""}, {"id": "sec2", "name": ""}]
+        self.config["questions"][0]["section_id"] = "sec1"
+        self.config["questions"][1]["section_id"] = "sec2"
+        self.config["questions"][2]["section_id"] = "sec2"
+        workflow.set_weighted(self.config, True)
+        path = os.path.join(self.root, "r.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
+        text = " ".join(self.text_of(path).split())
+        self.assertIn("73.3%", text)                 # 4/5 at 50 + 2/3 at 50
+        self.assertNotIn("6 / 8", text)
 
 
 class MultiCriterionReportTests(ReportTestCase):
@@ -212,7 +263,7 @@ class MultiCriterionReportTests(ReportTestCase):
         self.assertEqual(header[3:8], ["Q1", "Q1 comment", "Q2 · Criterion A", "Q2 · Criterion B", "Q2 comment"])
         row = {h: c.value for h, c in zip(header, ws[2])}
         self.assertEqual((row["Q2 · Criterion A"], row["Q2 · Criterion B"]), (4, 7))
-        self.assertEqual((row["Criterion A average"], row["Criterion B average"]), (3.0, 7.0))
+        self.assertNotIn("Criterion A average", header)
         row2 = {h: c.value for h, c in zip(header, ws[3])}
         self.assertEqual(row2["Q2 · Criterion B"], "Not answered")
         averages = next(r for r in ws.iter_rows(values_only=True) if r[1] == "Class average")

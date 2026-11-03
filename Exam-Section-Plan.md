@@ -1,6 +1,6 @@
 # CAM2 — Exam Sections & Report Options (Implementation Plan)
 
-> **Status:** agreed design, not built yet (2026-11-02). It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
+> **Status:** agreed design (2026-11-02). Phase 1, the engine, is built (2026-11-03); the screens and the report layout are not. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
 > **Mock-up:** see §6. Everything in it is made up.
 
 ---
@@ -44,10 +44,12 @@ So CAM2 should let a teacher:
 | Empty | Ticked | Rubric levels, one per criterion | `B5` |
 | Empty | None | Not ready: CAM2 asks for one or the other before slicing | |
 
+An exam with exactly one rubric keeps today's shortcut: a question with an empty marks box and no ticks counts as ticked on that rubric. A question with marks is only ever counted towards a criterion that is really ticked.
+
 - **Each question gets one grade,** so a teacher never grades the same answer twice. On a question with marks, criteria are used only at the reporting stage. A paper with half marks and half rubric needs no extra setting, with or without sections.
 - One section can cover several criteria, because criteria are ticked per question.
 - **A question is whatever the teacher draws a box around.** A printed "Question 1" of 24 multiple-choice items can be one question worth 24 marks, or 24 questions. A "Question 2" with parts A and B can be two questions. No separate "parts" feature is needed.
-- **Choice questions** ("answer 2 of 3") must stay inside one section, because otherwise a section's total has no clear meaning.
+- **Choice questions** ("answer 2 of 3") must stay inside one section, because otherwise a section's total has no clear meaning. They must also all grade the same way, because a mark can't be ranked against a level. CAM2 checks this before slicing.
 
 ### Going back to fill in what was left out
 The exam paper is already set, so this is about finishing set-up in whatever order suits the teacher, not about regrading.
@@ -155,7 +157,7 @@ Yui Suzuki   Marks 46/55 · 83.6%  [   ]   Marks 6/10 · 60.0%; Grades B6, B5  [
 ```
 
 - **A question has no separate marks-or-rubric field.** It grades with marks if it has a `max`, and with rubric levels if not. Grade entries keep their current shape.
-- **Upgrading old rubric sessions:** a question can still hold a `max` from before the teacher chose Rubric, which would now make it a marks question and read its levels as marks. When an old rubric session opens, those `max` values are cleared before anything else reads them.
+- **Upgrading old rubric sessions:** a question can still hold a `max` from before the teacher chose Rubric, which would now make it a marks question and read its levels as marks. When an old rubric session opens, those `max` values are cleared before anything else reads them. In the same way, an old marks session loses any criteria left ticked from before the teacher chose Marks, so they don't start counting or printing.
 - **`config.mode` stays** as the starting choice only. Grading never reads it.
 - **`final_levels` stays** as the overall level for each criterion. Only its meaning changes: blank now means no level, not "use the average".
 - **Typed shares:** a section's `weight` holds the share and each section also records whether the teacher typed it (`"weight_typed": true`), so the app knows which ones to rebalance.

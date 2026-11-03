@@ -6,6 +6,49 @@ year-month-day.
 
 ## [Unreleased]
 
+### Exam sections, Phase 1: engine (2026-11-03)
+
+The engine for [Exam-Section-Plan.md](Exam-Section-Plan.md). The screens come in
+later phases, so sections, weighting and report options can't be reached from
+the app yet.
+
+#### Added
+- **Sections.** A paper can be divided into sections (`sections` in the session,
+  `section_id` on a question). With none, the whole paper is one section.
+- **Each question grades its own way.** It uses marks if it has a `max`, and
+  rubric levels if it has none but has a criterion
+  (`grading_summary.question_mode`). A paper can mix the two freely, and a mark
+  is never added to, ranked against or read as a level.
+- **Section marks and criterion marks** in each student's summary. A criterion's
+  rubric grades are listed as given, beside its marks total.
+- **Section weightings** (`weighted`, `workflow.set_section_weight`). The shares
+  always add up to exactly 100, a typed share stays, and one section always stays
+  automatic. Percentages are worked out exactly and rounded once, at the end.
+- **`report_percent`**: with weighting on, the override on the report is a
+  percentage rather than a total.
+- **Report options** are saved with the session (`workflow.set_report_options`).
+
+#### Changed
+- **Choosing Marks or Rubric no longer locks anything.** It is only a starting
+  point. Instead, a question with a grade can't gain or lose its marks
+  (`question_marks_locked`), and every other question stays open.
+- **Slicing asks each question for marks or a criterion**
+  (`question_needs_marks_or_criterion`), replacing the checks on the whole exam.
+- **A final level is only ever typed by the teacher** and must be a level in one
+  of the rubric's bands. Blank means no level, and it does not print. The wipe
+  guard now counts final levels.
+- **The report and gradebook read each question's own grading**, so a mixed paper
+  works. Their new layouts come in Phases 5 and 6.
+- **Session files are now version 2**, so an older CAM2 refuses them. When an
+  older session opens, or an old emergency copy is restored, a rubric session
+  loses any stale `max`, and a marks session loses any stale criteria. Its marks
+  and levels stay the same.
+
+#### Removed
+- **Rubric averages and suggested levels**, from the engine, the review screen
+  and the gradebook. A level is a best-fit judgement, not arithmetic.
+- **`mode_locked`** and `rubric_missing`.
+
 ### Phase 5: Windows and Mac packages (2026-11-02)
 
 The Windows and Apple Silicon Mac downloads can now be built. Both are on the
