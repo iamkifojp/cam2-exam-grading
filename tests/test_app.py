@@ -512,6 +512,78 @@ class ReviewTests(AppTestCase):
         self.assertEqual(err["error"], "report_total_invalid")
         self.post("/api/overall", {"student_id": "nobody", "comment": "x"}, status=400)
 
+    def two_sections(self):
+        return self.post("/api/setup/questions", {"name_box": ["page1!B2"], "sections": [
+            {"id": "sec1", "name": "Knowledge"}, {"id": "sec2", "name": ""}], "questions": [
+            {"id": "q1", "label": "Q1", "boxes": ["page1!B2:C3"], "max": 5, "section_id": "sec1"},
+            {"id": "q2", "label": "Q2", "boxes": ["page2!A1"], "max": 3, "section_id": "sec2"}]})["session"]
+
+    def test_weighting_and_typed_shares(self):
+        session = self.two_sections()
+        self.assertEqual([s["weight"] for s in session["config"]["sections"]], [50, 50])
+        marks = session["summary"]["students"][0]["marks"]
+        self.assertEqual((marks["weighted"], marks["total"]), (False, 7))
+
+        session = self.post("/api/weighting", {"on": True})["session"]
+        student = session["summary"]["students"][0]
+        self.assertEqual((student["marks"]["weighted"], student["marks"]["percent"]), (True, 90.0))     # 4/5 and 3/3
+        self.assertEqual(student["sections"][0]["weighted_marks"], 40.0)
+
+        session = self.post("/api/section-weight", {"section_id": "sec1", "value": "20"})["session"]
+        sections = session["config"]["sections"]
+        self.assertEqual([(s["weight"], s["weight_typed"]) for s in sections], [(20, True), (80, False)])
+        self.assertEqual(session["summary"]["students"][0]["marks"]["percent"], 96.0)
+        err = self.post("/api/section-weight", {"section_id": "sec1", "value": "101"}, status=400)
+        self.assertEqual(err["error"], "section_weight_invalid")
+        err = self.post("/api/section-weight", {"section_id": "nope", "value": "10"}, status=400)
+        self.assertEqual(err["error"], "unknown_section")
+
+        session = self.post("/api/section-weight", {"section_id": "sec1", "value": None})["session"]
+        self.assertEqual([s["weight"] for s in session["config"]["sections"]], [50, 50])
+        session = self.post("/api/weighting", {"on": False})["session"]
+        self.assertEqual(session["summary"]["students"][0]["marks"]["percent"], 87.5)
+
+    def test_percentage_on_the_report_with_weighting_on(self):
+        self.two_sections()
+        self.post("/api/weighting", {"on": True})
+        marks = self.post("/api/overall", {"student_id": "s001", "report_percent": "85"})["session"]["summary"]["students"][0]["marks"]
+        self.assertEqual((marks["percent"], marks["report_percent"], marks["adjusted"]), (90.0, 85, True))
+        marks = self.post("/api/overall", {"student_id": "s001", "report_percent": ""})["session"]["summary"]["students"][0]["marks"]
+        self.assertEqual((marks["report_percent"], marks["adjusted"]), (90.0, False))
+
+    def test_class_statistics_for_sections(self):
+        self.post("/api/grade", {"student_id": "s002", "question_id": "q1", "value": 2})
+        self.post("/api/grade", {"student_id": "s002", "question_id": "q2", "value": 1})
+        summary = self.two_sections()["summary"]
+        self.assertEqual(summary["sections"]["sec1"], {"average": 3.0, "max": 4, "min": 2, "count": 2})
+        self.assertEqual(summary["sections"]["sec2"], {"average": 2.0, "max": 3, "min": 1, "count": 2})
+        self.assertNotIn("percent", summary["overall"])
+        summary = self.post("/api/weighting", {"on": True})["session"]["summary"]
+        self.assertEqual(summary["overall"]["percent"]["max"], 90.0)     # 4/5 and 3/3 at 50% each
+
+    def test_a_section_with_only_rubric_questions_has_no_statistics(self):
+        self.post("/api/setup/rubrics", {"rubrics": [{"name": "A", "bands": [{"levels": "0-4"}]}]})
+        session = self.post("/api/setup/questions", {"name_box": ["page1!B2"], "sections": [
+            {"id": "sec1", "name": ""}, {"id": "sec2", "name": ""}], "questions": [
+            {"id": "q3", "label": "Q3", "boxes": ["page1!B2:C3"], "max": 5, "section_id": "sec1"},
+            {"id": "q4", "label": "Q4", "boxes": ["page2!A1"], "rubric_ids": ["r1"], "section_id": "sec2"}]})["session"]
+        self.assertEqual([s["weight"] for s in session["config"]["sections"]], [100, None])
+        self.assertEqual(list(session["summary"]["sections"]), ["sec1"])
+
+    def test_report_options_are_saved_and_start_from_the_defaults(self):
+        session = self.post("/api/step", {"step": 5})["session"]
+        self.assertEqual(session["config"]["report_options"], {
+            "section_results": False, "overall_criteria": False, "rubric_table": True,
+            "overall_marks": True, "no_images_for": []})
+        self.two_sections()
+        session = self.post("/api/report-options", {"section_results": True, "no_images_for": ["sec2", "gone"]})["session"]
+        options = session["config"]["report_options"]
+        self.assertEqual((options["section_results"], options["no_images_for"]), (True, ["sec2"]))
+        self.assertTrue(options["overall_marks"])
+        self.post("/api/session/close")
+        options = self.post("/api/session/open", {"folder": self.folder})["session"]["config"]["report_options"]
+        self.assertEqual((options["section_results"], options["no_images_for"]), (True, ["sec2"]))
+
     def test_teacher_picks_a_choice(self):
         self.post("/api/setup/questions", {"name_box": ["page1!B2"], "questions": [
             {"id": "q1", "label": "Q1", "boxes": ["page1!B2:C3"], "max": 5},

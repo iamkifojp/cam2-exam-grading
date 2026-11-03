@@ -146,6 +146,19 @@ class OldSessionTests(StorageTestCase):
         grading_summary.set_grade(config, grades, "s001", "q2", 8)
         self.assertEqual(grades["grades"]["s001"]["q2"]["levels"], {"r1": 8})
 
+    def test_an_old_session_with_final_levels_keeps_them_showing(self):
+        self.write_old("rubric", [{"id": "q1", "label": "Q1", "rubric_ids": ["r1"]}],
+                       {"grades": {}, "overall": {"s1": {"final_levels": {"r1": 5}}}}, [self.RUBRIC])
+        _, config, grades = storage.open_session(self.folder)
+        self.assertTrue(config["report_options"]["overall_criteria"])
+        self.assertEqual(grades["overall"]["s1"]["final_levels"]["r1"], 5)
+
+    def test_an_old_session_without_final_levels_starts_with_them_off(self):
+        self.write_old("rubric", [{"id": "q1", "label": "Q1", "rubric_ids": ["r1"]}],
+                       {"grades": {}, "overall": {"s1": {"final_levels": {"r1": None}}}}, [self.RUBRIC])
+        _, config, _ = storage.open_session(self.folder)
+        self.assertFalse((config.get("report_options") or {}).get("overall_criteria"))
+
     def test_upgrade_runs_only_once(self):
         self.write_old("rubric", [{"id": "q1", "label": "Q1", "max": 5, "rubric_ids": ["r1"]}],
                        {"grades": {}, "overall": {}}, [self.RUBRIC])

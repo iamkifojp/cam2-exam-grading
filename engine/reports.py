@@ -229,7 +229,7 @@ def build_student_pdf(session: storage.Session, config: dict, grades: dict, stud
                         f"<p class='big'>{_e(shown)}</p>")
     for r in config.get("rubrics") or []:
         final = summary["rubrics"][r["id"]]["final"]
-        if final is not None:
+        if final is not None and (config.get("report_options") or {}).get("overall_criteria"):
             result_html += (f"<p><b>{_e(r['name'])}</b>&nbsp;&nbsp;&nbsp;"
                             f"<span class='big'>{_e(final)} / {rubrics.rubric_max(r)}</span></p>")
     rows = []

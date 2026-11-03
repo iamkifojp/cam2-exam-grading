@@ -72,7 +72,7 @@ The package builders are in `tools/` (see [Packaging](#packaging-phase-5)).
 | `step2.js` | where to start, rubric builder, choice questions, the editable question table with its mixed-paper check, slicing |
 | `boxes.js` | box drawing: grid maths that mirrors `slicer.py`, drag-to-snap, multi-box questions, the check strip, the "new question or move the box?" prompt, the question card, and section dividers |
 | `step3.js` | class-list upload with the column picker, paste, typed names, and the matcher combobox |
-| `step5.js` | review table, one column per question (and criterion): click any grade (or an amber "?") to open it in Step 4, which then offers "Back to review"; report-total or final-level overrides with ↺ reset; overall comments; class statistics; report language, export, and "Open the reports folder" |
+| `step5.js` | review table, one column per marks question and per criterion on a rubric question, plus section columns: click any grade (or an amber "?") to open it in Step 4, which then offers "Back to review"; Overall criterion results and final levels; section weighting and shares; report-total or percentage overrides with ↺ reset; overall comments; class statistics; report options; the warning about blank final levels; report language, export, and "Open the reports folder" |
 | `step4.js` | grading screen (paper order is the class order, or with **Shuffle papers** a seeded shuffle per question: `papers()`): one item per marks question, and one per criterion on a rubric question (tabs switch criterion on the same paper); question and paper navigation, paper strip, "Show ungraded only", the zoomable answer (wheel zooms, drag pans) or the whole page with the box outlined, the grade badge, and the grading card (mark buttons, a number box above 15 marks, or rubric bands with a button per level; Not answered; comment) |
 
 ### Routes
@@ -86,7 +86,7 @@ The package builders are in `tools/` (see [Packaging](#packaging-phase-5)).
 | Step 2 | `POST /api/setup/{layout,mode,rubrics,rubrics/check,rubrics/import,questions}`, `GET /api/setup/rubrics/template`, `POST /api/slice`, `POST /api/slice-question` (a job: one question for every paper), `GET /api/page/<student>/<page>`, `GET /api/preview-crop/<student>` |
 | Step 3 | `POST /api/roster/{upload,columns,paste,clear}`, `POST /api/students/<student>/match`, `GET /api/crop/<region>/<student>` |
 | Step 4 | `POST /api/grade` (value and/or comment and/or `keywords`; saves `grades.json` at once), `POST /api/setup/keywords` (the quick-comment list), `POST /api/position` (the question and paper on screen, for resuming) |
-| Step 5 | `POST /api/overall` (overall comment, report-only total or final levels; empty means "use the calculated value" for a total and no level for a final level), `POST /api/choice` (`student_id`, `group_id`, `questions`: the answers that count in a "teacher picks" choice), `POST /api/export` (a job: `what` is `all` or `excel`, plus `language`), `POST /api/open-folder` (shows `reports/` in Explorer or Finder) |
+| Step 5 | `POST /api/overall` (overall comment, report-only total or percentage, or final levels; empty means "use the calculated value" for a total or percentage and no level for a final level), `POST /api/weighting` (`on`), `POST /api/section-weight` (`section_id`, `value`; empty goes back to automatic), `POST /api/report-options`, `POST /api/choice` (`student_id`, `group_id`, `questions`: the answers that count in a "teacher picks" choice), `POST /api/export` (a job: `what` is `all` or `excel`, plus `language`), `POST /api/open-folder` (shows `reports/` in Explorer or Finder) |
 
 **The session view** sent to the browser includes the grades, progress
 counts and the class summary, so every screen draws from one object.
@@ -135,8 +135,7 @@ through `storage.resolve_path()`.
   (`question_marks_locked`), since marks and levels can't be converted into each
   other. Every other question stays open, and choosing Marks or Rubric on the
   first screen is only a starting point. The session view lists these questions
-  in `locked_questions`. A marks question's number can still be corrected. Step 5
-  still follows that first choice until Phase 4 of `Exam-Section-Plan.md` is built.
+  in `locked_questions`. A marks question's number can still be corrected. Nothing on screen reads that choice after Step 2.
 - **Going on to Steps 3 to 5 runs `check_ready` again** (`POST /api/step`), because
   marks and criteria can change after slicing without slicing again.
 - **A question's maximum can't go below a grade already given**
@@ -285,7 +284,7 @@ python -m unittest discover -s tests -t .
 | `test_pickers.py` | Picker launching on Windows and macOS (ported from CAM's `test_folder_dialog.py`), the packaged app's `--pick`, UTF-8 output |
 | `test_launcher.py` | The idle watchdog: stopping with no tab open, and starting the wait again after the computer sleeps |
 | `test_workflow.py` | Import from a folder and a combined PDF, re-import, set-up drafts vs. `check_ready`, the per-question lock, sections, typed shares, report options, layout changes, slicing a two-page question, matching names |
-| `test_app.py` | The server through Flask's test client: the whole Steps 1–3 flow, translated errors, marks, criteria and sections saved from the question table without slicing again, grading a mixed paper, the checks before grading, `locked_questions`, a save failure kept in memory and then retried, the other-computer prompt, emergency restore, file-serving safety |
+| `test_app.py` | The server through Flask's test client: the whole Steps 1–3 flow, translated errors, weighting, shares and report options, marks, criteria and sections saved from the question table without slicing again, grading a mixed paper, the checks before grading, `locked_questions`, a save failure kept in memory and then retried, the other-computer prompt, emergency restore, file-serving safety |
 
 `test_i18n.py` also checks that every `t("…")` key in `static/js/` exists in
 both languages.

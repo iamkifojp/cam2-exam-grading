@@ -551,7 +551,8 @@ def class_summary(config: dict, grades_data: dict) -> dict:
     """Every student's summary plus class average / max / min.
 
     Per-question statistics are keyed by :func:`slot_key` and count *Not answered* as 0, except inside a choice
-    group, where an unanswered question was simply not chosen.
+    group, where an unanswered question was simply not chosen. ``sections`` has the marks of each section with
+    marks questions, by section id.
     """
     students = [student_summary(config, grades_data, s["id"])
                 for s in config.get("students") or []]
@@ -576,7 +577,13 @@ def class_summary(config: dict, grades_data: dict) -> dict:
                                    if s["rubrics"][r["id"]]["final"] is not None])
     if marks_maximum(config):
         overall["total"] = _stats([s["marks"]["total"] for s in started])
-    return {"students": students, "questions": per_question, "overall": overall}
+    if weighting_on(config):
+        overall["percent"] = _stats([s["marks"]["percent"] for s in started])
+    section_stats = {}
+    for i, section in enumerate(sections(config)):
+        if marks_maximum(config, section["questions"]):
+            section_stats[section["id"]] = _stats([s["sections"][i]["total"] for s in started])
+    return {"students": students, "questions": per_question, "overall": overall, "sections": section_stats}
 
 
 def question_has_grade(grades_data: dict, question_id: str) -> bool:

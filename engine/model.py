@@ -61,6 +61,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
 from .errors import UserError
 
@@ -154,13 +155,15 @@ def grades_mass(data: dict) -> int:
     return count
 
 
-def upgrade_session(config: dict) -> dict:
+def upgrade_session(config: dict, grades: Optional[dict] = None) -> dict:
     """Bring a session saved by an older CAM2 up to the current version.
 
     A question now grades with marks if it has a ``max``, so before anything
     reads them: a rubric session's questions lose any ``max`` left from before
     the teacher chose Rubric, and a marks session's lose any criteria left the
     same way. Runs only once, because later a rubric session can gain marks.
+    Final levels are now shown only with Overall criterion results on, so a
+    session with any typed keeps them on.
     """
     if int(config.get("version") or 1) < 2:
         for q in config.get("questions") or []:
@@ -169,5 +172,8 @@ def upgrade_session(config: dict) -> dict:
             elif config.get("mode") == "marks":
                 q["rubric_ids"] = []
                 q.pop("rubric_id", None)
+        if any(v is not None for per in ((grades or {}).get("overall") or {}).values()
+               for v in ((per or {}).get("final_levels") or {}).values()):
+            config["report_options"] = dict(DEFAULT_REPORT_OPTIONS, overall_criteria=True)
     config["version"] = VERSION
     return config

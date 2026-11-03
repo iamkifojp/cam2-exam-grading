@@ -1,6 +1,6 @@
 # CAM2 — Exam Sections & Report Options (Implementation Plan)
 
-> **Status:** agreed design (2026-11-02). Phases 1 to 3, the engine and the Step ② and Step ④ screens, are built (2026-11-03); Step ⑤ and the report layout are not. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
+> **Status:** agreed design (2026-11-02). Phases 1 to 4, the engine and the Step ②, ④ and ⑤ screens, are built (2026-11-03); the report layout and the gradebook's new columns are not. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
 > **Mock-up:** see §6. Everything in it is made up.
 
 ---

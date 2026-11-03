@@ -40,8 +40,13 @@ export function gradedWith(c, q) {
   return criteriaOf(c, q).length ? "rubric" : null;
 }
 
+// The criteria that any question is assessed on, marks or rubric.
+export function usedCriteria(c) {
+  return (c.rubrics || []).filter((r) => c.questions.some((q) => criteriaOf(c, q).includes(r)));
+}
+
 // One grade on one paper: marks or a level, "not_answered", or null (ungraded).
-// Pass the criterion in Rubric mode; levels come from the server's summary.
+// Pass the criterion on a rubric question; levels come from the server's summary.
 export function gradeOf(sid, qid, rid = null) {
   if (!rid) return app.session.grades.grades?.[sid]?.[qid]?.value ?? null;
   const s = app.session.summary.students.find((x) => x.student_id === sid);

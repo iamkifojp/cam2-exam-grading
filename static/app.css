@@ -408,6 +408,14 @@ table.preview tr.header-row td { color: var(--muted); font-style: italic; }
 .stat-row td { background: var(--surface-2); font-weight: 600; font-size: .9rem; }
 .stat-row .sticky-col { background: var(--surface-2); }
 .export-card { margin-top: 20px; }
+.results-card { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.results-card label.check { margin: 0; font-weight: 600; }
+.tick-hint { margin: 2px 0 0 26px; }
+.shares { display: flex; flex-direction: column; gap: 6px; margin-left: 26px; }
+.share-name { min-width: 12em; }
+.criterion-cell { white-space: nowrap; }
+.report-options { margin: 12px 0; }
+.report-options h3 { margin: 0 0 4px; }
 .actions.left { justify-content: flex-start; margin-top: 16px; }
 .export-card .banner { margin-top: 16px; }
 

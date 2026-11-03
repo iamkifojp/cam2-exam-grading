@@ -179,6 +179,17 @@ class RubricReportTests(ReportTestCase):
         self.assertEqual(row["Criterion A 最終レベル"], 3)
         self.assertNotIn("Criterion A 平均", header)
 
+    def test_a_final_level_prints_only_with_overall_criterion_results_on(self):
+        gs.set_grade(self.config, self.grades, "s001", "q1", 3)
+        gs.set_grade(self.config, self.grades, "s001", "q2", 3)
+        gs.set_final_level(self.config, self.grades, "s001", "r1", 2)
+        path = os.path.join(self.root, "r.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
+        self.assertNotIn("2 / 4", self.text_of(path))
+        workflow.set_report_options(self.config, {"overall_criteria": True})
+        reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
+        self.assertIn("2 / 4", self.text_of(path))
+
     def test_a_final_level_left_blank_does_not_print(self):
         gs.set_grade(self.config, self.grades, "s001", "q1", 3)
         path = os.path.join(self.root, "r.pdf")

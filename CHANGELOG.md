@@ -6,6 +6,35 @@ year-month-day.
 
 ## [Unreleased]
 
+### Exam sections, Phase 4: Step ⑤ review (2026-11-03)
+
+The review screen for [Exam-Section-Plan.md](Exam-Section-Plan.md). A mixed paper
+can now be set up, graded and reviewed. The report options are saved, but most of
+them only take effect with the new report layout in Phase 5, and the gradebook's
+new columns come in Phase 6.
+
+#### Added
+- **Overall criterion results,** off by default and offered only when the exam uses
+  criteria. It gathers each criterion's marks and grades (`Marks 6 / 10 · 60.0%`,
+  `Grades B6, B5`) beside a final level the teacher decides.
+- **Section columns** in the review table, with the class average, highest and
+  lowest (`summary.sections`), when two or more sections have marks.
+- **Weight the sections,** with a share for each section. With it on, the table
+  shows percentages instead of a total, and **% on report** takes the place of
+  **Total on report** (`/api/weighting`, `/api/section-weight`, `report_percent`).
+- **Report options** on the export card, each hidden when it does not apply
+  (`/api/report-options`).
+- **An export warning** naming the students with no final level, when some have one
+  and others don't.
+
+#### Changed
+- **The review table follows each question,** with no regard to the first screen's
+  choice.
+- **Typing a final level or a total keeps your place** in the table, so a column can
+  be filled in with the Tab key.
+- **A final level prints only with Overall criterion results on.** A session from an
+  older CAM2 with final levels already typed has it turned on when opened.
+
 ### Exam sections, Phase 3: Step ④ grading (2026-11-03)
 
 Grading for [Exam-Section-Plan.md](Exam-Section-Plan.md). A mixed paper can now be

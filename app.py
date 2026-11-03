@@ -69,7 +69,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         return {
             "folder": state.session.folder,
             "config": dict(config, students=students,
-                           keywords=keywords.keyword_list(config, language())),
+                           keywords=keywords.keyword_list(config, language()),
+                           report_options=workflow.report_options(config)),
             "grid": {"cols": layout.cols, "rows": layout.rows},
             "grades": {"grades": grades.get("grades") or {}, "overall": grades.get("overall") or {}},
             "locked_questions": [q["id"] for q in config.get("questions") or []
@@ -250,7 +251,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         with state.lock:
             newer = session.config_file.newer_emergency_copy()
             if newer:
-                state.config = model.upgrade_session(newer)
+                state.config = model.upgrade_session(newer, state.grades)
                 state.save_config()
             newer = session.grades_file.newer_emergency_copy()
             if newer:
@@ -651,9 +652,10 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
 
     @app.post("/api/overall")
     def overall():
-        """Overall comment, report-only total (marks) or final levels (rubric).
+        """Overall comment, report-only total or percentage, or final levels.
 
-        An empty or null total/level goes back to the calculated value.
+        An empty or null total or percentage goes back to the calculated value,
+        and an empty or null final level means no final level.
         """
         state.require_session()
         data = body()
@@ -665,10 +667,37 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             if "report_total" in data:
                 value = data.get("report_total")
                 grading_summary.set_report_total(state.grades, sid, None if value in ("", None) else value)
+            if "report_percent" in data:
+                value = data.get("report_percent")
+                grading_summary.set_report_percent(state.grades, sid, None if value in ("", None) else value)
             for rid, level in (data.get("final_levels") or {}).items():
                 grading_summary.set_final_level(state.config, state.grades, sid, rid,
                                                 None if level in ("", None) else level)
             state.save_grades()
+        return ok()
+
+    @app.post("/api/weighting")
+    def weighting():
+        """Turn section weightings on or off."""
+        state.require_session()
+        workflow.set_weighted(state.config, bool(body().get("on")))
+        state.save_config()
+        return ok()
+
+    @app.post("/api/section-weight")
+    def section_weight():
+        """A section's share of the paper; empty puts it back to automatic."""
+        state.require_session()
+        data = body()
+        workflow.set_section_weight(state.config, str(data.get("section_id")), data.get("value"))
+        state.save_config()
+        return ok()
+
+    @app.post("/api/report-options")
+    def set_report_options():
+        state.require_session()
+        workflow.set_report_options(state.config, body())
+        state.save_config()
         return ok()
 
     @app.post("/api/choice")
