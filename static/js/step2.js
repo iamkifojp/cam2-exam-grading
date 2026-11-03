@@ -93,8 +93,8 @@ const saveRubrics = debounce(async () => {
     app.saveError = null;
     // Keep the ids the server assigned so later saves match.
     data.session.config.rubrics.forEach((r, i) => { if (app.draft.rubrics[i]) app.draft.rubrics[i].id = r.id; });
-    const known = new Set(data.session.config.rubrics.map((r) => r.id));
-    app.draft.questions?.questions.forEach((q) => { q.rubric_ids = (q.rubric_ids || []).filter((id) => known.has(id)); });
+    const saved = new Map(data.session.config.questions.map((q) => [q.id, q.rubric_ids]));
+    app.draft.questions?.questions.forEach((q) => { if (saved.has(q.id)) q.rubric_ids = saved.get(q.id); });
     if (msg) { msg.textContent = ""; msg.hidden = true; }
     const status = document.querySelector(".save-status");
     if (status) status.classList.add("ok");
@@ -290,11 +290,6 @@ function sliceScreen() {
   const c = config();
   const d = questionDraft();
   const result = app.draft.sliceResult;
-  const toNames = async () => {
-    if (mixedChoiceGroup(c, d)) { toast(t("error.choice_group_mixed"), "error"); return; }
-    goTo(3, { next: true });
-  };
-
   const parts = [h("h1", {}, t("step2.slice.title")),
     coach(t("step2.slice.coach", { questions: d.questions.length, students: c.students.length })),
     h("p", {}, c.name_box?.length ? t("step2.slice.name_box_yes") : t("step2.slice.name_box_no")),
@@ -314,7 +309,7 @@ function sliceScreen() {
   }
   parts.push(h("div", { class: "actions" },
     button(c.sliced ? t("step2.slice.again") : t("step2.slice.go"), slice, c.sliced ? "" : "primary big"),
-    c.sliced ? button(t("step2.slice.continue"), toNames, "primary big") : null));
+    c.sliced ? button(t("step2.slice.continue"), () => goTo(3, { next: true }), "primary big") : null));
   return h("section", {}, parts);
 }
 

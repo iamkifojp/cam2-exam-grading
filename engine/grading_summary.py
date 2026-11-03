@@ -588,6 +588,12 @@ def question_has_grade(grades_data: dict, question_id: str) -> bool:
         for e in entries)
 
 
+def highest_mark(grades_data: dict, question_id: str) -> int:
+    """The highest mark any paper has on this question (0 if none)."""
+    entries = ((per or {}).get(question_id) or {} for per in (grades_data.get("grades") or {}).values())
+    return max((e["value"] for e in entries if isinstance(e.get("value"), int)), default=0)
+
+
 def progress(config: dict, grades_data: dict) -> dict:
     """Slots graded across the class, and papers with every slot graded."""
     all_slots = slots(config)

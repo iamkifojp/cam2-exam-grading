@@ -387,6 +387,84 @@ class GradingTests(AppTestCase):
             sections=[{"id": "sec1", "name": ""}, {"id": "sec2", "name": ""}]), status=400)
         self.assertEqual(err["error"], "choice_group_across_sections")
 
+    def mixed_paper(self):
+        rubric = {"name": "A", "bands": [{"levels": "0"}, {"levels": "1-2"}, {"levels": "3-4"}]}
+        rid = self.post("/api/setup/rubrics", {"rubrics": [rubric]})["session"]["config"]["rubrics"][0]["id"]
+        self.post("/api/setup/questions", self.question_payload(
+            {"rubric_ids": [rid]}, {"max": None, "rubric_ids": [rid]}))
+        return rid
+
+    def test_a_mixed_paper_grades_each_question_its_own_way(self):
+        rid = self.mixed_paper()
+        self.post("/api/step", {"step": 4})
+        self.grade({"student_id": "s001", "question_id": "q1", "value": 4})
+        session = self.grade({"student_id": "s001", "question_id": "q2", "value": 3, "rubric_id": rid})["session"]
+        student = session["summary"]["students"][0]
+        self.assertEqual(session["grades"]["grades"]["s001"]["q1"]["value"], 4)
+        self.assertEqual(student["levels"]["q2"][rid], 3)
+        self.assertNotIn("q1", student["levels"])
+        self.assertEqual((student["marks"]["total"], student["marks"]["percent"]), (4, 80.0))    # the level isn't added
+        self.assertEqual(student["rubrics"][rid]["marks"]["total"], 4)
+        self.assertEqual(student["rubrics"][rid]["grades"], [{"question": "q2", "level": 3}])
+        self.assertEqual(session["progress"]["graded"], 2)
+        # A level is refused on the marks question, and a mark too big for the rubric on the other.
+        err = self.grade({"student_id": "s002", "question_id": "q1", "value": 3, "rubric_id": rid}, status=400)
+        self.assertEqual(err["error"], "unknown_rubric")
+        err = self.grade({"student_id": "s002", "question_id": "q2", "value": 5, "rubric_id": rid}, status=400)
+        self.assertEqual(err["error"], "level_not_in_rubric")
+
+    def test_not_answered_on_a_mixed_paper(self):
+        rid = self.mixed_paper()
+        self.grade({"student_id": "s001", "question_id": "q1", "value": "not_answered"})
+        session = self.grade({"student_id": "s001", "question_id": "q2", "value": "not_answered"})["session"]
+        student = session["summary"]["students"][0]
+        self.assertEqual(student["marks"]["total"], 0)
+        self.assertEqual(student["levels"]["q2"][rid], "not_answered")
+        self.assertEqual(session["locked_questions"], ["q1", "q2"])
+
+    def test_grading_waits_for_a_choice_group_graded_one_way(self):
+        rid = self.mixed_paper()
+        groups = [{"id": "g1", "questions": ["q1", "q2"], "answer": 1}]
+        session = self.post("/api/setup/questions", self.question_payload(
+            {"rubric_ids": [rid]}, {"max": None, "rubric_ids": [rid]}, choice_groups=groups))["session"]
+        self.assertTrue(session["config"]["sliced"])                # no box moved
+        for step in (3, 4, 5):
+            err = self.post("/api/step", {"step": step}, status=400)
+            self.assertEqual(err["error"], "choice_group_mixed")
+        self.post("/api/step", {"step": 2})
+        self.post("/api/setup/questions", self.question_payload(
+            {"rubric_ids": [rid]}, {"max": 3, "rubric_ids": [rid]}, choice_groups=groups))
+        self.post("/api/step", {"step": 4})
+
+    def test_grading_waits_for_marks_or_a_criterion(self):
+        self.post("/api/setup/questions", self.question_payload({}, {"max": None}))
+        err = self.post("/api/step", {"step": 4}, status=400)
+        self.assertEqual(err["error"], "question_needs_marks_or_criterion")
+        self.post("/api/setup/questions", self.question_payload())
+        self.post("/api/step", {"step": 4})
+
+    def test_a_maximum_cannot_go_below_a_grade_already_given(self):
+        self.grade({"student_id": "s001", "question_id": "q1", "value": 4})
+        err = self.post("/api/setup/questions", self.question_payload({"max": 3}), status=400)
+        self.assertEqual(err["error"], "question_max_below_grade")
+        self.assertIn("4", err["message"])
+        session = self.post("/api/setup/questions", self.question_payload({"max": 4}))["session"]
+        self.assertEqual(session["config"]["questions"][0]["max"], 4)
+        session = self.grade({"student_id": "s002", "question_id": "q2", "value": "not_answered"})["session"]
+        session = self.post("/api/setup/questions", self.question_payload({"max": 4}, {"max": 1}))["session"]
+        self.assertEqual(session["config"]["questions"][1]["max"], 1)    # Not answered isn't a mark
+
+    def test_a_second_rubric_keeps_a_tick_that_was_only_assumed(self):
+        rubric = {"name": "A", "bands": [{"levels": "0"}, {"levels": "1-2"}]}
+        rid = self.post("/api/setup/rubrics", {"rubrics": [rubric]})["session"]["config"]["rubrics"][0]["id"]
+        self.post("/api/setup/questions", self.question_payload({}, {"max": None}))     # q2 has no ticks
+        self.grade({"student_id": "s001", "question_id": "q2", "value": 2})
+        session = self.post("/api/setup/rubrics", {"rubrics": [dict(rubric, id=rid), dict(rubric, name="B")]})["session"]
+        q1, q2 = session["config"]["questions"]
+        self.assertEqual((q1["rubric_ids"], q2["rubric_ids"]), ([], [rid]))             # marks stay unticked
+        self.assertEqual(session["summary"]["students"][0]["levels"]["q2"][rid], 2)
+        self.post("/api/step", {"step": 4})
+
     def test_rubric_levels_are_checked(self):
         self.post("/api/setup/mode", {"mode": "rubric"})
         self.post("/api/setup/rubrics", {"rubrics": [{"name": "A", "bands": [

@@ -574,6 +574,11 @@ def set_mode(config: dict, mode: str) -> dict:
 
 
 def set_rubrics(config: dict, raw_rubrics: List[dict]) -> dict:
+    # A question with no marks and no ticks counts as ticked on an exam's only
+    # rubric. That stops being true once there is another, so tick it for real.
+    for q in config.get("questions") or []:
+        q["rubric_ids"] = grading_summary.question_rubric_ids(config, q)
+        q.pop("rubric_id", None)
     cleaned = []
     used = set()
     for i, raw in enumerate(raw_rubrics or [], 1):
@@ -588,8 +593,7 @@ def set_rubrics(config: dict, raw_rubrics: List[dict]) -> dict:
         cleaned.append(rubric)
     config["rubrics"] = cleaned
     for q in config.get("questions") or []:
-        q["rubric_ids"] = [rid for rid in _picked_rubrics(q) if rid in used]
-        q.pop("rubric_id", None)
+        q["rubric_ids"] = [rid for rid in q["rubric_ids"] if rid in used]
     return config
 
 
@@ -677,6 +681,10 @@ def set_questions(config: dict, payload: dict, grades_data: Optional[dict] = Non
         if (qid in old and bool(old[qid].get("max")) != bool(max_marks)
                 and grading_summary.question_has_grade(grades_data or {}, qid)):
             raise UserError("question_marks_locked", question=label or qid)
+        if qid in old and max_marks and max_marks != old[qid].get("max"):
+            highest = grading_summary.highest_mark(grades_data or {}, qid)
+            if max_marks < highest:
+                raise UserError("question_max_below_grade", question=label or qid, mark=highest)
         picked = set(_picked_rubrics(raw))
         question = {"id": qid, "label": label,
                     "boxes": _clean_boxes(raw.get("boxes"), layout),

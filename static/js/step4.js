@@ -1,12 +1,13 @@
-// Step 4: grade one question across every paper. In Rubric mode a question
-// assessed on several criteria is graded one criterion at a time: each
-// (question, criterion) pair is its own item, with tabs to switch criterion.
+// Step 4: grade one question across every paper, with marks or rubric levels
+// as that question is set up. A rubric question assessed on several criteria
+// is graded one criterion at a time: each (question, criterion) pair is its
+// own item, with tabs to switch criterion.
 // Left: the answer (zoomable) with the grade badge, or the whole page.
 // Right: the grading card — grade, Not answered, comment, Next paper.
 import { post } from "./api.js";
 import { t } from "./i18n.js";
 import { goTo } from "./main.js";
-import { act, app, config, criteriaOf, gradeOf, handleError, render } from "./store.js";
+import { act, app, config, criteriaOf, gradeOf, gradedWith, handleError, render } from "./store.js";
 import { button, debounce, formatTime, h, modal } from "./ui.js";
 import { parseRange } from "./boxes.js";
 
@@ -20,9 +21,9 @@ function entry(sid, qid) {
   return app.session.grades.grades?.[sid]?.[qid] || null;
 }
 
-// Every item graded across the class, in order: { q, r } (r null in Marks mode).
+// Every item graded across the class, in order: { q, r } (r null for a marks question).
 function items(c) {
-  return c.questions.flatMap((q) => (c.mode === "rubric"
+  return c.questions.flatMap((q) => (gradedWith(c, q) === "rubric"
     ? criteriaOf(c, q).map((r) => ({ q, r }))
     : [{ q, r: null }]));
 }
@@ -145,7 +146,7 @@ function levelText(r, value) {
 
 // The badge over the answer. A question on several criteria lists each one.
 function badgeText(c, q, sid) {
-  if (c.mode !== "rubric") {
+  if (gradedWith(c, q) === "marks") {
     const value = valueOf(sid, q.id);
     if (value === null) return null;
     return value === NA ? t("step4.badge_na") : `${value} / ${q.max}`;
@@ -368,11 +369,11 @@ function gradeCard(c, d, item, student) {
   // Not answered is about the student's answer, so it covers every criterion.
   const notAnswered = () => setGrade(student.id, q.id, NA);
   const clear = () => setGrade(student.id, q.id, null, value === NA ? null : r?.id);
-  const crit = c.mode === "rubric" ? criteriaOf(c, q) : [];
 
   let grading;
-  if (c.mode === "rubric") {
-    grading = r ? h("div", { class: "bands-grade" },
+  if (r) {
+    const crit = criteriaOf(c, q);
+    grading = h("div", { class: "bands-grade" },
       crit.length > 1 ? criterionTabs(crit, q, student, r) : h("p", { class: "muted small" }, r.name),
       r.bands.map((band) => {
         const inBand = typeof value === "number" && band.min <= value && value <= band.max;
@@ -384,8 +385,8 @@ function gradeCard(c, d, item, student) {
               type: "button", class: `level-btn ${value === l ? "on" : ""}`, "aria-pressed": value === l ? "true" : "false",
               onclick: () => choose(l) }, String(l))))),
           band.descriptor ? h("p", { class: "descriptor" }, band.descriptor) : null);
-      })) : h("p", { class: "warn-text" }, t("error.question_has_no_rubric", { question: q.label }));
-  } else if ((q.max || 0) <= MAX_BUTTONS) {
+      }));
+  } else if (q.max <= MAX_BUTTONS) {
     const marks = [];
     for (let m = 0; m <= q.max; m++) marks.push(m);
     grading = h("div", { class: "mark-buttons" }, marks.map((m) => h("button", {
@@ -425,7 +426,7 @@ function gradeCard(c, d, item, student) {
     onblur: () => saveComment.flush() }, comment);
 
   const nextId = nextStudentId(c, d, 1);
-  const outOf = c.mode === "rubric" ? "" : t("step4.out_of", { max: q.max });
+  const outOf = r ? "" : t("step4.out_of", { max: q.max });
   return h("section", { class: `card grade-card ${value !== null ? "graded" : ""}` },
     h("h2", {}, itemLabel(item), outOf ? h("span", { class: "muted" }, " · ", outOf) : null),
     hideNames() && d.revealed !== student.id ? null : h("p", { class: "muted small" }, student.display_name),

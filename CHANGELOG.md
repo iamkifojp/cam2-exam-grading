@@ -6,6 +6,30 @@ year-month-day.
 
 ## [Unreleased]
 
+### Exam sections, Phase 3: Step ④ grading (2026-11-03)
+
+Grading for [Exam-Section-Plan.md](Exam-Section-Plan.md). A mixed paper can now be
+graded, but Step ⑤ still shows it wrongly until Phase 4, so only marks-only or
+rubric-only exams can be reviewed properly for now.
+
+#### Changed
+- **Each question grades its own way in Step ④.** It shows mark buttons or rubric
+  levels as that question is set up, with no regard to the first screen's choice.
+- **CAM2 checks the set-up again before going on to Steps ③ to ⑤,** because marks
+  and criteria can change after slicing. A question with neither, or a choice group
+  that mixes marks and rubric questions, now stops it, including from the step bar.
+- **A question's maximum can't go below a grade already given**
+  (`question_max_below_grade`), so a paper can't end up with 3 out of 2.
+
+#### Fixed
+- **Adding a second rubric could cut a question loose from its criterion.** A
+  question with no marks and no ticks counts as ticked on an exam's only rubric, so
+  its levels were left with no criterion once there was another. It now gets a real
+  tick when rubrics change.
+
+#### Removed
+- The `question_has_no_rubric` message, which nothing can reach any more.
+
 ### Exam sections, Phase 2: Step ② screens (2026-11-03)
 
 The set-up screens for [Exam-Section-Plan.md](Exam-Section-Plan.md). A teacher can

@@ -377,8 +377,12 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         step = int(body().get("step") or 1)
         if not 1 <= step <= 5:
             raise UserError("unknown_step")
-        if step >= 3 and not state.config.get("sliced"):
-            raise UserError("not_sliced")
+        if step >= 3:
+            if not state.config.get("sliced"):
+                raise UserError("not_sliced")
+            # Marks and criteria can change after slicing, so check again before
+            # anything is graded: a mark can't be ranked against a level.
+            workflow.check_ready(state.config)
         set_step(step)
         state.save_config()
         return ok()
