@@ -140,8 +140,11 @@ class MarksReportTests(ReportTestCase):
         row = {h: c.value for h, c in zip(header, ws[2])}
         self.assertEqual((row["Student"], row["Q1"], row["Q1 comment"]), ("Ken Sato", 4, "Good use of evidence."))
         self.assertEqual((row["Calculated total"], row["Out of"], row["Total on report"]), (7, 8, 8))
+        self.assertEqual((row["%"], row["% on report"]), (87.5, 100.0))
         self.assertEqual(row["Adjusted by teacher"], "Yes")
-        self.assertEqual(ws.cell(2, header.index("Total on report") + 1).fill.fgColor.rgb[-6:], "FFF2C2")
+        for adjusted in ("Total on report", "% on report"):
+            self.assertEqual(ws.cell(2, header.index(adjusted) + 1).fill.fgColor.rgb[-6:], "FFF2C2")
+        self.assertFalse(any("marks" in str(h) or "weighted" in str(h) for h in header))     # one section: no columns
         row2 = {h: c.value for h, c in zip(header, ws[3])}
         self.assertEqual(row2["Q1"], "Not answered")
         labels = [ws.cell(r, 2).value for r in range(1, ws.max_row + 1)]
@@ -163,6 +166,7 @@ class RubricReportTests(ReportTestCase):
         gs.set_grade(self.config, self.grades, "s001", "q1", 3, "Nice example.")
         gs.set_grade(self.config, self.grades, "s001", "q2", 4)
         gs.set_final_level(self.config, self.grades, "s001", "r1", 3)
+        workflow.set_report_options(self.config, {"overall_criteria": True})
         path = os.path.join(self.root, "r.pdf")
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
         text = self.text_of(path)
@@ -178,6 +182,8 @@ class RubricReportTests(ReportTestCase):
         row = {h: c.value for h, c in zip(header, ws[2])}
         self.assertEqual(row["Criterion A 最終レベル"], 3)
         self.assertNotIn("Criterion A 平均", header)
+        for absent in ("計算上の合計", "レポートの%", "先生が調整"):     # no marks on this paper
+            self.assertNotIn(absent, header)
 
     def test_a_final_level_prints_only_with_overall_criterion_results_on(self):
         gs.set_grade(self.config, self.grades, "s001", "q1", 3)
@@ -286,9 +292,9 @@ class MultiCriterionReportTests(ReportTestCase):
         self.assertEqual(ref.cell(3, 3).value, "Criterion A, Criterion B")
 
 
-class ReportLayoutTests(ReportTestCase):
-    """The layout in Exam-Section-Plan.md section 6, on a paper with two sections:
-    q1 marks on Criterion A; q2 rubric on A and B; q3 marks with no criterion."""
+class SectionPaperTestCase(ReportTestCase):
+    """A paper with two sections: q1 marks on Criterion A; q3 marks with no
+    criterion; then q2 rubric on A and B."""
 
     BANDS = {"A": [("0", "A nothing."), ("1-4", "A some."), ("5-8", "A strong.")],
              "B": [("0", "B nothing."), ("1-8", "B method.")],
@@ -339,6 +345,10 @@ class ReportLayoutTests(ReportTestCase):
                     if drawing.get("fill") and all(abs(a - b) < 0.01 for a, b in zip(drawing["fill"], reports.AWARDED)):
                         found.append(page.get_textbox(drawing["rect"]).strip())
         return found
+
+
+class ReportLayoutTests(SectionPaperTestCase):
+    """The layout in Exam-Section-Plan.md section 6."""
 
     def test_each_grade_reaches_the_right_students_report(self):
         self.options(section_results=True, overall_criteria=True)
@@ -507,6 +517,110 @@ class ReportLayoutTests(ReportTestCase):
         for n in range(9):
             self.assertIn(f"Band {n}.", text)
         self.assertIn("Final level", text)
+
+
+class SectionGradebookTests(SectionPaperTestCase):
+    """The gradebook on the same paper, with marks in both sections."""
+
+    def setUp(self):
+        super().setUp()
+        self.config["questions"].append({"id": "q9", "label": "Q9", "boxes": ["page1!C4"], "max": 10, "section_id": "sec2"})
+        workflow.set_weighted(self.config, False)
+        gs.set_grade(self.config, self.grades, "s001", "q9", 5)
+        gs.set_grade(self.config, self.grades, "s002", "q9", 10)
+
+    def sheets(self, language="en"):
+        wb = load_workbook(gradebook_xlsx.export_gradebook(self.session, self.config, self.grades, language))
+        return wb.worksheets
+
+    def rows(self, ws):
+        """{student or statistic: {heading: value}} from the first sheet."""
+        header = [c.value for c in ws[1]]
+        return {row[1]: dict(zip(header, row)) for row in ws.iter_rows(min_row=2, values_only=True) if row[1]}
+
+    def test_section_columns(self):
+        rows = self.rows(self.sheets()[0])
+        ken, other = rows["Ken Sato"], rows["scan_003"]
+        self.assertEqual((ken["Knowledge marks"], ken["Knowledge %"]), (6, 75.0))
+        self.assertEqual((ken["Section 2 marks"], ken["Section 2 %"]), (5, 50.0))
+        self.assertEqual((other["Knowledge marks"], other["Section 2 marks"]), (4, 10))
+        self.assertEqual((ken["Calculated total"], ken["Out of"], ken["%"], ken["% on report"]), (11, 18, 61.1, 61.1))
+        self.assertNotIn("Knowledge weighted marks", ken)
+
+    def test_class_statistics_for_each_section(self):
+        rows = self.rows(self.sheets()[0])
+        self.assertEqual(rows["Class average"]["Knowledge marks"], 5.0)
+        self.assertEqual(rows["Highest"]["Knowledge marks"], 6)
+        self.assertEqual(rows["Lowest"]["Knowledge marks"], 4)
+        self.assertEqual(rows["Class average"]["Section 2 marks"], 7.5)
+        self.assertEqual(rows["Highest"]["Calculated total"], 14)
+        self.assertIsNone(rows["Highest"]["Out of"])
+        self.assertIsNone(rows["Highest"]["Overall comment"])
+
+    def test_weighted_columns_give_only_percentages_overall(self):
+        workflow.set_weighted(self.config, True)
+        ws = self.sheets()[0]
+        rows = self.rows(ws)
+        ken = rows["Ken Sato"]
+        self.assertEqual((ken["Knowledge weighted marks"], ken["Section 2 weighted marks"]), (37.5, 25.0))
+        self.assertEqual((ken["%"], ken["% on report"]), (62.5, 62.5))
+        self.assertNotIn("Calculated total", ken)
+        self.assertNotIn("Total on report", ken)
+        self.assertEqual(rows["Highest"]["%"], 75.0)
+        self.assertIsNone(rows["Highest"]["Adjusted by teacher"])
+        gs.set_report_percent(self.grades, "s001", 70)
+        ws = self.sheets()[0]
+        header = [c.value for c in ws[1]]
+        self.assertEqual(self.rows(ws)["Ken Sato"]["Adjusted by teacher"], "Yes")
+        self.assertEqual(ws.cell(2, header.index("% on report") + 1).fill.fgColor.rgb[-6:], "FFF2C2")
+        self.assertNotEqual(ws.cell(2, header.index("%") + 1).fill.fgColor.rgb[-6:], "FFF2C2")
+
+    def test_final_levels_only_with_overall_criterion_results_on(self):
+        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        self.assertNotIn("Criterion A final level", self.rows(self.sheets()[0])["Ken Sato"])
+        self.options(overall_criteria=True)
+        rows = self.rows(self.sheets()[0])
+        self.assertEqual(rows["Ken Sato"]["Criterion A final level"], 7)
+        self.assertIsNone(rows["Ken Sato"]["Criterion B final level"])
+        self.assertIsNone(rows["scan_003"]["Criterion A final level"])
+        self.assertEqual(rows["Highest"]["Criterion A final level"], 7)
+        self.assertNotIn("Criterion C final level", rows["Ken Sato"])     # not used on this paper
+
+    def test_levels_stay_in_their_own_columns(self):
+        rows = self.rows(self.sheets()[0])
+        self.assertEqual((rows["Ken Sato"]["Q2 · Criterion A"], rows["Ken Sato"]["Q2 · Criterion B"]), (6, 3))
+        self.assertEqual((rows["scan_003"]["Q2 · Criterion A"], rows["scan_003"]["Q2 · Criterion B"]), (2, 7))
+        self.assertEqual(rows["Ken Sato"]["Section 2 marks"], 5)      # the Q2 levels aren't added
+
+    def test_a_section_with_only_rubric_questions_gets_no_columns(self):
+        self.config["questions"].pop()
+        header = [c.value for c in self.sheets()[0][1]]
+        self.assertNotIn("Knowledge marks", header)
+        self.assertNotIn("Section 2 marks", header)
+        self.assertIn("Calculated total", header)
+
+    def test_the_second_sheet_lists_the_sections(self):
+        workflow.set_section_weight(self.config, "sec1", 30)
+        workflow.set_weighted(self.config, True)
+        ref = self.sheets()[1]
+        rows = [list(r) for r in ref.iter_rows(values_only=True)]
+        at = rows.index(["Section", "Questions", "Out of", "Share of the paper (%)"])
+        self.assertEqual(rows[at + 1], ["Knowledge", "Q1, Q3", 8, 30])
+        self.assertEqual(rows[at + 2], ["Section 2", "Q2, Q9", 10, 70])
+
+    def test_the_second_sheet_without_weighting_or_sections(self):
+        rows = [list(r) for r in self.sheets()[1].iter_rows(values_only=True)]
+        self.assertTrue(any(r[:3] == ["Section", "Questions", "Out of"] and r[3] is None for r in rows))
+        workflow.set_questions(self.config, {"name_box": ["page1!A1:B2"], "sections": [], "questions": [
+            {"id": "q1", "label": "Q1", "boxes": ["page1!C4"], "max": 5}]})
+        rows = [list(r) for r in self.sheets()[1].iter_rows(values_only=True)]
+        self.assertFalse(any(r[0] == "Section" for r in rows))
+
+    def test_japanese_headings(self):
+        workflow.set_weighted(self.config, True)
+        header = [c.value for c in self.sheets("ja")[0][1]]
+        for heading in ("Knowledge 点数", "セクション2 点数", "セクション2 比重をかけた点数", "レポートの%"):
+            self.assertIn(heading, header)
 
 
 class ReportKindsTests(ReportTestCase):

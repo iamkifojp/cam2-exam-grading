@@ -1,13 +1,17 @@
 """The master Excel gradebook: the teacher's permanent record of the exam.
 
 Sheet 1, "Grades & Comments": one row per paper with every question's grade
-and comment, the calculated result *and* the result on the report (with an
-"adjusted" flag where the teacher overrode it), the overall comment, and
-class average / highest / lowest rows at the bottom.
+and comment, each section's marks and percentage when two or more sections have
+marks (and its weighted marks with weighting on), the calculated result *and*
+the result on the report (with an "adjusted" flag where the teacher overrode
+it), final levels with Overall criterion results on, the overall comment, and
+class average / highest / lowest rows at the bottom. Rubric levels are never
+added to marks. With weighting on, only percentages are given overall, because a
+total out of the paper's marks would not agree with them.
 
 Sheet 2, "Questions & Rubrics": each question's boxes, marks or rubric and
-choice group, then every rubric's levels and descriptors, so the file
-explains itself years later.
+choice group, then the sections, then every rubric's levels and descriptors, so
+the file explains itself years later.
 
 All numbers are values worked out by grading_summary (no Excel formulas), so
 the file always matches what CAM2 showed, including its rounding.
@@ -31,6 +35,7 @@ SUMMARY_FILL = PatternFill("solid", fgColor="EEF1F6")
 BOLD = Font(bold=True)
 WRAP = Alignment(wrap_text=True, vertical="top")
 TOP = Alignment(vertical="top")
+STATS = (("average", "average"), ("max_row", "max"), ("min_row", "min"))
 
 
 def gradebook_path(session: storage.Session, config: dict) -> str:
@@ -39,7 +44,7 @@ def gradebook_path(session: storage.Session, config: dict) -> str:
 
 
 def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
-    from .workflow import display_name                     # avoid an import cycle
+    from .workflow import display_name, report_options     # avoid an import cycle
     t = lambda key, **kw: i18n.t(key, language, **kw)      # noqa: E731
     summary = grading_summary.class_summary(config, grades)
     questions = config.get("questions") or []
@@ -52,6 +57,14 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
                         else grading_summary.question_rubric_ids(config, q)) for q in questions}
     used = {rid for q in questions for rid in grading_summary.question_rubric_ids(config, q)}
     used_rubrics = [r for r in rubric_list if r["id"] in used]
+    final_rubrics = used_rubrics if report_options(config)["overall_criteria"] else []
+    weighted = grading_summary.weighting_on(config)
+    with_marks = grading_summary.sections_with_marks(config)
+    section_cols = with_marks if len(with_marks) >= 2 else []
+    stored_ids = [s["id"] for s in config.get("sections") or []]
+
+    def section_name(section):
+        return section["name"] or t("step2.sections.default_name", n=stored_ids.index(section["id"]) + 1)
 
     wb = Workbook()
     ws = wb.active
@@ -65,10 +78,16 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
                                                         name=rubric_names[rid]) for rid in rids]
         header.append(t("xlsx.comment_for", label=q["label"]))
         comment_cols.add(len(header))
-    header += [t("xlsx.final_for", name=r["name"]) for r in used_rubrics]
+    for section in section_cols:
+        name = section_name(section)
+        header += [t("xlsx.section_marks", name=name), t("xlsx.section_percent", name=name)]
+        if weighted:
+            header.append(t("xlsx.section_weighted", name=name))
     if marks_q:
-        header += [t("xlsx.total"), t("xlsx.max"), t("xlsx.percent"), t("xlsx.report_total")]
-    header += [t("xlsx.adjusted"), t("xlsx.overall_comment"), t("xlsx.complete")]
+        header += ([] if weighted else [t("xlsx.total"), t("xlsx.max")]) + [t("xlsx.percent")]
+        header += ([] if weighted else [t("xlsx.report_total")]) + [t("xlsx.report_percent"), t("xlsx.adjusted")]
+    header += [t("xlsx.final_for", name=r["name"]) for r in final_rubrics]
+    header += [t("xlsx.overall_comment"), t("xlsx.complete")]
     ws.append(header)
     for cell in ws[1]:
         cell.font = BOLD
@@ -88,17 +107,20 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
                     ungraded_cols.append(len(row) + 1)
                 row.append(na_text if value == model.NOT_ANSWERED else value)
             row.append(entry.get("comment") or None)
-        adjusted = False
+        by_section = {s["id"]: s for s in res["sections"]}
+        for section in section_cols:
+            result = by_section[section["id"]]
+            row += [result["total"], result["percent"]] + ([result["weighted_marks"]] if weighted else [])
         adjusted_cols = []
-        row += [res["rubrics"][r["id"]]["final"] for r in used_rubrics]
         if marks_q:
             m = res["marks"]
-            row += [m["total"], m["max"], m["percent"], m["report_total"]]
+            row += ([] if weighted else [m["total"], m["max"]]) + [m["percent"]]
+            row += ([] if weighted else [m["report_total"]]) + [m["report_percent"]]
             if m["adjusted"]:
-                adjusted = True
-                adjusted_cols.append(len(row))
-        row += [t("xlsx.yes") if adjusted else None, res["comment"] or None,
-                t("xlsx.yes") if res["complete"] else t("xlsx.no_answer")]
+                adjusted_cols = [len(row)] if weighted else [len(row) - 1, len(row)]
+            row.append(t("xlsx.yes") if m["adjusted"] else None)
+        row += [res["rubrics"][r["id"]]["final"] for r in final_rubrics]
+        row += [res["comment"] or None, t("xlsx.yes") if res["complete"] else t("xlsx.no_answer")]
         ws.append(row)
         r_idx = ws.max_row
         for col in ungraded_cols:
@@ -110,23 +132,27 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
 
     # Class average / highest / lowest
     ws.append([])
-    stats_rows = {key: [None, t(f"xlsx.{key}"), None] for key in ("average", "max_row", "min_row")}
+    stats_rows = {key: [None, t(f"xlsx.{key}"), None] for key, _ in STATS}
+
+    def add_stats(st, blanks=0):
+        """One statistics cell in each row, then empty cells for the columns beside it."""
+        for key, field in STATS:
+            stats_rows[key] += [st[field] if st else None] + [None] * blanks
+
     for q in questions:
         for rid in q_rids[q["id"]]:
-            st = summary["questions"].get(grading_summary.slot_key(q["id"], rid))
-            for key, field in (("average", "average"), ("max_row", "max"), ("min_row", "min")):
-                stats_rows[key].append(st[field] if st else None)
-        for key in stats_rows:
-            stats_rows[key].append(None)
-    for r in used_rubrics:
-        st = summary["overall"].get(r["id"])
-        for key, field in (("average", "average"), ("max_row", "max"), ("min_row", "min")):
-            stats_rows[key].append(st[field] if st else None)
+            add_stats(summary["questions"].get(grading_summary.slot_key(q["id"], rid)))
+        add_stats(None)                                    # its comment
+    for section in section_cols:
+        add_stats(summary["sections"].get(section["id"]), blanks=2 if weighted else 1)
     if marks_q:
-        st = summary["overall"].get("total")
-        for key, field in (("average", "average"), ("max_row", "max"), ("min_row", "min")):
-            stats_rows[key] += [st[field] if st else None, None, None, None]
-    for key in ("average", "max_row", "min_row"):
+        if weighted:
+            add_stats(summary["overall"].get("percent"), blanks=2)
+        else:
+            add_stats(summary["overall"].get("total"), blanks=5)
+    for r in final_rubrics:
+        add_stats(summary["overall"].get(r["id"]))
+    for key, _ in STATS:
         ws.append(stats_rows[key])
         for cell in ws[ws.max_row]:
             cell.fill = SUMMARY_FILL
@@ -160,6 +186,16 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
     for cell in ref[1]:
         cell.font = BOLD
         cell.fill = HEADER_FILL
+    if stored_ids:
+        ref.append([])
+        ref.append([t("xlsx.section"), t("xlsx.questions"), t("xlsx.max")] + ([t("xlsx.share")] if weighted else []))
+        for cell in ref[ref.max_row]:
+            cell.font = BOLD
+            cell.fill = HEADER_FILL
+        for section in grading_summary.sections(config):
+            maximum = grading_summary.marks_maximum(config, section["questions"]) or None
+            ref.append([section_name(section), ", ".join(q["label"] for q in section["questions"]), maximum]
+                       + ([section["weight"]] if weighted else []))
     if used_rubrics:
         ref.append([])
         ref.append([t("xlsx.rubric"), t("xlsx.levels"), t("xlsx.descriptor")])

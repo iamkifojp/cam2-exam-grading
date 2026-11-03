@@ -1,6 +1,6 @@
 # CAM2 — Exam Sections & Report Options (Implementation Plan)
 
-> **Status:** agreed design (2026-11-02). Phases 1 to 5, the engine, the screens and the report, are built (2026-11-03); the gradebook's new columns are not. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
+> **Status:** agreed design (2026-11-02). Phases 1 to 6, the engine, the screens, the report and the gradebook, are built (2026-11-03); the run-through in Phase 7 is not done. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
 
 ---
 

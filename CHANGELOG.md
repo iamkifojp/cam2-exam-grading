@@ -6,6 +6,27 @@ year-month-day.
 
 ## [Unreleased]
 
+### Exam sections, Phase 6: the gradebook (2026-11-03)
+
+The Excel gradebook for [Exam-Section-Plan.md](Exam-Section-Plan.md). Only the
+plan's final run-through is left.
+
+#### Added
+- **Section columns:** each section's marks and percentage when two or more sections
+  have marks, its weighted marks with weighting on, and the class average, highest
+  and lowest for its marks.
+- **`% on report`,** beside the calculated percentage. An adjusted result is yellow in
+  both report columns.
+- **The sections on the second sheet,** with their questions, their marks and, with
+  weighting on, their shares.
+
+#### Changed
+- **With weighting on, only percentages are given overall.** A total out of the
+  paper's marks would not agree with them. The sections' marks are still there.
+- **Final-level columns appear only with Overall criterion results on,** as on the
+  review screen and the report.
+- **A paper with no marks questions has no Adjusted by teacher column.**
+
 ### Exam sections, Phase 5: the report (2026-11-03)
 
 The student PDF for [Exam-Section-Plan.md](Exam-Section-Plan.md). Every report
