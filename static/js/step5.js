@@ -143,16 +143,18 @@ export function renderStep5() {
   const anyComment = Object.values(grades).some((per) => Object.values(per || {}).some((e) => (e?.comment || "").trim()));
   const cols = columns(c);
 
+  // What the teacher decides comes first, beside the name; each question's grade
+  // is at the far end. The head, the rows and the class statistics share this order.
   const head = h("tr", {},
     h("th", {}, "#"), h("th", { class: "sticky-col" }, t("step5.student")),
-    cols.map(({ q, r, multi }) => h("th", { class: "num-col" }, q.label,
-      r ? h("div", { class: "muted small" }, multi || used.length > 1 ? r.name : "")
-        : h("span", { class: "muted small" }, ` /${q.max}`))),
-    sectionCols.map((sec) => h("th", { class: "num-col" }, sectionName(c, sec.id))),
     hasMarks ? [h("th", { class: "num-col" }, t("step5.calculated")),
       h("th", { class: "num-col" }, t(weighted ? "step5.on_report_percent" : "step5.on_report"))] : null,
     criteria.map((r) => [h("th", {}, r.name), h("th", { class: "num-col" }, t("step5.final", { name: r.name }))]),
-    h("th", {}, t("step5.overall_comment")));
+    h("th", {}, t("step5.overall_comment")),
+    sectionCols.map((sec) => h("th", { class: "num-col" }, sectionName(c, sec.id))),
+    cols.map(({ q, r, multi }) => h("th", { class: "num-col" }, q.label,
+      r ? h("div", { class: "muted small" }, multi || used.length > 1 ? r.name : "")
+        : h("span", { class: "muted small" }, ` /${q.max}`))));
 
   const rows = c.students.map((s, i) => {
     const res = byId.get(s.id);
@@ -204,7 +206,7 @@ ${action}` : action,
     return h("tr", { class: res.complete ? "" : "incomplete" },
       h("td", { class: "num-cell" }, String(i + 1)),
       h("td", { class: "sticky-col" }, h("strong", {}, s.display_name), choiceButtons(c, s, res)),
-      cells, sectionCells, total, criterionCells, h("td", {}, comment));
+      total, criterionCells, h("td", {}, comment), sectionCells, cells);
   });
 
   const stat = (key) => {
@@ -214,8 +216,8 @@ ${action}` : action,
     const totalStats = hasMarks
       ? [h("td", { class: "num-col" }, summary.overall[weighted ? "percent" : "total"]?.[key] ?? ""), h("td", {})] : null;
     const finalStats = criteria.map((r) => [h("td", {}), h("td", { class: "num-col" }, summary.overall[r.id]?.[key] ?? "")]);
-    return h("tr", { class: "stat-row" }, h("td", {}), h("td", { class: "sticky-col" }, label), qCells, sectionStats,
-      totalStats, finalStats, h("td", {}));
+    return h("tr", { class: "stat-row" }, h("td", {}), h("td", { class: "sticky-col" }, label),
+      totalStats, finalStats, h("td", {}), sectionStats, qCells);
   };
 
   return h("main", { class: "page full review" },
@@ -327,7 +329,7 @@ function reportOptions(c, used, hasMarks) {
       used.some((r) => r.bands.some((b) => b.descriptor)) ? tick("rubric_table", t("step5.option.rubric_table")) : null,
       hasMarks ? tick("overall_marks", t("step5.option.overall_marks")) : null,
       sections ? null : imageTick("sec1", t("step5.option.images"))),
-    sections ? h("div", {}, h("span", { class: "label" }, t("step5.option.images")),
+    sections ? h("div", {}, h("span", { class: "label" }, t("step5.option.images_for")),
       sections.map((s) => imageTick(s.id, sectionName(c, s.id)))) : null);
 }
 
@@ -349,6 +351,7 @@ function exportPanel(c, incomplete, used, hasMarks) {
           c.students.map((s) => h("option", { value: s.id, selected: s.id === previewId ? "selected" : null }, s.display_name)))),
       h("a", { class: "btn", target: "_blank", rel: "noopener",
         href: `/api/report-preview/${encodeURIComponent(previewId)}?lang=${d.language}` }, t("step5.preview"))),
+    h("div", { class: "banner warn" }, h("p", {}, "⚠ ", t("step5.replace_warning"))),
     h("div", { class: "actions left" },
       button(t("step5.make_all"), () => runExport("all", incomplete), "primary big"),
       button(t("step5.make_excel"), () => runExport("excel", incomplete)),

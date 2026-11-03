@@ -6,6 +6,28 @@ year-month-day.
 
 ## [Unreleased]
 
+### Clearer screens after testing the sample exam (2026-11-03)
+
+#### Added
+- **"Save Qn & start a new section at question n+1"** in Draw boxes, below "Save Qn &
+  add question n+1".
+- **"Now grading Qn"** across the grading screen, on the paper that "Go to Qn" lands on.
+- **A warning above the export buttons** that says what each one replaces. Making
+  student PDFs deletes every PDF in `student_pdfs` and overwrites the gradebook.
+  Making the gradebook only overwrites the gradebook and leaves the PDFs.
+
+#### Changed
+- **Moving to the next question is hard to miss.** "Go to Qn" is bigger and a colour of
+  its own, and the question's name is large and in that colour above the answer and on
+  the grading card. A teacher who misses the move reads the next question's answers
+  against the last one's marks.
+- **The review table puts decisions first.** After the name come the calculated total,
+  Total on report, each criterion with its final level, and the overall comment, so
+  final levels no longer need scrolling to. Section totals and each question's grade
+  follow. The student's name stays frozen on the left, and the gradebook's columns have
+  not moved.
+- **"Answer images" is now "Include student's answer images for".**
+
 ### Exam sections, Phase 6: the gradebook (2026-11-03)
 
 The Excel gradebook for [Exam-Section-Plan.md](Exam-Section-Plan.md). Only the

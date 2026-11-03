@@ -16,6 +16,8 @@
   --warn-soft: #fff3d6;
   --danger: #b42318;
   --danger-soft: #fde8e6;
+  --next: #a21caf;
+  --next-ink: #ffffff;
   --radius: 10px;
   --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 2px 8px rgba(16, 24, 40, .06);
   --font: "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
@@ -39,6 +41,8 @@
     --warn-soft: #3a2b12;
     --danger: #ff8a7a;
     --danger-soft: #3d1c19;
+    --next: #e879f9;
+    --next-ink: #2a0a2e;
     --shadow: 0 1px 2px rgba(0, 0, 0, .4);
     color-scheme: dark;
   }
@@ -368,6 +372,14 @@ table.preview tr.header-row td { color: var(--muted); font-style: italic; }
 .descriptor { margin: 4px 0 0; font-size: .875rem; line-height: 1.4; white-space: pre-wrap; }
 .grade-card .comment { margin: 12px 0; }
 .grade-card #next-paper { width: 100%; }
+/* Which question this is, and the move to the next one, must not be missed:
+   an answer read against the wrong question looks like a very wrong answer. */
+.question-name { color: var(--next); font-size: 1.5rem; font-weight: 800; }
+.btn.next-question { background: var(--next); border-color: var(--next); color: var(--next-ink); font-size: 1.3rem; font-weight: 800; }
+.btn.next-question:hover { filter: brightness(1.08); }
+.last-paper { color: var(--next); font-weight: 700; }
+.now-grading { margin: 0 0 10px; padding: 8px 16px; border-radius: var(--radius); background: var(--next); color: var(--next-ink);
+  font-size: 1.4rem; font-weight: 800; text-align: center; }
 
 @media (max-width: 1000px) {
   .grade-layout { grid-template-columns: 1fr; }

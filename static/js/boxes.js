@@ -600,15 +600,18 @@ function sidePanel(d, c, drawingOn) {
     else actions.append(button(t("step2.boxes.skip_name"), () => { d.name_box_skipped = true; saveQuestions(); gotoNextQuestion(d); }, "ghost"));
   } else {
     const n = nextQuestionNumber(d);
+    const addNext = (newSection) => {
+      if (!item.boxes.length) { toast(t("step2.boxes.draw_first"), "error"); return; }
+      const q = addQuestion(d);
+      app.draft.current = q.id;
+      app.draft.addMode = false;
+      if (newSection) startSection(d, q);
+      saveQuestions();
+      render();
+    };
     actions.append(
-      button(t("step2.boxes.save_and_next", { label: item.label || "?", n }), () => {
-        if (!item.boxes.length) { toast(t("step2.boxes.draw_first"), "error"); return; }
-        const q = addQuestion(d);
-        app.draft.current = q.id;
-        app.draft.addMode = false;
-        saveQuestions();
-        render();
-      }, "primary"),
+      button(t("step2.boxes.save_and_next", { label: item.label || "?", n }), () => addNext(false), "primary"),
+      button(t("step2.boxes.save_and_section", { label: item.label || "?", n }), () => addNext(true)),
       button(t("step2.boxes.all_done"), async () => {
         const ready = d.questions.filter((q) => q.boxes.length);
         if (!ready.length) { toast(t("step2.boxes.draw_first"), "error"); return; }

@@ -80,9 +80,11 @@ function firstPage(qid) {
 }
 
 // Moving to another paper or question keeps the whole-page view if the
-// teacher chose it, opened at the question's page.
+// teacher chose it, opened at the question's page. "Now grading" shows only on
+// the paper that "Go to Qn" lands on.
 function moveTo(changes) {
   const d = draft();
+  d.arrived = false;
   Object.assign(d, changes);
   d.revealed = null;
   d.page = firstPage(d.qid);
@@ -251,6 +253,7 @@ export function renderStep4() {
   return h("main", { class: "page full grading" },
     questionBar,
     strip,
+    d.arrived && !allDone ? h("div", { class: "now-grading", role: "status" }, t("step4.now_grading", { label: itemLabel(item) })) : null,
     h("div", { class: "grade-layout" },
       viewer(c, d, item, student),
       h("aside", { class: "grade-card-col" }, allDone ? doneCard(c, item) : gradeCard(c, d, item, student))));
@@ -277,6 +280,7 @@ function viewer(c, d, item, student) {
   const nextId = nextStudentId(c, d, 1);
   const head = h("div", { class: "viewer-head" },
     h("div", { class: "row" },
+      h("span", { class: "question-name" }, itemLabel(item)),
       button(["◀ ", t("step4.prev_paper")], () => moveTo({ sid: prevId }), "small", { disabled: !prevId }),
       h("strong", {}, t("step4.paper_of", { n: index + 1, total: c.students.length })),
       nameOrReveal(d, student),
@@ -428,7 +432,7 @@ function gradeCard(c, d, item, student) {
   const nextId = nextStudentId(c, d, 1);
   const outOf = r ? "" : t("step4.out_of", { max: q.max });
   return h("section", { class: `card grade-card ${value !== null ? "graded" : ""}` },
-    h("h2", {}, itemLabel(item), outOf ? h("span", { class: "muted" }, " · ", outOf) : null),
+    h("h2", {}, h("span", { class: "question-name" }, itemLabel(item)), outOf ? h("span", { class: "muted" }, " · ", outOf) : null),
     hideNames() && d.revealed !== student.id ? null : h("p", { class: "muted small" }, student.display_name),
     grading,
     h("div", { class: "row" },
@@ -479,12 +483,12 @@ function criterionTabs(crit, q, student, current) {
 function lastPaperActions(c, d, item) {
   const list = items(c);
   const next = list[list.findIndex((x) => x.q === item.q && x.r === item.r) + 1];
-  return [h("p", { class: "muted" }, t("step4.last_paper")),
+  return [h("p", { class: "last-paper" }, t("step4.last_paper", { label: itemLabel(item) })),
     next
       ? button(t("step4.go_to_question", { label: itemLabel(next) }), () => {
         saveComment.flush();
-        moveTo({ qid: next.q.id, rid: next.r?.id || null, sid: firstFor(c, d, next) });
-      }, "primary big", { id: "next-paper" })
+        moveTo({ qid: next.q.id, rid: next.r?.id || null, sid: firstFor(c, d, next), arrived: true });
+      }, "next-question big", { id: "next-paper" })
       : button(t("step4.to_review"), () => { saveComment.flush(); goTo(5, { next: true }); }, "primary big", { id: "next-paper" })];
 }
 
@@ -496,8 +500,8 @@ function doneCard(c, item) {
       ? [h("p", {}, t("step4.next_question_hint", { label: itemLabel(remaining) })),
         button(t("step4.go_to_question", { label: itemLabel(remaining) }), () => moveTo({ qid: remaining.q.id,
           rid: remaining.r?.id || null,
-          sid: firstFor(c, { ungradedOnly: true }, remaining) }),
-        "primary big", { id: "next-paper" })]
+          sid: firstFor(c, { ungradedOnly: true }, remaining), arrived: true }),
+        "next-question big", { id: "next-paper" })]
       : [h("p", {}, t("step4.everything_done")),
         button(t("step4.to_review"), () => goTo(5, { next: true }), "primary big", { id: "next-paper" })],
     h("p", { class: "muted small" }, t("step4.show_all_hint")));
