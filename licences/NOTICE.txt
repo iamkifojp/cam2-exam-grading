@@ -14,8 +14,8 @@ CAM2's source code for every download is at:
     https://github.com/iamkifojp/cam2-exam-grading
 
 Each download has a matching tag there, named after the version in the zip's
-file name. For example, CAM2-exam-grading-Windows-v0.2.0-dev.zip matches the
-tag v0.2.0-dev. The build scripts are included, in tools/.
+file name. For example, CAM2-exam-grading-Windows-v0.3.0-dev.zip matches the
+tag v0.3.0-dev. The build scripts are included, in tools/.
 
 The source code of PyMuPDF 2.0 and of MuPDF 1.28.5, the library inside it, is
 attached to the same release as each download on that page's Releases list, as

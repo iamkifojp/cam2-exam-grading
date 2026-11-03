@@ -1,6 +1,6 @@
 # CAM2 — Exam Sections & Report Options (Implementation Plan)
 
-> **Status:** agreed design (2026-11-02). Phases 1 to 6, the engine, the screens, the report and the gradebook, are built (2026-11-03). Phase 7, testing, has its sample exams; the test builds are next. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
+> **Status:** agreed design (2026-11-02). Phases 1 to 6, the engine, the screens, the report and the gradebook, are built (2026-11-03). Phase 7, testing, has its sample exams, tried on Windows; the test build for colleagues is `v0.3.0-dev`. It adds to [PLAN.md](PLAN.md), which has been brought into line with it; for the details of sections, mixed papers and the report, this plan is the one to read.
 
 ---
 
@@ -253,7 +253,7 @@ Each phase ends with its tests passing, and with `CHANGELOG.md` and `ARCHITECTUR
 - **Exam 1:** a marks-only exam with no sections, checking that no rubric screens appear; then one criterion across three marks sections, with marks entered first and criteria added later.
 - **Exam 2:** several criteria with a mix of marks and rubric questions, with rubrics entered first and marks added later.
 
-*Part 2: test builds, tested by colleagues.* Make the Windows build here and the Mac build on the MacBook Air, and share them with colleagues along with the sample exams, on Windows and on a Mac. A real scanned paper is tried when a colleague has one. **Real papers stay out of the repository.**
+*Part 2: test builds, tested by colleagues.* Make the Windows build here and the Mac build on the MacBook Air, both from one commit, and put them on one release (`v0.3.0-dev`) with the sample exams as a zip, for colleagues on Windows and on a Mac. A real scanned paper is tried when a colleague has one. **Real papers stay out of the repository.**
 
 ---
 

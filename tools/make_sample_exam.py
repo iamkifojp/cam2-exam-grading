@@ -320,7 +320,7 @@ def _guide_text(language: str) -> dict:
             "new": "新しいセッションで「{combined}」を選び、exam-whole-class.pdf を指定します。1人のページ数は 4 です。",
             "exam1": "試験1：点数だけ → あとから基準とセクションを追加", "exam2": "試験2：ルーブリックから始める → あとから点数を追加（点数とルーブリックの混在）",
             "e1": ["はじめ方で「{marks}」を選びます。配点は Q1 10点、Q2 6点、Q3〜Q7 各8点です。",
-                   "<b>確認：</b>ルーブリックの画面が一度も出てこないこと。全問を採点すると、合計が下の「試験1 合計」と同じになること。レポートに基準やセクションが出ないこと。",
+                   "<b>確認：</b>ルーブリックの画面に一度も案内されないこと（「任意」と書かれたタブは表示されたままです）。全問を採点すると、合計が下の「試験1 合計」と同じになること。レポートに基準やセクションが出ないこと。",
                    "設問の設定に戻り、「{add_criteria}」から rubrics.xlsx をアップロードします。切り取りの表で全問に基準Aのチェックを入れ、Q2とQ4の行で「{start_short}」を押します。",
                    "<b>確認：</b>切り取り直しが不要で、採点が残っていること。",
                    "確認と出力で「{weighting}」「{overall}」にチェックを入れます。比重は 34・33・33 になります。",
@@ -352,7 +352,7 @@ def _guide_text(language: str) -> dict:
         "exam1": "Exam 1: marks only, then add criteria and sections later",
         "exam2": "Exam 2: start from a rubric, then add marks later (a mixed paper)",
         "e1": ["On the first screen choose “{marks}”. Marks: Q1 10, Q2 6, Q3 to Q7 8 each.",
-               "<b>Check:</b> no rubric screen ever appears. When all are graded, each total matches “Exam 1 total” below. "
+               "<b>Check:</b> you are never sent to a rubric screen (its tab stays there, marked optional). When all are graded, each total matches “Exam 1 total” below. "
                "The report shows no criteria or sections.",
                "Go back to Set up questions. Use “{add_criteria}” to upload rubrics.xlsx. In the Slice screen's table, tick "
                "Criterion A on every question, and press “{start_short}” on the Q2 and Q4 rows.",

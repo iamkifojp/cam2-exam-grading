@@ -3,7 +3,7 @@
 > **Working Directory:** `C:\Project\cam2-exam-grading` (GitHub: `iamkifojp/cam2-exam-grading`)
 > **Forked From:** `C:\Project\criterion-assessment-metrics-public` — grid maths and slicing (`cam_grading_workspace/exam_engine.py`), the save-safety layer (`engine/persistence.py`), the native folder picker (`engine/folder_dialog.py`) and the portable bundle builder (`tools/build_windows_bundle.py`).
 > **Status:** v7. Revised after a review. Adds Windows and Mac packages, A4/B5/A3 paper sizes with a 5 mm grid, a "see whole page" viewer, answer boxes that span several pages, choice questions ("answer 2 of 3"), rubric levels you can set yourself, report-only totals, a fully bilingual app (EN/日本語) and CAM's save-safety checks.
-> **Next feature:** exam sections and report options, planned in [Exam-Section-Plan.md](Exam-Section-Plan.md).
+> **Exam sections and report options** are built, and this plan has been brought into line with them. The details are in [Exam-Section-Plan.md](Exam-Section-Plan.md). The current test build is `v0.3.0-dev`.
 
 ---
 
@@ -19,9 +19,9 @@ A teacher who has never seen CAM2 can grade a stack of scanned exams:
  Start screen:  ▶ Continue a session  |  ✨ Start a new session
                                    │
  ① Exam & scans ─▶ ② Set up questions ─▶ ③ Match names ─▶ ④ Grade ─▶ ⑤ Review & export
-   name, paper size,   marks or rubric,      name crops +       overlay,      totals/averages,
-   save folder,        drag boxes, choice    class list         whole-page    student PDFs +
-   thumbnails check    questions                                viewer        Excel gradebook
+   name, paper size,   marks and criteria,   name crops +       overlay,      totals, report options,
+   save folder,        drag boxes, sections, class list         whole-page    student PDFs +
+   thumbnails check    choice questions                         viewer        Excel gradebook
 ```
 
 ---
@@ -68,16 +68,18 @@ Everything that decides where files live is settled here, before anything is wri
      - **Booklets:** *This sheet is upside down* and *This sheet's front and back are swapped* fix the whole sheet and unfold it again (an upside-down sheet also swaps its left and right halves, so turning single pages would not be enough). *This booklet's sheets are in reverse order* fixes one booklet that was stacked the other way from the rest, so nobody has to re-scan.
      - A paper with grades or comments can't be changed. If the papers are already sliced, the changed ones are sliced again at once.
      - Re-scanning from the first wrong paper is still offered.
-6. **Copying the scans** puts them into the session folder under `scans/`, or saves the split PDFs there. This makes the session complete in itself: it can be moved to another computer, and the whole-page viewer always works. From the check screen the teacher continues with **Looks right — continue →**, or chooses **Choose different scans**, which replaces them.
+6. **Copying the scans** puts them into the session folder under `scans/`, or saves the split PDFs there. This makes the session complete in itself: it can be moved to another computer, and the whole-page viewer always works. From the check screen the teacher continues with **Looks okay — continue →**, or chooses **Choose different scans**, which replaces them.
 7. **＋ Add more papers** (also **Add a late student's paper** in Step ⑤): for a student who sat the exam later. It can be used at any time, even after grading has started. New papers go after the others and start from the class's layout and page count. If the class is sliced, the new papers are sliced at once, so they can be graded straight away. Set-up, names and grades are kept. Page fixes on late papers never reach into the class's stack.
 
 ### Step ② Set Up the Questions (on the first student's paper)
 
-**2A — How will you grade this exam?** Two big cards:
+**2A — How will you grade most of this exam?** Two big cards:
 - **🔢 Marks:** each question is worth points; totals add up automatically.
 - **📋 Rubric:** each question gets a level from a rubric, for example 0–8.
 
-**2B — Rubric (only in Rubric mode).** CAM2 ships **no built-in rubrics**. The teacher either types or pastes their own, or uploads an Excel file.
+This is only where the teacher starts: it sets what the question card asks for first, and changing it later changes no question and no grade. Each question grades its own way: with marks if its marks box is filled in, and with rubric levels if the box is empty and a criterion is ticked. A paper can mix the two.
+
+**2B — Rubric (always there, and marked optional for a teacher who started from Marks).** CAM2 ships **no built-in rubrics**. The teacher either types or pastes their own, or uploads an Excel file.
 - **Type or paste:** one card per criterion or rubric, with a *Criterion name* box (e.g. `Criterion A` or `基準A`).
   - The card starts with five rows, `0`, `1–2`, `3–4`, `5–6` and `7–8`, each with a **Levels** box and a **Descriptor** box. All of it can be edited, and rows can be added or removed, so a teacher can use `1`, `2`, `3`, `4`, or `0–8` as single numbers, or any bands they like.
   - A **Levels** entry must be one number (`3`) or a range (`5-6`, `5–6`, `5〜6`; full-width digits are accepted). The highest number becomes that rubric's maximum, so a rubric can run 0–8, 0–4 or whatever the teacher needs.
@@ -105,16 +107,17 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
    - **+ Add another box** for an answer that continues on another page or in another area. The boxes are stacked top-to-bottom into one image, with a thin divider line between them.
    - The **question card** beside the page shows:
      - **Label:** `Q1`, editable.
-     - **Marks mode:** *"How many marks is Q1 worth?"* The cursor is already in this box.
-     - **Rubric mode:** *"Which criteria does Q1 assess?"*, a tick box per criterion. Ticked already when there is only one. One question can be assessed on several criteria (e.g. B and C) and then gets a level for each.
+     - **Marks:** *"How many marks is Q1 worth?"*, or, for a teacher who started from Rubric, *"Marks for Q1 (optional). Leave empty to grade with levels."*
+     - **Criteria:** *"Which criteria does Q1 assess?"*, a tick box per criterion. Until the exam has a rubric this is a small **Add criteria (optional)** link. One rubric question can be assessed on several criteria (e.g. B and C) and then gets a level for each. A marks question with a criterion ticked still gets one mark, which counts towards that criterion.
    - **Check on other papers:** a strip showing this box cropped from three other students' papers, so a box that is too tight is obvious right away.
-   - **+ Save Q1 & add Question 2** or **✓ All questions added**.
+   - **+ Save Q1 & add question 2**, **+ Save Q1 & start a new section at question 2**, or **✓ All questions added**.
    - **Forgot to press "next"?** If a box is drawn somewhere that doesn't overlap the current item's box on that page, CAM2 asks *"A new question, or move the box?"*. This was added after browser testing showed how easily a box got replaced by mistake.
    - **Question order:** the selected question in the *So far* list has **↑ ↓** buttons. A question missed and added later can be moved back into place. Grading, the review table, the student PDFs and the gradebook all follow this order. Grades are stored per question, not per position, so moving is safe at any time, even after grading, and does not need re-slicing. Labels that are all CAM2's own (`Q1`, `Q2`…) are renumbered to match; if any label was typed by the teacher, labels are left alone.
+   - **Sections (optional):** **Start a new section here** in the question list adds a divider, and a section can have a name. A question past a divider is in that section.
 
-**2D — Choice questions (optional).** *"Do students choose which questions to answer (e.g. answer 2 of 3)?"* The answer defaults to **No**. **Yes** lets the teacher tick the questions in the group and enter how many students must answer. Several groups are allowed. Each group also says what happens when a student answers more than that: **Count the best N** (default) or **I choose which count**, which puts an amber **choose which count** button under that student's name in Step ⑤.
+**2D — Choice questions (optional).** *"Do students choose which questions to answer (e.g. answer 2 of 3)?"* The answer defaults to **No**. **Yes** lets the teacher tick the questions in the group and enter how many students must answer. Several groups are allowed. Each group also says what happens when a student answers more than that: **Count the best N** (default) or **I choose which count**, which puts an amber **choose which count** button under that student's name in Step ⑤. A choice group must stay inside one section and all grade the same way.
 
-**2E — Slice.** **Slice all papers →** shows a progress bar. Crops are saved into the session folder.
+**2E — Slice.** The list of questions is an editable table: marks, a tick per criterion, how each question will be graded, and where a new section starts. Filling these in never needs slicing again. On a mixed paper CAM2 names the questions graded with rubric levels, so a forgotten marks box isn't taken for one. **Slice all papers →** shows a progress bar. Crops are saved into the session folder.
 
 ### Step ③ Match Student Names
 - **Class list (optional):** upload `.xlsx` or `.csv`, or paste names one per line.
@@ -140,12 +143,12 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
   - **💾 Save** with *"Saved ✓ 15:42"* beside it.
   - **Save & close session**, which returns to the start screen.
 - **Left: the answer image** for this student and question, with mouse-wheel zoom.
-  - **Grade overlay:** once a grade is given, a bold badge sits over the top-right corner of the image and the card border turns green. The badge shows `4 / 5` in Marks mode, `6 / 8 · 5–6` in Rubric mode, or `—` for *Not answered*. For a question on several criteria it lists each one (`Criterion B: 6 / 8 · 5–6`, `Criterion C: —`). The overlay is drawn on screen only; the crop files are never changed.
+  - **Grade overlay:** once a grade is given, a bold badge sits over the top-right corner of the image and the card border turns green. The badge shows `4 / 5` on a marks question, `6 / 8 · 5–6` on a rubric question, or `—` for *Not answered*. For a question on several criteria it lists each one (`Criterion B: 6 / 8 · 5–6`, `Criterion C: —`). The overlay is drawn on screen only; the crop files are never changed.
   - **🔍 See whole page:** opens the student's full page with this question's box outlined, with page arrows. The grading card stays usable, so a badly cropped answer can be graded straight from the full page.
 - **Right: the grading card** has three controls and nothing else:
   1. **Grade:**
-     - **Marks mode:** big buttons `0 … max`. For maximums above 15, a number box with **–** and **+** buttons instead.
-     - **Rubric mode:** one card per band showing its descriptor. Inside each card is a button for every level in that band; for example, the `5–6` card has `[5]` and `[6]`.
+     - **A marks question:** big buttons `0 … max`. For maximums above 15, a number box with **–** and **+** buttons instead.
+     - **A rubric question:** one card per band showing its descriptor. Inside each card is a button for every level in that band; for example, the `5–6` card has `[5]` and `[6]`.
      - **A question on several criteria** is graded one criterion at a time: the question list has `Q2 · Criterion B` and `Q2 · Criterion C` as separate items, so the teacher grades B across the class and then C. Tabs at the top of the card switch criterion on the same paper and show each criterion's level. *Not answered* applies to every criterion of the question, and the comment is shared.
   2. **Not answered:** counts as 0, except in a choice group, where the question is left out (see §3).
   3. **Comment (optional):** one text box, with **quick comments** above it: tick boxes for common feedback (*Strengths* and *Areas to develop*) that write one generated line at the top of the comment and keep the teacher's own text. **✎ Edit list** sets the exam's list.
@@ -154,24 +157,29 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
   keyboard focus moves to it, but CAM2 doesn't move on by itself, so there's
   still time to add a comment. When every paper has a grade for a question,
   the card offers **Go to Q2 →**.
-- **Marks or rubric is fixed** once any paper has a grade.
+- **A question with a grade can't switch** between marks and rubric levels, because the two can't be converted. Its marks can still be corrected, as long as they stay at or above the highest grade given. Every other question stays open.
 - **Next: Review & export →**
 
 ### Step ⑤ Review & Export
 **Review table**, one row per student. Any ungraded cell is amber; clicking it jumps back to grading.
-- **Marks:** `Name | Q1 | Q2 | … | Calculated total (34 / 40 · 85%) | Total on report | Overall comment`
-- **Rubric:** `Name | Q1 | Q2 | … | Average (5.7) | Final level (editable, pre-filled 6) | Overall comment`
-  - With more than one criterion, the table has an **Average** and **Final** pair per criterion.
-  - A question on several criteria has one column per criterion (`Q2 / Criterion B`, `Q2 / Criterion C`).
-- Editing a **question** cell changes that grade, exactly as in Step ④.
-- **Total on report** and **Final level** start as the calculated values. If the teacher changes one, the change appears **only on the student PDF**, and the cell is marked "adjusted". CAM2 always keeps the calculated value as well, and both are stored in the Excel gradebook.
+- **The columns put decisions first:** `Name | Calculated (34 / 40 · 85.0%) | Total on report | each criterion and its final level | Overall comment | section results | Q1 | Q2 | …`. The name stays frozen on the left. A section and a criterion only get columns when they apply.
+  - A rubric question on several criteria has one column per criterion (`Q2 / Criterion B`, `Q2 / Criterion C`).
+- **Clicking a grade** (or an amber "?") opens it in Step ④, which then offers **Back to review**.
+- **Total on report** starts as the calculated value. If the teacher changes it, the change appears **only on the student PDF**, and the cell is marked "adjusted". CAM2 always keeps the calculated value as well, and both are stored in the Excel gradebook.
+- **Overall criterion results** (off by default, offered when the exam uses criteria) gathers each criterion's marks and grades (`Marks 6 / 10 · 60.0%`, `Grades B6, B5`) beside a **final level** the teacher types. It starts blank, and a blank one does not print.
+- **Weight the sections** (when two or more sections have marks) gives each section a share of the paper. The shares always add up to 100%. The table then shows percentages, and **% on report** replaces **Total on report**.
 
 **Export:**
 - **Report language:** English or 日本語. The default is the app's language.
-- **📄 One PDF per student** goes into `reports/student_pdfs/`.
-  - **Header:** exam name, date, student name, and the total (`34 / 40`) or final level(s), with one line per question and the overall comment. No handwritten name crop.
-  - **Rubric (Rubric mode):** each rubric's levels and descriptors, printed **once** under the header, so students can look up their level themselves instead of the same descriptor repeating under every answer.
-  - **Body:** one row per question: the label, the answer image, and the grade **beside** it (never over the student's writing). Rubric mode shows just the level (`6`); Marks mode shows `4 / 5`. Below the row, only the teacher's comment.
+- **What goes on the report:** section results, overall criterion results, the rubric table, overall marks and percentage, and answer images section by section. Each is hidden when it doesn't apply. **See one report first** opens one student's PDF without touching the reports folder.
+- **A warning above the buttons** says what each one replaces, and CAM2 names the students with a blank final level when others have one.
+- **📄 One PDF per student** goes into `reports/student_pdfs/`, in this order:
+  - **Header:** exam name, date and student name. No handwritten name crop.
+  - **Results:** the overall line, with a row per section if Section results is on.
+  - **Rubric:** each rubric used, with its levels and descriptors, printed **once**, so students can look up their level themselves instead of the same descriptor repeating under every answer. With Overall criterion results on, a box beside it holds the final level, marks and grades, and the final level's band is shaded.
+  - **Overall comment,** if there is one.
+  - **Questions, grouped by section:** one row per question: the label, the answer image, and the grade **beside** it (never over the student's writing). A rubric question shows `B5`, or `Knowledge 5` when the criterion's name doesn't end in a single letter; a marks question shows `4 / 5`. Below the row, only the teacher's comment. A section with its images off prints a grid of grades instead.
+  - **What is blank does not print.**
   - **File name:** `<Student Name>_<Exam Name>.pdf`, so the teacher can see at once who to send it to.
     - Characters that file names can't contain are replaced.
     - A duplicate name gets ` (2)`.
@@ -179,9 +187,10 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
 - **📊 Master Excel gradebook** `reports/<Exam Name>_Master_Grades.xlsx`:
   - **Sheet 1, Grades & Comments:**
     - Frozen header, wrapped comments.
-    - Per question: grade and comment (a question on several criteria has a grade column per criterion, `Q2 · Criterion B`). Then the calculated total or average, the reported total or final level (with an "adjusted" flag) and the overall comment.
+    - Per question: grade and comment (a rubric question on several criteria has a grade column per criterion, `Q2 · Criterion B`). Then each section's marks and percentage when two or more sections have marks, the calculated total and the total on report (with an "adjusted" flag), the final levels with Overall criterion results on, and the overall comment.
+    - With weighting on, only percentages are given overall, with each section's weighted marks.
     - Class average, maximum and minimum rows at the bottom.
-  - **Sheet 2, Questions & Rubrics:** each question's maximum, its choice groups, and every rubric with its levels and descriptors.
+  - **Sheet 2, Questions & Rubrics:** each question's maximum, its choice groups, the sections with their questions, marks and shares, and every rubric with its levels and descriptors.
 
 ---
 
@@ -192,10 +201,12 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
 | Marks: question score | A whole number from 0 to the question's maximum. *Not answered* = 0. |
 | Marks: choice group "answer N of M" | N scores count. The group's maximum is the sum of the N largest question maximums. A student who answers more than N gets the best N, or, when the choice is set to **I choose which count**, the N the teacher ticks in Step ⑤ (until then the choice counts nothing and the student is incomplete). |
 | Marks: total | Ordinary questions plus each choice group's contribution. Percentage to 1 decimal place. |
-| Rubric: criterion average | Average of every level given for that criterion, including from questions assessed on several criteria. *Not answered* = 0, but in a choice group only the best N count (questions on several criteria rank by the sum of their levels). Shown to 1 decimal place. |
-| Rubric: suggested final | Average **rounded half up**, so 4.5 → 5 and 5.5 → 6. Python's `round()` must not be used, because it rounds halves to even (`round(4.5) == 4`). |
+| Marks: sections and weighting | Each section's marks become a percentage of that section, counted at its share of the paper. Worked out exactly and rounded once, at the end. Details in [Exam-Section-Plan.md](Exam-Section-Plan.md) §3. |
+| Rubric: levels | **Reported as given** (`B5`), and never averaged, totalled or added to marks. *Not answered* = 0, but in a choice group only the best N count (questions on several criteria rank by the sum of their levels). |
+| Final level | Optional, and always typed by the teacher. It must be a level in one of the rubric's bands. Blank does not print. |
+| Rounding | **Half up**, so 4.5 → 5 and 5.5 → 6. Python's `round()` must not be used, because it rounds halves to even (`round(4.5) == 4`). |
 | Ungraded question | Not counted. The student is flagged *incomplete* in Step ⑤ and in Excel. |
-| Report override | Changes only the student PDF. The calculated value is kept and exported alongside it. |
+| Report override | Changes only the student PDF, as a total, or as a percentage with weighting on. The calculated value is kept and exported alongside it. |
 
 ---
 
@@ -212,7 +223,7 @@ The session folder may live on a local disk, a USB stick, or any synced cloud fo
   - A `cam2.lock` file (computer name and time, refreshed while the session is open) gives an early warning: *"This session looks open on LAPTOP-123."*
 - **Cloud conflict copies:** files such as `grades-LAPTOP.json` (OneDrive), `grades (1).json` (Google Drive) and `grades (conflicted copy).json` are detected, and the teacher is told before any save.
 - **Wipe guard:** a save that would remove most existing grades is refused unless the teacher confirms it.
-- **Daily backups:** `backups/grades.json.bak-YYYYMMDD` is written inside the session folder, and the last 14 are kept.
+- **Daily backups:** `backups/<file>.bak-YYYYMMDD` is written inside the session folder for each of the two JSON files, and the last 14 of each are kept.
 - **Paths inside the session are relative**, so a moved or copied session folder still opens.
 - **Recent-sessions list** lives in the app data folder: `%LOCALAPPDATA%\CAM2 Exam Grading\` on Windows and `~/Library/Application Support/CAM2 Exam Grading/` on Mac. It is never in the app folder, so it survives a new version being unzipped.
 
@@ -251,6 +262,8 @@ cam2-exam-grading\
 ├── PLAN.md
 ├── README.md
 ├── requirements.txt            # Flask, Pillow, PyMuPDF, openpyxl  (no python-docx)
+├── requirements-build.txt      # exact versions for building the downloads
+├── licences\                   # AGPL text and the libraries' notices, copied into each zip
 ├── app.py                      # Flask server & REST API
 ├── appstate.py                 # the open session + background jobs (import, slicing)
 ├── launcher.py                 # single-instance check, free port, open browser, idle shutdown
@@ -262,7 +275,9 @@ cam2-exam-grading\
 │   ├── storage.py              # session folder, safe save, conflicts, lock, backups, recent list (from persistence.py)
 │   ├── rubrics.py              # teacher rubrics: level parsing, Excel import, blank template
 │   ├── roster.py               # class list import (xlsx/csv/paste, column picker) & name matching
-│   ├── grading_summary.py      # totals, choice groups, averages, round-half-up, report overrides
+│   ├── grading_summary.py      # totals, choice groups, sections and shares, criterion marks, round-half-up, report overrides
+│   ├── keywords.py             # quick comments while grading
+│   ├── host.py                 # opening one exam for CAM
 │   ├── reports.py              # per-student PDFs (PyMuPDF, built-in CJK font, subset)
 │   ├── gradebook_xlsx.py       # Master Excel gradebook (openpyxl)
 │   ├── i18n.py                 # loads i18n/en.json, i18n/ja.json
@@ -273,9 +288,13 @@ cam2-exam-grading\
 ├── static\  templates\         # single-page wizard UI
 ├── tests\
 └── tools\
-    ├── build_windows.py        # ported from build_windows_bundle.py
-    ├── build_mac.py
-    └── make_sample_scans.py    # fake papers + class list for trying CAM2 out
+    ├── cam2.spec               # the PyInstaller recipe
+    ├── build_windows.py        # the Windows zip
+    ├── build_mac.py            # the Apple Silicon Mac zip
+    ├── build_quick_guide.py    # the quick guide PDF in each zip
+    ├── guide_images\           # screenshots for the Mac quick guide
+    ├── make_sample_scans.py    # fake papers + class list for trying CAM2 out
+    └── make_sample_exam.py     # a whole made-up exam (EN and JA) with a test guide
 ```
 
 ### Session folder (chosen by the teacher in Step ①)
@@ -289,7 +308,7 @@ cam2-exam-grading\
 ├── scans\                # copied scans or split PDFs (needed for "See whole page")
 ├── crops\                # __name__\s001.png, q1\s001.png … (ids, so renaming Q1 breaks nothing)
 ├── thumbs\               # page-1 thumbnails for Step ①
-├── backups\              # daily grades.json backups (last 14)
+├── backups\              # daily backups of the two JSON files (last 14 of each)
 └── reports\
     ├── <Exam>_Master_Grades.xlsx
     └── student_pdfs\     # <Student Name>_<Exam Name>.pdf
@@ -360,7 +379,12 @@ cam2-exam-grading\
 - **The zip:** made with `ditto`, because `shutil.make_archive` would break the links and signature inside the `.app`. The builder checks the app from a copy unzipped again.
 - **The first-run approval:** tried on 2026-11-02 with a zip really downloaded through a browser, on macOS 27 in English. The Mac blocks the `.app` (**Done**); System Settings → Privacy & Security → Security has **Open Anyway**; a message asks again (**Open Anyway**); then the password; then CAM2 opens. The READ ME and quick guide follow this, and the guide shows it with screenshots from `tools/guide_images`. The Japanese button names haven't been seen on a Mac in Japanese yet, and the screenshots are in English.
 - **Licences:** both downloads carry the same files. The finished bundle's Python packages and libraries were checked against `licences/NOTICE.txt` and `licences/THIRD-PARTY-NOTICES.txt`.
-- **Releasing it:** the pre-release `v0.2.0-dev` (tag at `ff89abf`) has both zips and the two source archives. For each new version, build the Windows and Mac zips from one commit and tag that commit with the version in the zip names. Attach both zips to the release, with the two source archives `licences/NOTICE.txt` names: `pymupdf-2.0.tar.gz` (PyPI) and `mupdf-1.28.5-source.tar.gz` (mupdf.com).
+- **Releasing it:** the pre-release `v0.2.0-dev` (tag at `ff89abf`) has both zips and the two source archives. For each new version:
+  1. Change `VERSION` in `app.py`, update the documents, and commit and push. Anything committed after this isn't in the downloads.
+  2. Build the Windows zip from that commit. On the Mac, `git pull` and check that `git rev-parse HEAD` shows the same commit, then build the Mac zip.
+  3. Copy the Mac zip to Windows as it is, without unzipping it there. A zip made again on Windows would break the links and signature inside the `.app`.
+  4. Make the sample exams with `python tools/make_sample_exam.py test-folder`, and zip only `sample-exam-en` and `sample-exam-ja` as `CAM2-sample-exam-v<version>.zip`.
+  5. Tag the commit with the version in the zip names and make a pre-release on GitHub. The zips are attached to the release and never committed (`dist/` and `*.pdf` are git-ignored). Attach both zips and the sample exams, with the two source archives `licences/NOTICE.txt` names: `pymupdf-2.0.tar.gz` (PyPI) and `mupdf-1.28.5-source.tar.gz` (mupdf.com). While the libraries are unchanged, these can be copied from the last release.
 
 ---
 

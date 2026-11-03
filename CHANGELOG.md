@@ -6,6 +6,33 @@ year-month-day.
 
 ## [Unreleased]
 
+## [0.3.0-dev] - 2026-11-03
+
+The test build for colleagues, with exam sections, mixed papers and the new report.
+Session files are version 2, so sessions from `v0.2.0-dev` open and are upgraded, but
+once saved here `v0.2.0-dev` can no longer open them.
+
+### Documents for the test build (2026-11-03)
+
+#### Added
+- **The quick guide** says to give each question marks or a criterion, and to choose
+  what goes on the report.
+- **READ ME FIRST** says what happens to sessions from an older version.
+- **`/api/prefs`, `test_host.py` and `--port`** in ARCHITECTURE.md and the README.
+
+#### Changed
+- **The version is now `0.3.0-dev`,** as `v0.2.0-dev` already has its downloads on
+  the Releases page.
+- **PLAN.md now describes the app as built:** the starting choice, the question card,
+  the review table, the report, the gradebook and the calculations follow
+  [Exam-Section-Plan.md](Exam-Section-Plan.md), and rubric averages and suggested
+  levels are gone.
+- **The steps for making a release** in PLAN.md now include the sample exams.
+- **Step 2's hint and the quick guide** say to box each question and its answer, as the
+  screen itself does, not just the answer.
+- **The test guide** no longer calls the optional rubric tab a failure: the check is
+  that a marks teacher is never sent to a rubric screen.
+
 ### Clearer screens after testing the sample exam (2026-11-03)
 
 #### Added
@@ -226,6 +253,10 @@ the app yet.
 - **Rubric averages and suggested levels**, from the engine, the review screen
   and the gradebook. A level is a best-fit judgement, not arithmetic.
 - **`mode_locked`** and `rubric_missing`.
+
+## [0.2.0-dev] - 2026-11-02
+
+The first test build, and everything before it.
 
 ### Phase 5: Windows and Mac packages (2026-11-02)
 

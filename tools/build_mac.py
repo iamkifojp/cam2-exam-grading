@@ -54,7 +54,8 @@ you close the tab by accident, double-click "Start CAM2 Exam Grading" again.
 
 You can move the whole folder anywhere. For a new version, unzip it and delete
 the old folder: your sessions and recent list are kept, because they are stored
-elsewhere.
+elsewhere. Sessions from an older version open in this one, but once saved here,
+the older version can no longer open them.
 
 If something goes wrong, the log is at:
     ~/Library/Application Support/CAM2 Exam Grading/logs/cam2.log
@@ -99,7 +100,8 @@ CAM2を終了するには、スタート画面の「CAM2を終了」をクリッ
 
 フォルダーごとであれば、どこへでも移動できます。新しいバージョンにするときは、
 展開してから古いフォルダーを削除してください。採点データと最近の一覧は別の場所に
-保存されているため、そのまま残ります。
+保存されているため、そのまま残ります。以前のバージョンの採点データもこのバージョン
+で開けますが、ここで保存すると以前のバージョンでは開けなくなります。
 
 問題が起きたときのログの場所：
     ~/Library/Application Support/CAM2 Exam Grading/logs/cam2.log

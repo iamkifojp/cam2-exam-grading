@@ -41,10 +41,10 @@ ENGLISH = """
 <h2>The five steps</h2>
 <ol>
 <li><b>Exam &amp; scans:</b> name the exam, choose the scans and where to save.</li>
-<li><b>Set up questions:</b> draw a box around each answer on the first paper.</li>
+<li><b>Set up questions:</b> draw a box around each question and its answer on the first paper, and give it marks or a criterion.</li>
 <li><b>Match names:</b> match each paper to a student.</li>
 <li><b>Grade:</b> grade one question at a time.</li>
-<li><b>Review &amp; export:</b> check totals and make the student reports and Excel gradebook.</li>
+<li><b>Review &amp; export:</b> check the results, choose what goes on the report, and make the student reports and Excel gradebook.</li>
 </ol>
 
 <h2>Good to know</h2>
@@ -76,10 +76,10 @@ JAPANESE = """
 <h2>5つのステップ</h2>
 <ol>
 <li><b>試験とスキャン：</b>試験名・スキャン・保存先を決めます。</li>
-<li><b>設問の設定：</b>1枚目の答案で、各解答欄を枠で囲みます。</li>
+<li><b>設問の設定：</b>1枚目の答案で各設問と解答欄を枠で囲み、配点または基準を決めます。</li>
 <li><b>氏名の照合：</b>答案と生徒を対応させます。</li>
 <li><b>採点：</b>設問ごとに採点します。</li>
-<li><b>確認と出力：</b>合計を確認し、生徒レポートとExcelの成績表を作ります。</li>
+<li><b>確認と出力：</b>結果を確認し、レポートの内容を選んで、生徒レポートとExcelの成績表を作ります。</li>
 </ol>
 
 <h2>知っておくと便利なこと</h2>

@@ -68,10 +68,9 @@ listing the questions, sections and rubrics.
 
 ## Status
 
-**The app is built; testing is the last stage.** Everything above works in the code
-on `main`, in English and Japanese. Exam sections, mixed papers and the new report are
-newer than the downloads on the Releases page, and are being tested with made-up
-sample exams before new downloads are made.
+**The app is built; testing is the last stage.** Everything above works in English and
+Japanese, and is in the test build `v0.3.0-dev`, which colleagues are trying with
+made-up sample exams on their own computers.
 
 | Stage | | State |
 |---|---|---|
@@ -82,7 +81,7 @@ sample exams before new downloads are made.
 | Phase 4b | Scanning guide, booklets, page fixes, late papers | ✅ done |
 | Phase 4c | Questions assessed on several criteria | ✅ done |
 | Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Built and tested on the computers that made them; tests on other computers next |
-| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ⏳ Phases 1 to 6 of 7 done. Phase 7: sample exams made; new test builds next |
+| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ⏳ Phases 1 to 6 of 7 done. Phase 7: sample exams made and tried on Windows; test build `v0.3.0-dev` with colleagues |
 
 All 328 automated tests pass, and every finished stage was also tried out in a
 browser with sample papers. CAM2 can also be run from the source code (see
@@ -94,12 +93,20 @@ browser with sample papers. CAM2 can also be run from the source code (see
 The downloads are test builds for now, as they are still being tried on other
 computers. They are on this repository's
 [Releases](https://github.com/iamkifojp/cam2-exam-grading/releases) page. The current
-one, `v0.2.0-dev`, was made before exam sections and mixed papers were added:
+one is `v0.3.0-dev`:
 
 | Computer | Download | First start |
 |---|---|---|
 | Windows 10 / 11 | `CAM2-exam-grading-Windows-vX.zip` | Unzip, then double-click **Start CAM2 Exam Grading**. If Windows says it protected your PC, click **More info**, then **Run anyway** |
 | Mac with an Apple chip (M1 or later) | `CAM2-exam-grading-Mac-AppleSilicon-vX.zip` | Unzip, double-click **Start CAM2 Exam Grading**, then approve it once in System Settings → Privacy & Security → **Open Anyway** |
+
+Sessions from `v0.2.0-dev` open in this version, but once saved here, `v0.2.0-dev` can
+no longer open them.
+
+**To try CAM2 without your own papers,** the same release has
+`CAM2-sample-exam-vX.zip`: a made-up exam in English and Japanese, with a class list,
+rubrics and `Test-guide.pdf`, which tells you the grades to give and the results to
+expect.
 
 You will need:
 - your scanned papers. Nothing has to be set up before the exam: scan the
@@ -133,6 +140,7 @@ This starts CAM2 on `http://127.0.0.1:5182/` and opens the browser. Useful optio
 
 | Option | What it does |
 |---|---|
+| `--port <number>` | try this port first, instead of 5182 |
 | `--no-browser` | don't open a browser tab |
 | `--idle 0` | never stop by itself (normally it stops 10 minutes after the last tab closes) |
 | `--host <handoff.json>` | open one exam for another app (CAM); see `engine/host.py` |
@@ -158,7 +166,8 @@ python tools/make_sample_exam.py test-folder
 This makes a whole made-up exam in English and in Japanese, in
 `sample-exam-en` and `sample-exam-ja`: 6 students' scanned papers, a class list,
 three rubrics to upload, and `Test-guide.pdf`, which walks through two exams with the
-grades to give and the results to expect. `test-folder/` is not committed.
+grades to give and the results to expect. `test-folder/` is not committed, so testers
+get these two folders as a zip on the release.
 
 ### Building the downloads
 
@@ -178,8 +187,9 @@ These make `dist/CAM2-exam-grading-Windows-v<version>.zip` and
 `dist/CAM2-exam-grading-Mac-AppleSilicon-v<version>.zip`, with the version taken
 from `VERSION` in `app.py`. Each installs what it needs into its own
 `build/venv`, and starts the packaged app once to check that it works. `build/`
-and `dist/` are not committed. The notes on the Mac package are under Phase 5 in
-[PLAN.md](PLAN.md).
+and `dist/` are not committed: the zips go on the Releases page, built from one
+tagged commit. The notes on the Mac package and the release steps are under Phase 5
+in [PLAN.md](PLAN.md).
 
 ### More documents
 
