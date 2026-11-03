@@ -1,6 +1,6 @@
 # CAM2 — Exam Sections & Report Options (Implementation Plan)
 
-> **Status:** agreed design (2026-11-02). Phases 1 to 6, the engine, the screens, the report and the gradebook, are built (2026-11-03); the run-through in Phase 7 is not done. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
+> **Status:** agreed design (2026-11-02). Phases 1 to 6, the engine, the screens, the report and the gradebook, are built (2026-11-03). Phase 7, testing, has its sample exams; the test builds are next. It adds to [PLAN.md](PLAN.md); where the two differ, this plan wins once it is built.
 
 ---
 
@@ -247,13 +247,13 @@ Each phase ends with its tests passing, and with `CHANGELOG.md` and `ARCHITECTUR
 **Phase 6: Gradebook**
 - The columns in §5, with tests.
 
-**Phase 7: Run-through**
-- In a browser, in English and Japanese, on Windows and a Mac:
-  - a marks-only exam with no sections, checking that no rubric screens appear;
-  - all one criterion across three marks sections;
-  - several criteria with a mix of marks and rubric questions;
-  - marks entered first with criteria added later, and rubrics entered first with marks added later;
-  - a real scanned paper. **Real papers stay out of the repository.**
+**Phase 7: Testing**
+
+*Part 1: sample exams, tested here on Windows.* No real exam papers are to hand, so `tools/make_sample_exam.py` makes a made-up exam, whole class, in English and Japanese, with a class list, rubrics and a test guide. The guide's two exams cover what this phase has to try, in English and Japanese:
+- **Exam 1:** a marks-only exam with no sections, checking that no rubric screens appear; then one criterion across three marks sections, with marks entered first and criteria added later.
+- **Exam 2:** several criteria with a mix of marks and rubric questions, with rubrics entered first and marks added later.
+
+*Part 2: test builds, tested by colleagues.* Make the Windows build here and the Mac build on the MacBook Air, and share them with colleagues along with the sample exams, on Windows and on a Mac. A real scanned paper is tried when a colleague has one. **Real papers stay out of the repository.**
 
 ---
 

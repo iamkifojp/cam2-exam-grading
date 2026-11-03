@@ -5,35 +5,73 @@ then produces a PDF report for every student and an Excel gradebook.
 
 It is a standalone, simplified fork of CAM (Criterion Assessment Metrics),
 built so that any teacher can use it **without installing anything and without
-training**:
+training**.
 
-- **Unzip and double-click.** The Windows and Mac downloads carry their own
-  Python, so nothing has to be installed.
-- **Five guided steps.** Exam & scans → set up questions → match names →
-  grade → review & export. Each step shows one instruction at a time.
+## What it does
+
+**Five guided steps,** each showing one instruction at a time:
+
+1. **Exam & scans.** Name the exam and bring in the papers.
+2. **Set up the questions.** Draw a box around each question on one paper, then
+   slice every paper into answers.
+3. **Match names** to your class list.
+4. **Grade** one question across every paper.
+5. **Review & export.** Check the results, choose what goes on the report, and make
+   the student PDFs and the gradebook.
+
+**Grade each question the way that suits it.**
+- A question with a marks box filled in is graded with marks. A question with only
+  a criterion ticked is graded with levels from your rubric, one per criterion. A
+  paper can mix the two freely.
+- The first screen only sets where you start, and you can fill in marks and criteria
+  in any order. They never need slicing again, and once a question has grades it
+  can't switch between marks and levels.
+- A teacher who only wants marks never has to see a rubric. CAM2 ships no rubric
+  text: you type, paste or upload your own.
+- Choice questions ("answer 2 of 3") count a student's best answers, or the ones you
+  pick.
+
+**Divide a paper into sections, if you want to.** Add a divider in the question list,
+and name the section if you like. Sections can be given shares of the paper, which
+always add up to 100%, so a section of 24 multiple-choice marks can count as much as
+a section of 40 written marks.
+
+**You decide the levels.** Marks are added up, but rubric levels are reported as you
+gave them (`B5`) and are never averaged or added to marks. With **Overall criterion
+results** on, CAM2 gathers each criterion's marks and grades from across the paper,
+beside a final level you type yourself.
+
+**Choose what goes on the report.** Section results, the rubric tables, the overall
+marks, and answer images section by section, with anything that doesn't apply hidden.
+What you left blank does not print. **See one report first** shows you one student's
+PDF before you make the whole class's.
+
+**A gradebook that explains itself.** Every grade, comment and section result, the
+calculated result beside the one on the report, class statistics, and a second sheet
+listing the questions, sections and rubrics.
+
+**Made for real teaching conditions.**
+- **Real scans, not perfect ones.** Scan the whole class into one PDF, a few batches,
+  one file per student or phone photos. Booklets scanned open on A3 are put back in
+  page order, and upside-down, misplaced or missing pages can be fixed on screen.
+  Late papers can be added at any time.
 - **Stop any time.** Every grade is saved the moment it is given. Next time,
   **Continue** takes you back to the same question and student.
-- **Safe on USB sticks and cloud drives** (OneDrive, Google Drive, iCloud
-  Drive, Dropbox). CAM2 checks every save,
-  keeps an emergency copy on your computer, and warns you before two
-  computers overwrite each other.
+- **Safe on USB sticks and cloud drives** (OneDrive, Google Drive, iCloud Drive,
+  Dropbox). CAM2 checks every save, keeps an emergency copy on your computer, and
+  warns you before two computers overwrite each other.
 - **English and 日本語** for the whole app and for student reports.
-- **Marks or rubrics.** Points per question, or your own rubric (for example
-  MYP 0–8). CAM2 ships no rubric text; you type, paste or upload your own.
-  An exam can use several criteria, and one question can be assessed on more
-  than one of them, with a level for each.
-- **Real scans, not perfect ones.** Scan the whole class into one PDF, a few
-  batches, one file per student or phone photos. Booklets scanned open on A3
-  are put back in page order, and upside-down, misplaced or missing pages can
-  be fixed on screen. Late papers can be added at any time.
+- **Unzip and double-click.** The Windows and Mac downloads carry their own Python, so
+  nothing has to be installed.
+- **Offline.** CAM2 needs no internet and sends nothing over it. If you save to a cloud
+  drive, that drive syncs your session as it does any other file.
 
 ## Status
 
-**The app is finished; the downloads are not.** Everything a teacher does in
-CAM2 is built and tested, from the start screen to the student PDFs and
-the Excel gradebook. The Windows and Apple Silicon Mac packages have each been
-tested on the computer that built them, and both are on the Releases page as the
-pre-release `v0.2.0-dev`. The tests on other computers are still to do.
+**The app is built; testing is the last stage.** Everything above works in the code
+on `main`, in English and Japanese. Exam sections, mixed papers and the new report are
+newer than the downloads on the Releases page, and are being tested with made-up
+sample exams before new downloads are made.
 
 | Stage | | State |
 |---|---|---|
@@ -43,21 +81,20 @@ pre-release `v0.2.0-dev`. The tests on other computers are still to do.
 | Phase 4 | Step ⑤ review, student PDFs and Excel gradebook | ✅ done |
 | Phase 4b | Scanning guide, booklets, page fixes, late papers | ✅ done |
 | Phase 4c | Questions assessed on several criteria | ✅ done |
-| Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Packages built; tests on other computers next |
-| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ⏳ Phases 1 to 6 of 7 (the engine, the screens, the student report and the gradebook) done; the run-through is next |
+| Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Built and tested on the computers that made them; tests on other computers next |
+| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ⏳ Phases 1 to 6 of 7 done. Phase 7: sample exams made; new test builds next |
 
-All 321 automated tests pass, and every finished stage was also tried out in a
-browser with sample papers, in English and Japanese. Exam sections and papers that
-mix marks and rubric questions are built from set-up to gradebook, but have not yet
-had their full run-through, and are not in the test builds. CAM2 can also be run from
-the source code (see [For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
+All 328 automated tests pass, and every finished stage was also tried out in a
+browser with sample papers. CAM2 can also be run from the source code (see
+[For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
 [CHANGELOG.md](CHANGELOG.md) the details of each stage.
 
 ## For teachers
 
 The downloads are test builds for now, as they are still being tried on other
 computers. They are on this repository's
-[Releases](https://github.com/iamkifojp/cam2-exam-grading/releases) page:
+[Releases](https://github.com/iamkifojp/cam2-exam-grading/releases) page. The current
+one, `v0.2.0-dev`, was made before exam sections and mixed papers were added:
 
 | Computer | Download | First start |
 |---|---|---|
@@ -111,6 +148,17 @@ This makes 8 fake two-page papers (made-up names), the same papers as one
 combined PDF, the same again as A3 booklets scanned open (one sheet upside
 down and one booklet stacked inside sheet first, to try the page fixes), one late student's paper, and a class list. In Step 1, use **Or paste the path…** if you
 would rather not click through the folder picker.
+
+### A sample exam to test with
+
+```bash
+python tools/make_sample_exam.py test-folder
+```
+
+This makes a whole made-up exam in English and in Japanese, in
+`sample-exam-en` and `sample-exam-ja`: 6 students' scanned papers, a class list,
+three rubrics to upload, and `Test-guide.pdf`, which walks through two exams with the
+grades to give and the results to expect. `test-folder/` is not committed.
 
 ### Building the downloads
 

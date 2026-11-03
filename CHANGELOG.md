@@ -28,6 +28,20 @@ year-month-day.
   not moved.
 - **"Answer images" is now "Include student's answer images for".**
 
+### Exam sections, Phase 7, part 1: sample exams (2026-11-03)
+
+Phase 7 of [Exam-Section-Plan.md](Exam-Section-Plan.md) is now in two parts: sample
+exams to test with first, then Windows and Mac test builds to share with colleagues.
+
+#### Added
+- **`tools/make_sample_exam.py`** makes a whole made-up exam in English and Japanese: 6
+  students' scanned papers, a class list, three rubrics to upload, and a test guide
+  with the grades to give and the results to expect. The guide's numbers are worked
+  out without CAM2's engine, and `tests/test_sample_exam.py` checks that they match it.
+
+#### Changed
+- **The README** now describes what the app does today.
+
 ### Exam sections, Phase 6: the gradebook (2026-11-03)
 
 The Excel gradebook for [Exam-Section-Plan.md](Exam-Section-Plan.md). Only the
