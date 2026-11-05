@@ -13,7 +13,9 @@ For the next test build. Sessions stay at version 2.
 - **Slide decks saved as PDFs.** `Slide 16:9` and `Slide 4:3` are new paper sizes with
   square cells of about 5 mm (51 × 29 and 51 × 38). A PDF is recognised by the shape of
   its landscape pages, so PowerPoint's and Google's sizes both work. Photos of the same
-  shape aren't taken for slides, and US Letter still isn't recognised. A question on a
+  shape aren't taken for slides, even saved as PDFs, and US Letter still isn't recognised.
+  Trying a slide size in Step 1 and going back to a paper size puts the landscape box
+  back as it was. A question on a
   slide size is cropped as a JPEG, because a class's whole-slide PNGs came to about
   1.6 GB on a photo-heavy test deck, and about 0.2 GB as JPEGs.
 - **Limits on comment length:** 300 characters on a question and 600 for an overall

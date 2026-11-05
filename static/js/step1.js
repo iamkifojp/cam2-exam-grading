@@ -263,6 +263,15 @@ const loadDefaultFolder = debounce(async (exam) => {
   } catch { /* leave as is */ }
 }, 300);
 
+// Slides are landscape. Trying a slide size and coming back to a paper size gives
+// the paper back the way it was, so upright papers don't keep a turned grid.
+function choosePaper(d, paper) {
+  if (isSlide(paper) && !isSlide(d.paper)) d.paperLandscape = d.landscape;
+  if (!isSlide(paper) && isSlide(d.paper) && d.paperLandscape !== undefined) d.landscape = d.paperLandscape;
+  if (isSlide(paper)) d.landscape = true;
+  d.paper = paper;
+}
+
 export function renderNewSession() {
   const d = draft();
   if (!d.saveFolder) loadDefaultFolder(d.exam);
@@ -277,7 +286,7 @@ export function renderNewSession() {
   const drawPaper = () => paperHolder.replaceChildren(
     h("div", { class: "seg big" }, PAPERS.map((p) => h("button", {
       type: "button", class: d.paper === p ? "on" : "", "aria-pressed": d.paper === p ? "true" : "false",
-      onclick: () => { d.paper = p; if (isSlide(p)) d.landscape = true; drawPaper(); updateCreate(); },
+      onclick: () => { choosePaper(d, p); drawPaper(); updateCreate(); },
     }, paperLabel(p), d.detected === p ? h("span", { class: "badge" }, t("step1.detected")) : null))),
     h("label", { class: "check" }, h("input", { type: "checkbox", checked: d.landscape,
       onchange: (e) => { d.landscape = e.target.checked; } }), t("step1.landscape")));
@@ -290,6 +299,7 @@ export function renderNewSession() {
       d.paper = guess.paper;
       d.landscape = !!guess.landscape;
       d.detected = guess.paper;
+      delete d.paperLandscape;
       drawPaper();
     }
     updateCreate();

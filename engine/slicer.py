@@ -144,6 +144,30 @@ def detect_paper_mm(width_mm: float, height_mm: float, slides: bool = True
     return None
 
 
+# A PDF page with no text and one picture over nearly all of it is a photo saved
+# as a PDF, as some phone apps and "Print to PDF" make, not an exported slide.
+PHOTO_PAGE_COVER = 0.9
+
+
+def is_photo_page(page) -> bool:
+    """True for a PDF page that is only a photo (see PHOTO_PAGE_COVER)."""
+    try:
+        if page.get_text("text").strip():
+            return False
+        area = abs(page.rect)
+        return area > 0 and any(abs(_fitz().Rect(info["bbox"]) & page.rect) >= PHOTO_PAGE_COVER * area
+                                for info in page.get_image_info())
+    except Exception:
+        return False
+
+
+def detect_pdf_page(page) -> Optional[Tuple[str, bool]]:
+    """(paper, landscape) for one PDF page. A photo is a paper, never a slide."""
+    rect = page.rect                    # points, rotation applied
+    return detect_paper_mm(rect.width * 25.4 / 72, rect.height * 25.4 / 72,
+                           slides=not is_photo_page(page))
+
+
 def detect_paper(path: str) -> Optional[Tuple[str, bool]]:
     """Best guess of (paper, landscape) for a scan file, or None.
 
@@ -156,8 +180,7 @@ def detect_paper(path: str) -> Optional[Tuple[str, bool]]:
             with _fitz().open(path) as doc:
                 if doc.page_count < 1:
                     return None
-                rect = doc[0].rect          # points, rotation applied
-                return detect_paper_mm(rect.width * 25.4 / 72, rect.height * 25.4 / 72)
+                return detect_pdf_page(doc[0])
         if ext in IMAGE_EXTS:
             with Image.open(path) as im:
                 im = ImageOps.exif_transpose(im)

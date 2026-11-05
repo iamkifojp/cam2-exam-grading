@@ -12,7 +12,7 @@ from PIL import Image
 from engine import slicer
 from engine.errors import UserError
 from engine.slicer import Box, Layout
-from tests.helpers import POINTS_PER_MM, center_color, make_image, make_pdf
+from tests.helpers import POINTS_PER_MM, center_color, make_image, make_pdf, make_photo_pdf
 
 RED, BLUE = (255, 0, 0), (0, 0, 255)
 
@@ -168,6 +168,20 @@ class PaperDetectionTests(unittest.TestCase):
                 self.assertEqual(slicer.detect_paper(path), (paper, True))
             photo = make_image(os.path.join(tmp, "photo.jpg"), (1600, 1200), dpi=72)
             self.assertIsNone(slicer.detect_paper(photo))
+
+    def test_a_photo_saved_as_a_pdf_is_not_a_slide(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for size in ((1600, 1200), (1920, 1080)):
+                photo = make_photo_pdf(os.path.join(tmp, f"photo{size[0]}.pdf"), size)
+                self.assertIsNone(slicer.detect_paper(photo))
+            # A slide with a photo behind its title, or a photo framed on a slide, is a slide.
+            titled = make_photo_pdf(os.path.join(tmp, "titled.pdf"), text="Unit 3: Light")
+            self.assertEqual(slicer.detect_paper(titled), ("Slide 4:3", True))
+            framed = make_photo_pdf(os.path.join(tmp, "framed.pdf"), cover=0.8)
+            self.assertEqual(slicer.detect_paper(framed), ("Slide 4:3", True))
+            # A photo of a page the size of A4 is still A4.
+            a4 = make_photo_pdf(os.path.join(tmp, "a4.pdf"), (297 / 0.48 * 72 / 25.4, 210 / 0.48 * 72 / 25.4))
+            self.assertEqual(slicer.detect_paper(a4), ("A4", True))
 
     def test_slide_ranges_round_trip(self):
         for paper in ("Slide 16:9", "Slide 4:3"):

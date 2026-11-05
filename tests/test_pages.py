@@ -17,7 +17,7 @@ from PIL import Image
 
 from engine import pages, slicer, storage, workflow
 from engine.errors import UserError
-from tests.helpers import A4_POINTS, make_image, make_pdf
+from tests.helpers import A4_POINTS, make_image, make_pdf, make_photo_pdf
 
 W, H = A4_POINTS
 SLOT = 28
@@ -364,6 +364,14 @@ class SlidePreviewTests(unittest.TestCase):
             self.assertEqual((found["paper"], found["landscape"]), ("Slide 16:9", True))
             photo = make_image(os.path.join(tmp, "photo.jpg"), (1600, 1200))
             found = pages.preview_first_paper({"type": "photos", "path": tmp, "pages_per_student": 1}, [photo])
+            self.assertIsNone(found["paper"])
+
+    def test_a_photo_saved_as_a_pdf_is_not_guessed_as_a_slide(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            photo = make_photo_pdf(os.path.join(tmp, "photo.pdf"), (1600, 1200))
+            found = pages.preview_first_paper({"type": "folder", "path": tmp}, [photo])
+            self.assertIsNone(found["paper"])
+            found = workflow.inspect_combined_pdf(photo)
             self.assertIsNone(found["paper"])
 
 if __name__ == "__main__":
