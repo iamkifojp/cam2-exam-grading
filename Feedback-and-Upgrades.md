@@ -4,7 +4,7 @@ What colleagues have asked for, what each request would take, and what was decid
 
 **Suggesters stay anonymous: entries give a subject or role, never a name.**
 
-**Nothing here is being built yet.** More feedback is still to come, so these wait until the next version is decided (2026-11-05).
+**Nothing here is being built yet, and no new build is planned until the new CAM2 release is ready.** More feedback is still to come (2026-11-05).
 
 ## Requests
 
@@ -12,6 +12,12 @@ What colleagues have asked for, what each request would take, and what was decid
 |---|---|---|---|---|
 | [F1](#f1-highest-level-for-a-question-or-section) | Highest level for a question or section, for banded papers | Several colleagues | Small | Proposed |
 | [F2](#f2-notes-drawn-on-the-answer-image) | Notes drawn on the answer image | Biology colleague | Medium | Proposed; main design choices agreed |
+| [F3](#f3-one-comment-list-across-cam2-and-cam) | One comment list across CAM2 and CAM's grading workspace, with stamps in both | Project lead | Medium, mostly in CAM | On hold; F5 would replace it |
+| [F4](#f4-bug-ticking-in-cam-wipes-typed-comments) | Bug: ticking in CAM wipes typed comments | Project lead | Small | To fix with the new CAM2 release |
+| [F5](#f5-move-drafts-and-assignments-into-cam2-and-retire-the-workspace) | Move drafts and assignments into CAM2, and retire CAM's grading workspace | Project lead | Large, in stages | Direction agreed; not being built yet |
+| [F6](#f6-exam-comments-should-carry-weight-in-cams-term-comments) | Exam comments should carry weight in CAM's term comments | Project lead | Small, in CAM | Gap confirmed; to plan |
+| [F7](#f7-a-permanent-place-for-a-years-work) | A permanent place for a year's work | Project lead | Medium | Direction agreed; not being built yet |
+| [F8](#f8-compact-and-delete-finished-sessions) | Compact and delete finished sessions on CAM2's start screen | Project lead | Small to medium | Proposed; not being built yet |
 
 **Size** is a rough guess at the work, including tests and the English and Japanese text. Small is about half a day (around 100 lines). Medium is a few days (around 500 lines), plus time for a teacher to try it.
 
@@ -84,89 +90,405 @@ Copy this under [Details](#details), and add a row to the table above.
 
 **From:** biology colleague, 2026-11-05. **Size:** Medium. **Status:** Proposed; main design choices agreed
 
-**What they asked:** to mark up the student's answer image with comments, as in the Kami app. Kami also has OCR, which is out of scope. The idea to test: draw a box on the answer and attach a comment to it.
+**What they asked:** to mark up the student's answer image with comments, as in the Kami app. Kami also has OCR, which is out of scope. They mainly want to highlight a line in the answer.
 
 **What can be drawn:** none of these need OCR, because they sit on the image by position. Only selecting or searching the student's text would.
 
 | Overlay | Extra work | Worth it? |
 |---|---|---|
-| **Box with a note** | Medium; this builds the layer everything else uses | **Yes, first.** It points at part of a diagram, which is the biology need |
-| **Comment stamp** (a distinctive numbered icon at one spot) | Small, once boxes exist | **Yes, with the first version.** It puts a comment from the list on the answer with no box to draw |
-| Highlight (see-through box) | Very little, once boxes exist | Yes, if asked |
-| Tick and cross stamps | Small, once boxes exist | Yes, if asked; handy for labelled diagrams |
+| **Comment stamp** (a distinctive numbered icon at one spot) | Medium; this builds the layer everything else uses | **Yes, first.** It points at part of a diagram, which is the biology need, and uses the comment list |
+| **Highlight** (see-through box, in a few colours) | Small, once the stamp layer exists; needs its own drawing mode | **Yes, first.** It marks a line of the answer, and teachers can use it without any comment |
+| Box with a comment attached to it | Medium | No. A highlight with a stamp dropped beside it does the same job, with no link to manage |
+| Tick and cross stamps | Small, once stamps exist | Yes, if asked; handy for labelled diagrams |
 | Arrow | Small | Later |
 | Text typed directly on the image | Medium; it needs moving and resizing, and covers the writing | Probably not |
 | Freehand pen | Medium; needs undo, and is hard to use with a mouse | Only with a stylus user asking |
 | OCR, or selecting handwritten text | Very large | No |
 
-**Proposal: numbered notes, with their text listed under the answer.** Numbering the notes is agreed.
+**Proposal: numbered notes dragged from the comment list, with their text listed under the answer.** Numbering the notes is agreed.
 
-1. **Step 4** gets a **✏ Add note** button. Today, dragging on the answer moves it around when zoomed, so drawing needs its own mode.
-2. Drag a box over part of the answer. It gets a number, and a small floating card opens beside it, with a text box and the exam's quick comments. Clicking a quick comment copies its text into the note, where it can be edited for this student.
-3. Or place a **stamp** from the comment list instead of drawing a box (see [the quick comment list](#the-quick-comment-list) below).
-4. Click a box or stamp to edit, move or delete it.
-5. **On the report** the box or stamp prints with its number, and the notes print under the answer, after the teacher's comment:
+1. **Drag a quick comment onto the answer in Step 4.** A distinctive numbered stamp lands at that spot, and the comment joins this answer's numbered list.
+2. **Edit a note in the numbered list.** Its text is a copy, so changing it affects this student only, not the comment list.
+3. **Drag a stamp to move it, or remove its note from the list.** Notes are numbered in the order they were placed, and removing one renumbers the rest.
+4. **On the report** the stamp prints with its number, and the notes print under the answer, after the teacher's comment:
 
 ```
  Q3  ┌───────────────────────────────┐   B5
      │  student's diagram            │
-     │     ┌─────────┐①              │
-     │     │         │               │
-     │     └─────────┘               │
+     │          ①                    │
+     │                               │
+     │                     ②         │
      └───────────────────────────────┘
      Comment: Good use of terms. Check your scale.
      ① Label the cell membrane, not the cell wall.
+     ② Units missing.
 ```
 
-**Why not float the comment beside the box on the PDF?** It works on screen, and the card above does exactly that, but not on the report. The answer image there is at most about 390 points wide, between the question label and the grade. Text at a readable size would cover the student's writing or run off the image, and every note would need its own placement. Numbers avoid all of that, and any length of note fits.
+**Why not float the comment beside its spot on the PDF?** The answer image there is at most about 390 points wide, between the question label and the grade. Text at a readable size would cover the student's writing or run off the image, and every note would need its own placement. Numbers avoid all of that.
 
-**Merging with the existing comment: keep them separate (agreed).** Mixed together, they could confuse, would be hard to format, and would be harder for students to read. The comment is also one free-text field, and CAM2 already rewrites its first line for ticked quick comments, so lines for notes mixed into that text would be hard to keep right when a box is deleted or the comment is edited. Notes get their own list, and they appear together only where they are read:
+**Merging with the existing comment: keep them separate (agreed).** Mixed together, they could confuse, would be hard to format, and would be harder for students to read. The comment is also one free-text field, and CAM2 already rewrites its first line for ticked quick comments, so lines for notes mixed into that text would be hard to keep right when a note is removed or the comment is edited. Notes get their own list, and they appear together only where they are read:
 
 - on the report, as above;
 - in the gradebook, added to that question's comment cell;
 - in the review table, where a note counts as a comment for the "has a comment" marker.
 
+#### Highlights
+
+Highlights and comment stamps are two separate tools, because teachers will use them separately. Neither depends on the other.
+
+- **Drawing:** a **Highlight** button in Step 4 turns on drawing, because dragging on the answer otherwise moves it around when zoomed. Pick a colour and drag over the line. Several lines take several highlights.
+- **Colours:** a few see-through colours with no fixed meaning. Suggested: yellow, blue and pink, which stay easier to tell apart for colour-blind readers than green and pink.
+- **No numbers or text:** a highlight doesn't appear in the numbered list. To comment on a highlighted line, the teacher drops a stamp beside it.
+- **Removing:** click a highlight while the tool is on.
+- **On the report:** drawn over the answer image with the same colour and transparency. It still shows as a grey band if the report is printed in black and white.
+
 #### The quick comment list
 
-**Notes should draw on the comment list (agreed).** Otherwise the list becomes even more superfluous.
+**Notes draw on the comment list (agreed).** Otherwise the list becomes even more superfluous. The list changes from tick boxes to drag and drop only.
 
-- **Is it editable?** The list already is, through **✎ Edit list**. A note's copied text can also be edited for one student without changing the list.
-- **Stamps:** a quick comment can go on the answer as a distinctive numbered icon at one spot. There is no box to draw or resize, and the icon is easy to spot on a student's handwriting.
-- **Placing a stamp:** there are two ways, to choose when this is built. Both make the same note:
-  - **Drag and drop:** drag a quick comment onto the answer. It is direct, but it has to share the pills with their tick-box behaviour.
-  - **Stamp tool:** pick a quick comment, then click the answer. It also works well on a laptop trackpad, where dragging across the screen while zoomed in is harder.
-- **Ticks stay as they are.** Ticking still writes the generated line in the comment. Using a quick comment in a note doesn't tick it.
+- **It starts short and teachers grow it.** It starts with 4 comments, so teachers are encouraged to write their own. They can add and remove comments right there in Step 4, up to 8.
+- **Added comments stay for the whole exam.** The list already works this way, so a comment added on Q2 is there for Q3. A new exam starts again from the 4.
+- **Changing the list doesn't change notes already placed,** because each note holds its own copy of the text.
+- **Tick boxes go.** One list with one meaning is simpler, and drag and drop no longer has to share the pills with ticking. Comments already written by ticks stay in saved sessions as ordinary comment text.
+- **Strengths and Areas to develop stay, as the stamp's colour (recommended, see [F3](#f3-one-comment-list-across-cam2-and-cam)).** The generated line goes, but CAM's list has the same two types, so keeping them means one list in both apps. A strength's stamp could be green, and an area to develop's amber.
+- **The default comments need rewriting.** They are fragments written to fit "Areas to develop: …" (`illegible handwriting`), and they would now stand alone as notes. All five are also critical. A suggested 4, in English and Japanese: *Well explained.* as a strength, and *More explanation needed.*, *Incomplete answer.* and *Hard to read.* as areas to develop.
+
+**What dropping the tick boxes costs:**
+
+- Dragging is slower than ticking, and it adds up over a whole class. It is worth trying on a school laptop's trackpad, especially when zoomed in.
+- A note always has a stamp on the image, even when the comment is about the whole answer. The teacher just drops it anywhere on the answer.
+
+**Limits:**
+
+| What | Limit | Why |
+|---|---|---|
+| Comments the list starts with | 4 | Encourages teachers to write their own |
+| Comments in the list | 8 | Stays short enough to scan while grading |
+| Notes on one answer | 8 | Keeps feedback readable. This needs its own check (see below) |
+| One list comment or note | 120 characters, about 20 words (agreed) | Room for one clear point, and no essays. It is about two lines on the report in English and about three in Japanese |
+| The question's comment | 300 characters, about 50 words | Room for a few sentences, not an essay |
+
+Three examples, with their length in characters:
+
+- *Label the cell membrane, not the cell wall.* (43)
+- *Your graph needs a title, labelled axes with units, and a line of best fit.* (75)
+- *Your conclusion should refer back to the hypothesis and use your data as evidence for why it was or wasn't supported.* (117)
+
+Details of the limits:
+
+- **The limit of 8 per answer isn't automatic.** A list of 8 doesn't guarantee it, because the same comment can be dragged twice and the list can change between drags. So CAM2 checks it directly and refuses a ninth, with a short message. The same comment may be used twice on one answer, since *Units missing.* can apply in two places.
+- **Limits apply to new typing only.** A longer comment in a saved session is never cut, and neither is a list longer than 8. It just can't grow until it is back under the limit. A character counter shows near the limit, because a browser's length limit silently trims pasted text.
+- **Counted in characters,** because Japanese has no spaces between words.
+- **Where 120 comes from:** it was chosen to fit the report, not from research into ideal comment length.
+- **Worst case for one answer:** 8 notes of 120 characters take about a quarter of an A4 page on the report. This is an estimate from the report's 10pt text, not a test print.
 
 **How it would work:**
 
-- **Stored** in `grades.json`, on that student's answer next to the comment: `annotations: [{"page", "x", "y", "w", "h", "text"}]`, where a stamp has no `w` or `h`. It is shared across a question's criteria, as the comment is.
+- **Stored** in `grades.json`, on that student's answer next to the comment: `annotations: [{"page", "x", "y", "text"}]` and `highlights: [{"page", "x", "y", "w", "h", "colour"}]`. They are shared across a question's criteria, as the comment is.
 - **Positions are fractions of the scanned page (0–1), not pixels or crop positions.** That makes them independent of zoom, screen DPI and the report's image resizing, on Windows and Mac alike. One engine function turns a page position into a position on the current crop, for both the screen and the report. It has to allow for the way a question with several boxes stacks them with a divider line.
-- **The crop files are never changed.** The boxes are drawn over the image on screen and in the PDF, so the existing rule holds and the PDF lines stay sharp.
+- **Dragging uses pointer events, not the browser's built-in drag and drop.** The built-in kind generally doesn't work on touchscreens or with a stylus. Step 4's pan and `boxes.js` already use pointer events.
+- **The crop files are never changed.** The stamps are drawn over the image on screen and in the PDF, so the existing rule holds and the PDF stamps stay sharp.
 
 **When a box is adjusted:** the notes follow the student's writing, because their page positions don't change. **✎ Adjust this box** needs no conversion, and nothing is removed.
 
 - **Still inside the new crop:** the note stays on exactly the same writing.
-- **Now outside the crop:** it shows at the nearest place inside, shrunk if the crop is now smaller than the box. On a question with several boxes, that means the nearest box on the same page. If no box is on that page any more, it goes to the top of the crop.
+- **Now outside the crop:** it shows at the nearest place inside. On a question with several boxes, that means the nearest box on the same page. If no box is on that page any more, it goes to the top of the crop.
 - **Moved notes are flagged:** a moved note no longer points at what it marked, so Step 4 marks it to check, and **✎ Adjust this box** says how many moved. Dragging it into place, or clicking to confirm, clears the flag.
 - **Only what is shown moves:** the saved position stays as drawn, so widening the box again puts a note back where it was. Dragging a note saves its new position.
+- **Highlights** work the same way, and are cut to fit the new crop.
 
 **What changes:**
 
 | Where | Change |
 |---|---|
-| `static/js/step4.js` `viewer` | A layer over the image that follows zoom, the drawing mode (separate from drag-to-pan in `attachZoomAndPan`), and the floating card. `boxes.js` snaps to the grid, so its drawing can guide this but not be reused directly |
-| `engine/grading_summary.py`, `app.py` | Save, edit and delete notes |
-| `engine/reports.py` `_question_with_image`, `_question_notes` | Draw the numbered boxes and print the list. With images off for a section, print the note text alone |
+| `static/js/step4.js` `viewer`, `gradeCard` | A layer over the image that follows zoom, dragging from the list onto the answer, and moving stamps without panning the answer (`attachZoomAndPan`). The numbered list, and adding and removing list comments in place. The card is 400px wide and already long, so it needs a look with 8 comments and 8 notes on it. List comments may need clipping to a line or two |
+| `engine/keywords.py`, `app.py`, `static/js/step4.js` `editKeywords` | Remove ticking, the generated line and the two types. Set the limits and the new defaults in `i18n/en.json` and `i18n/ja.json` |
+| `engine/grading_summary.py`, `app.py` | Save, edit and remove notes, with the limit of 8 per answer |
+| `engine/reports.py` `_question_with_image`, `_question_notes` | Draw the numbered stamps and print the list. With images off for a section, print the note text alone |
 | `engine/gradebook_xlsx.py`, `static/js/step5.js` | The comment cell and the review table marker |
-| `engine/model.py` `grades_mass`, `engine/workflow.py` `_has_work` | Count notes as teacher work, so the wipe guard protects them and page fixes don't move pages under them |
+| `engine/model.py` `grades_mass`, `engine/workflow.py` `_has_work` | Count notes and highlights as teacher work, so the wipe guard protects them and page fixes don't move pages under them |
+| CAM `engine/exam_bridge.py` (in CAM's repo) | CAM reads each question's `comment` and the overall comment from CAM2, so notes won't reach CAM's records or its reports unless this also reads them |
 | `engine/slicer.py` | Turn a page position into a crop position and back, keeping it inside the crop (about 50 lines plus tests, using the same grid math as `range_to_bbox` and `stitch_vertical`) |
 
 **Still to decide:**
 
-1. **Placing a stamp:** drag and drop, the stamp tool, or both.
-2. **Length of quick comments.** The list allows 60 characters each (`MAX_LABEL` in `engine/keywords.py`). That suits short keywords, but it may be tight now the list also feeds notes, so it may need to be longer.
-3. **Whole page view.** Recommended: notes only on the answer view in the first version, because that is the image the report prints. Page positions make it easy to show them there later.
-4. **Try it with the biology colleague before building the extras.** Ask which of highlights and tick and cross stamps they would actually use.
+1. **The overall comment.** Recommended: a limit of 600 characters, because it is the one place for a longer message.
+2. **Whole page view.** Recommended: notes only on the answer view in the first version, because that is the image the report prints, so the list can't be dragged from while the whole page is showing. Page positions make it easy to show them there later.
+3. **Try it with the biology colleague before building the extras.** Ask whether they would use tick and cross stamps.
+
+### F3: One comment list across CAM2 and CAM
+
+**From:** project lead, 2026-11-05. **Size:** Medium, mostly in CAM. **Status:** On hold. If [F5](#f5-move-drafts-and-assignments-into-cam2-and-retire-the-workspace) is agreed, this work isn't needed, because the workspace's list goes with it and stamps are built only in CAM2.
+
+**What was asked:** CAM's assignment grading (`cam_grading_workspace/`) has its own Strengths and Areas to develop list. CAM2 is vendored inside CAM at `exam_grading/`, so a teacher using CAM meets both. Having two comment systems in one app is too many.
+
+Stamps are also wanted in CAM, for grading drafts of art portfolios, where marking a spot on an image is very useful. There are no boxes in art evaluation, because overlapping square boxes are hard to read. CAM doesn't need numbers, but everything stamped must be collated for the final comment the LLM generates.
+
+**How they compare today:** they are already close.
+
+| | CAM2 Step 4 | CAM grading workspace |
+|---|---|---|
+| The list | Editable, per exam | Editable, per assignment folder |
+| Types | Strength, growth | Positive, growth |
+| Ticking | Writes `Strengths: …` and `Areas to develop: …` | Writes the same two lines |
+| Text the teacher typed | **Kept** below the generated line | **Lost** when a tick changes ([F4](#f4-bug-ticking-in-cam-wipes-typed-comments)) |
+| Starts with | 5 general comments, all areas to develop | 10 art comments: 7 strengths and 3 areas to develop |
+| Where it is used | Beside one answer image | A row per student, next to a work gallery that can hold several files |
+
+**Proposal: one comment list and one stamp in both apps, differing only where their jobs differ.** The list, the two types, the 120-character limit, the wording and the stamp's look are shared.
+
+| | CAM2 | CAM workspace |
+|---|---|---|
+| Comment stamps | Yes, on the answer image | Yes, on images and PDFs |
+| Highlights | Yes, as a separate tool | No |
+| Numbers on stamps | Yes, to match the list on the report | No. Pointing at a stamp shows its text |
+| Tick boxes | No | Yes, for general comments and for work that can't be stamped |
+| Where the text goes | The numbered list on the student's report | The final comment the LLM generates |
+
+**How a stamp works in CAM (recommended): stamping a comment also ticks it.** A stamp is a tick plus a place on the image.
+
+- **Collating comes almost for free.** A ticked comment is already written into the generated comment, and that already travels through the CSV into CAM and on to the LLM. Nothing needs numbering.
+- **It has to be in the comment.** The LLM prompt uses a record's keywords only when its comment is empty (`as_text` in `engine/aggregation.py`, `draft_lines` in `app.py`). So a stamp kept apart from the comment could be dropped silently. This also makes [F4](#f4-bug-ticking-in-cam-wipes-typed-comments) essential, or every stamp would wipe the typed comment.
+- **One comment stamped several times reaches the LLM once.** Removing its last stamp unticks it. Unticking it removes its stamps.
+- **Stored** per student in the workspace's saved data: `stamps: [{"label", "file_id", "page", "x", "y"}]`, with positions as fractions of the image or page.
+
+**What can be stamped in CAM:**
+
+- **Images and PDFs** can, because CAM draws them itself. Images need a new larger view for stamping, because today's zoom overlay ignores the mouse.
+- **Slides, Docs and Word files** can't, because they show inside Google's preview frame. **Videos** can't either. These use ticks.
+
+**What changes in CAM:**
+
+| Where | Change |
+|---|---|
+| `cam_grading_workspace/app.py` page script | The stamping view, dragging from the list, showing stamps over images and PDFs, and the shared wording and limits |
+| `cam_grading_workspace/static/pdf_viewer.js` | Stamps on PDF pages |
+| `cam_grading_workspace/app.py` saving | Save stamps, share them between linked partners, and follow renamed comments (`remapKeywordLabel`) |
+
+The list rules could live in CAM2's `engine/keywords.py`, for CAM's workspace to use from the vendored copy. Whether it can import them there still needs checking. The types are stored as `strength` in CAM2 and `positive` in CAM, so one name has to be chosen.
+
+**Things to know:**
+
+- **CAM isn't affected by CAM2 dropping ticks.** It doesn't read CAM2's `keywords`, only each question's `comment`. Notes do need adding to what it reads (see F2).
+- **Changes reach CAM through `git subtree pull`,** never by editing `exam_grading/` in place. CAM is pinned to an older CAM2 commit, and its upgrade plan (`docs/CAM2_ENGINE_UPGRADE_PLAN.md`) has to cover any new session version.
+- **CAM's reports don't depend on the type labels.** They choose evidence by score, and they strip the `Strengths:` and `Areas to develop:` labels from comments.
+
+**Still to decide:**
+
+1. **Do students need to see the stamped images?** I found no per-student PDF of submitted work in the workspace; it exports a CSV. If stamps are for the teacher's marking and the LLM, the size above holds. If students should see them, CAM also needs a way to produce the stamped images, which is a larger job.
+2. Should CAM's list also start at 4 and stop at 8? Its defaults are art-specific, and existing folders must keep their lists.
+
+### F4: Bug: ticking in CAM wipes typed comments
+
+**From:** project lead, 2026-11-05. **Size:** Small. **Status:** To fix with the new CAM2 release
+
+**What happens:** in CAM's grading workspace, changing a tick replaces the whole comment with the generated lines, so anything typed is lost. The project lead has hit this too. It is meant to keep the teacher's text.
+
+**Workaround for now:** tick the comments first, then type the custom comment.
+
+**Cause:** `st.comment = autoComment(st)` in `cam_grading_workspace/app.py` rebuilds the comment from the ticks alone. The Late checkbox does the same.
+
+**Fix:** remember the line last generated and replace only that, as CAM2 does with `keyword_text` in `engine/keywords.py`. Saved comments have no remembered line, so the first change on one needs care not to lose or repeat its text.
+
+**Why it matters:** teachers lose typed comments for as long as the workspace is in use, even if [F5](#f5-move-drafts-and-assignments-into-cam2-and-retire-the-workspace) retires it later. Under F3, stamping would also tick a comment, so this would have to be fixed first.
+
+### F5: Move drafts and assignments into CAM2, and retire the workspace
+
+**From:** project lead, 2026-11-05. **Size:** Large, in stages. **Status:** Direction agreed; not being built yet
+
+**Why:**
+
+- **Google access:** the workspace was designed around Drive access through Google's API, and most schools won't allow the OAuth set-up that needs. Work now has to be downloaded anyway.
+- **Images:** CAM's output is an Excel file whose comments are pasted back into Google Classroom. It was never meant to output images, and CAM2 already does.
+- **Maintenance:** the workspace is the hardest engine in CAM to look after, and retiring it leaves one grading engine.
+
+**Proposal: retire it in stages, keeping the workspace running until CAM2 has proved it can take over.**
+
+| Stage | What happens | Size |
+|---|---|---|
+| 0. Now | Grade from downloaded folders in the workspace, which can already open a local folder with a subfolder per student. Fix [F4](#f4-bug-ticking-in-cam-wipes-typed-comments). Build nothing else in it | Small |
+| 1. Finish first | The new CAM2 release and CAM's upgrade plan, as already planned (`docs/CAM2_ENGINE_UPGRADE_PLAN.md`). Its slide-shaped pages help here | Already planned |
+| 2. Whole submissions in CAM2 | A paper with no boxes: the whole submission is graded as one item, page by page, with stamps and highlights from [F2](#f2-notes-drawn-on-the-answer-image) | Medium, on top of F2 |
+| 3. Drafts | Comments with no grade, and results sent to CAM. Try one real draft in both apps and compare | Small to medium |
+| 4. Normal assignments | One grade per criterion, using CAM2's rubric levels. Try one real assignment the same way | Small to medium |
+| 5. Retire | Remove the workspace, OAuth and the Drive code from CAM. Marks and comments already stored in CAM stay | Medium |
+
+**Why drafts go first:** they have no grades, so a mistake can't touch a student's marks.
+
+**Sending results to CAM: write the same CSV the workspace writes (recommended, still to check).** For anything that isn't an exam, CAM2 would export a CSV in the workspace's format. CAM's sync, the Classroom Entry tab and the LLM would then work as they do today, so the paste-into-Classroom routine doesn't change. The other route is much bigger, because of how CAM treats CAM2 sessions today:
+
+- It files every CAM2 session as an exam (`_ingest_cam2_session` sets `is_exam`).
+- The Classroom Entry tab leaves exams out.
+- The LLM reads draft comments from `draft_feedback`, which CAM2 sessions don't fill.
+
+**What this settles:**
+
+- **Stamps for art drafts** are built once, in CAM2. Highlights are a separate tool, so nobody has to draw a box on art.
+- **Students can see stamped images** if the teacher wants, through CAM2's student PDFs. Pasting comments into Classroom stays the main route.
+- **The LLM gets everything:** the CSV's comment column holds the typed comment and every note's text, without numbers.
+- **The Google-free rule holds:** CAM2 never touches Google, as already decided (D17 in CAM's upgrade plan). The teacher's Apps Script or a plain download supplies the files.
+
+**What CAM2 would need to learn:**
+
+- **Papers of any length.** It warns when page counts differ, and it would stop doing that for whole submissions.
+- **Several files per student,** in a mix of PDFs and images of different sizes, joined into one paper. It can already match one file per student by the name in the file name.
+- **A question with no marks or criteria,** which it refuses today, for comments-only drafts.
+- **A report layout for whole pages.** Answer images are limited to about 330 points high today.
+- **No new choice for teachers using it on its own, at least at first.** CAM tells CAM2 when a task is a whole submission, so the standalone start screen stays as it is, and an exam works as it does now.
+
+**What the workspace does that CAM2 doesn't, so each needs a decision before Stage 5:**
+
+| Workspace feature | Suggested answer |
+|---|---|
+| Videos | **Decided:** teachers watch them online, outside CAM and CAM2. Any in-app route would need an API that schools won't allow. The teacher sets up an assignment with no files in CAM and enters the grade and comment in Window 3, which CAM already allows. CAM2 gets no empty submissions, which would confuse teachers using it on its own |
+| Slides, Docs and Word previews | **Decided:** the teacher's Google Script turns them into PDFs first, so it needs to cover Docs and Word as well as Slides and PowerPoint |
+| Partners sharing one grade and comment | Decide from how often group work happens. Could be copied across in CAM afterwards |
+| Late marking | A Late tick in CAM2, or set in CAM. Downloaded files may not show when they were handed in |
+| Gallery of all students' work at a glance | Keep the paper strip, and add thumbnails only if teachers miss it |
+| Older drafts of the same work | Use the newest file. Earlier ones are a separate draft task |
+
+**Things to change if this is agreed:**
+
+- **CAM's locked decision D16** says drafts and normal assignments are graded in the workspace, so it needs amending.
+- **CAM2's scope** grows from exams to any one task at a time. It still grades one task at a time, so the single-task rule holds, but the name *CAM2 Exam Grading* may need another look.
+
+**Still to decide:**
+
+1. **Teachers using CAM2 on its own:** should they ever get whole submissions? CAM2 must stay a standalone grader for single exams. Recommended: only when opened from CAM at first, then look again once it has been used for real.
+
+### F6: Exam comments should carry weight in CAM's term comments
+
+**From:** project lead, 2026-11-05. **Size:** Small, in CAM. **Status:** Gap confirmed from the code, not yet run; to plan
+
+**What was asked:** the comments teachers give on an exam should have a large place in the final comment a student gets for the term.
+
+**What happens today:**
+
+| Comment from CAM2 | Reaches CAM? | Reaches the term comment? |
+|---|---|---|
+| Overall comment | Yes | **Only sometimes.** It is copied onto the student's scores when the teacher applies grades in Window 1. It is then used only if that exam ranks among the student's highest or lowest pieces, up to a set number of each (`select_evidence`) |
+| Each question's comment | Yes, and shown on the student's page | **Never.** The term comment reads only `student.scores`, and these stay in `exam_results` |
+| Numbered notes ([F2](#f2-notes-drawn-on-the-answer-image)) | Not yet | Not yet |
+
+**Why this is a gap:** an exam with a middling grade can drop out of the term comment completely, however much the teacher wrote. Draft comments are always included, so exams currently get less than drafts do.
+
+**Proposal:** add an always-included exam block to the prompt, as the draft block already is: `[CURRENT TERM — EXAM FEEDBACK]`, with the overall comment, each question's comment and the note text for every exam this term. Tell the LLM to give it particular weight.
+
+**To watch:**
+
+- **Prompt length:** 15 question comments of up to 300 characters can get long, so it may need a limit per exam.
+- **Timing:** Phase 3 of CAM's upgrade plan changes how exam grades are decided in Window 3, so this should be planned alongside it, and the overall comment must still carry over.
+- **Assignments:** their comments are also chosen by ranking. Should they stay that way, with only exams always included? Recommended yes, or the prompt grows too long.
+
+### F7: A permanent place for a year's work
+
+**From:** project lead, 2026-11-05. **Size:** Medium. **Status:** Direction agreed; not being built yet
+
+**What was asked:** all of a student's work should build up across a year and from year to year (Year 7, 8, 9), with students promoted between years. A teacher should be able to select a student and see their work over time. Files must live in one fixed place that doesn't change from task to task, on a cloud drive so they don't fill the teacher's hard disk.
+
+**Division of work (agreed):** CAM holds the whole year's record for each class. CAM2 always stays a standalone grader.
+
+| | CAM | CAM2 |
+|---|---|---|
+| Job | The teacher's home for the whole year: classes, terms, grades, term comments, and progress over time | The grader for one exam, assignment or draft at a time |
+| Used on its own? | No | Yes, by any teacher, with or without CAM |
+| Where files go | Decides this once, for every task | Through CAM: where CAM says. On its own: wherever the teacher chooses |
+
+CAM already covers the whole school year, with classes such as `Year 7 A (2026-27)`. This keeps CAM2 simple for teachers who only want to grade one exam.
+
+**The fixed place mostly exists already.** When CAM opens an exam, it tells CAM2 the folder: `<class cloud folder>/exams/<exam name>/`, with the scans included. The teacher doesn't choose it for each exam. The proposal:
+
+- **Do the same for assignments and drafts,** for example `<class cloud folder>/assignments/<task name>/`.
+- **Teachers choose the cloud folder once,** in CAM, so it never varies between tasks.
+- **Use the cloud drive's own desktop app,** which shows it as an ordinary folder. This needs no Google API or OAuth, so it avoids the problem in [F5](#f5-move-drafts-and-assignments-into-cam2-and-retire-the-workspace). Drive and OneDrive can also keep files online until they are opened. School rules on these apps still need checking.
+
+**Saving space: treat crops as disposable.** Crops can be rebuilt from the scans at any time, so they don't need keeping permanently. File count may be a bigger problem than size:
+
+| Rough example, to measure on a real session | Crop files | Crop size |
+|---|---|---|
+| One exam: 25 students, 15 questions | 375 | About 190 MB |
+| A year: 6 classes, 6 exams each | 13,500 | About 7 GB |
+
+Thousands of small files sync slowly. So:
+
+- [F8](#f8-compact-and-delete-finished-sessions)'s **Compact** button removes a finished task's crops and keeps everything else. Opening the task again rebuilds them. CAM could also do this by itself when a task is finished, which is still to decide.
+- Whole submissions have no crops at all.
+- Stamps and highlights aren't affected, because they are saved as positions on the scanned page.
+
+**Seeing a student's work over time** would come later, as a CAM feature reading from this fixed place. This is another reason to keep the folder layout fixed from the start.
+
+**Promoting students between years** isn't in CAM yet, as far as I could find. It needs each student to keep one ID across years, because classes today are separate for each year. This should be designed before the first year's data builds up.
+
+### F8: Compact and delete finished sessions
+
+**From:** project lead, 2026-11-05. **Size:** Small to medium. **Status:** Proposed; not being built yet
+
+**What was asked:** finished exams pile up on CAM2's start screen and take up disk space. Teachers should see how much space each one uses, and be able to shrink it or remove it completely.
+
+**Proposal:** each session on the start screen shows its size, with two buttons:
+
+```
+Y8 Science Midterm                          2.1 GB   [Compact?]  [Delete]
+Step 5 · 25 / 25 graded · Saved 3 Nov
+```
+
+After clicking **Compact?**:
+
+```
+Y8 Science Midterm    Freed 1.6 GB · 0.5 GB left     Compacted   [Delete]
+Step 5 · 25 / 25 graded · Saved 3 Nov
+```
+
+**Compact** removes the answer images cut from the scans.
+
+| Removed | Kept |
+|---|---|
+| `crops/`, except the handwritten-name crops | Scans, grades and comments, backups, thumbnails, student PDFs and the gradebook |
+
+- **It loses nothing,** because the crops can be rebuilt from the scans. So it needs no warning.
+- **Offered** once every paper is graded, and only when all the scans are there and no other computer has the session open.
+- **Opening a compacted session rebuilds its crops first,** with a progress bar, and the label returns to **Compact?**. This rebuild is essential: today a report with a missing crop prints with no image and no error (`_question_with_image`).
+- **It doesn't touch the session or grades files.** CAM only re-reads a session when those two files change, so compacting won't trigger a re-read. CAM2 tells a session is compacted by looking at the folder.
+- **Name crops stay,** because CAM's Window 2 shows them.
+
+**Delete** removes the session completely, including its entry on the list.
+
+- **Confirm first,** naming the exam, and say plainly that the grades and comments, student PDFs and gradebook all go, and that this can't be undone.
+- **Only CAM2's own files go.** A teacher can choose an existing folder for a session, so CAM2 removes the files and folders it made, then the folder itself only if nothing else is left in it. It also clears the session's emergency copy on this computer.
+- **Not while another computer has it open.**
+- **The existing Remove stays,** for a session whose folder can't be found. It only takes the entry off the list.
+
+**Sessions linked to CAM:** a session opened from CAM shows the label **Linked to CAM** where others show **Delete**. CAM owns that exam's folder and record, so the label also tells the teacher that removing it starts in CAM. Compact still works.
+
+```
+Y8 Science Midterm                          2.1 GB   [Compact?]  Linked to CAM
+```
+
+- **How CAM2 knows:** CAM marks the session when it opens it (`config["host"]`), so the label needs no connection to CAM. That mark also stays if the session is later opened with **Open folder**.
+- **After the exam is deleted in CAM:** CAM moves the session folder to `exams/_deleted/`, so CAM2 finds the folder gone and shows its existing "folder can't be found" entry with **Remove**. No new link between the apps is needed.
+- **Deleting in CAM doesn't free the space yet.** The folder stays in `exams/_deleted/` until the teacher removes it by hand. CAM may need a way to show or empty that folder.
+
+**A longer list (agreed in principle):** the 10-session limit (`RECENT_MAX`) would be reached within months. The limit is a single number, so raising it is easy. What needs care is showing a long list:
+
+- **Keep the list in its own scrolling box,** newest first, so the rest of the start screen stays in place.
+- **Allow about 200 sessions.** That is many years of grading, while still keeping a limit on the list file.
+- **Sizes and the Linked to CAM label load after the screen appears, as the teacher scrolls to them.** Reading 200 folders on a cloud drive at once could be slow, and neither appears until it is known.
+- **The list belongs to each computer.** Sessions that already dropped off won't come back by themselves, only when opened with **Open folder**.
+
+**Showing the size:**
+
+- **It loads after the screen appears,** so a slow cloud drive or USB stick never holds up the start screen.
+- **Reading sizes doesn't download anything** from a cloud drive.
+- **Say "folder size", not "space on this disk".** A cloud drive may keep files online only, and may hold deleted files in its own trash for a while, so the freed space may not appear on the disk straight away.
+
+**What changes:**
+
+| Where | Change |
+|---|---|
+| `static/js/start.js` `recentList`, `static/app.css` | The size, the buttons and labels, and the scrolling list |
+| `engine/storage.py`, `app.py` | Folder size, compact and delete routes, whether a session is linked to CAM, and the longer list |
+| `engine/workflow.py`, `app.py` | Rebuild crops when a compacted session opens (`slice_session` removes the whole `crops/` folder, name crops included, then rebuilds them all) |
+| `i18n/en.json`, `i18n/ja.json`, `tests/` | The wording, and tests that reports keep their images after compacting and that Delete leaves other files alone |
 
 ## Done
 
