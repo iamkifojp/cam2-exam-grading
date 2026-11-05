@@ -97,8 +97,28 @@ one is `v0.3.0-dev`:
 
 | Computer | Download | First start |
 |---|---|---|
-| Windows 10 / 11 | `CAM2-exam-grading-Windows-vX.zip` | Unzip, then double-click **Start CAM2 Exam Grading**. If Windows says it protected your PC, click **More info**, then **Run anyway** |
+| Windows 10 / 11 | `CAM2-exam-grading-Windows-vX.zip` | [Unblock the zip](#windows-unblock-the-download-first), unzip it, then double-click **Start CAM2 Exam Grading**. If Windows says it protected your PC, click **More info**, then **Run anyway** |
 | Mac with an Apple chip (M1 or later) | `CAM2-exam-grading-Mac-AppleSilicon-vX.zip` | Unzip, double-click **Start CAM2 Exam Grading**, then approve it once in System Settings → Privacy & Security → **Open Anyway** |
+
+### Windows: unblock the download first
+
+Windows marks files that come from the internet, and on some computers this can stop
+CAM2 from starting. Before you unzip:
+
+1. Right-click the zip and choose **Properties**.
+2. On the **General** tab, tick **Unblock**, next to "This file came from another
+   computer and might be blocked to help protect this computer".
+3. Click **OK**, then unzip as usual.
+
+- **Already unzipped?** Do the same to **Start CAM2 Exam Grading** in the unzipped
+  folder.
+- **No Unblock tick box?** Windows hasn't marked that file, so carry on.
+- **Windows in Japanese?** The tab is 「全般」, and the tick box is 「許可する」 or
+  「ブロックの解除」.
+- **Still refused, with no Run anyway button?** Your school's settings may be blocking
+  it, so ask your IT team.
+
+### Before you start
 
 Sessions from `v0.2.0-dev` open in this version, but once saved here, `v0.2.0-dev` can
 no longer open them.

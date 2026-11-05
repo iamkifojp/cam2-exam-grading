@@ -6,6 +6,11 @@ year-month-day.
 
 ## [Unreleased]
 
+### Added
+- **How to unblock CAM2 on Windows,** in the README, READ ME FIRST and the Windows
+  quick guide, after colleagues had to tick **Unblock** in the file's Properties to
+  start it. READ ME FIRST and the quick guide reach teachers with the next build.
+
 ### Changed
 - **The README says "weightings"** rather than "shares of the paper", which confused
   teachers.
