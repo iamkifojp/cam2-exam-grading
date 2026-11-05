@@ -176,6 +176,27 @@ def check_choice_groups(config: dict) -> None:
 
 # --- Recording a grade -------------------------------------------------------------
 #
+# How long a comment may be, in characters, because Japanese has no spaces. A limit
+# stops new typing only. A longer comment already saved is never cut, and can be
+# kept or shortened but can't grow.
+MAX_QUESTION_COMMENT = 300
+MAX_OVERALL_COMMENT = 600
+
+
+def typed_comment(comment, generated_line: str = "") -> str:
+    """A comment without the line generated from quick comments (keywords.py)."""
+    text = str(comment or "")
+    if generated_line and text.startswith(generated_line):
+        return text[len(generated_line):].lstrip("\n")
+    return text
+
+
+def _check_comment_length(new, old, limit: int, generated_line: str = "") -> None:
+    length = len(typed_comment(new, generated_line))
+    if length > limit and length > len(typed_comment(old, generated_line)):
+        raise UserError("comment_too_long", limit=limit)
+
+
 # A grade entry is {"value": ..., "comment": ...}. On a rubric question the levels
 # are kept per criterion in "levels": {rubric id: level}, with "value" None,
 # so criteria can be added to or taken off a question after grading starts
@@ -211,6 +232,10 @@ def set_grade(config: dict, grades_data: dict, student_id: str, question_id: str
             rubrics.check_level(_rubric_by_id(config)[rubric_id or rids[0]], value)
         elif not 0 <= value <= int(question.get("max") or 0):
             raise UserError("mark_out_of_range", value=value, max=question.get("max"))
+    if comment is not None:
+        saved = _entry(grades_data, student_id, question_id)
+        _check_comment_length(comment, saved.get("comment"), MAX_QUESTION_COMMENT,
+                              str(saved.get("keyword_text") or ""))
     entry = grades_data.setdefault("grades", {}).setdefault(student_id, {}).setdefault(
         question_id, {"value": None, "comment": ""})
     if value is not ...:
@@ -533,6 +558,8 @@ def set_choice(config: dict, grades_data: dict, student_id: str, group_id: str, 
 
 
 def set_overall_comment(grades_data: dict, student_id: str, comment: str) -> dict:
+    saved = (grades_data.get("overall") or {}).get(student_id) or {}
+    _check_comment_length(comment, saved.get("comment"), MAX_OVERALL_COMMENT)
     grades_data.setdefault("overall", {}).setdefault(student_id, {})["comment"] = str(comment or "")
     return grades_data
 

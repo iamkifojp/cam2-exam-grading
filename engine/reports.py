@@ -416,9 +416,9 @@ def _question_notes(config: dict, question: dict, entry: dict, not_counted, grou
     return "".join(notes)
 
 
-def _question_with_image(w: _Writer, session: storage.Session, question: dict, student: dict,
-                         parts: List[tuple], notes: str, language: str) -> None:
-    crop = session.path(f"{storage.CROPS_DIR}/{question['id']}/{student['id']}.png")
+def _question_with_image(w: _Writer, session: storage.Session, layout: slicer.Layout, question: dict,
+                         student: dict, parts: List[tuple], notes: str, language: str) -> None:
+    crop = session.path(f"{storage.CROPS_DIR}/{slicer.crop_file(question['id'], student['id'], layout)}")
     image = _jpeg(crop) if os.path.isfile(crop) else None
     img_w, img_h = _fit(image[1], image[2], IMAGE_MAX_W, IMAGE_MAX_H) if image else (0, 0)
     row_h = max(img_h, 28)
@@ -523,7 +523,8 @@ def build_student_pdf(session: storage.Session, config: dict, grades: dict, stud
                     for q in section["questions"]]
             if images:
                 for q, parts, notes in rows:
-                    _question_with_image(w, session, q, student, parts, notes, language)
+                    _question_with_image(w, session, slicer.Layout.from_config(config.get("layout")), q, student,
+                                         parts, notes, language)
             else:
                 _questions_as_grid(w, rows, language)
 

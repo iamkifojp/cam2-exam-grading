@@ -6,10 +6,8 @@ import { t } from "./i18n.js";
 import { goTo } from "./main.js";
 import { nextSub, openRubrics } from "./step2.js";
 import { app, config, criteriaOf, gradedWith, handleError, render } from "./store.js";
-import { NAME_COLOR, QUESTION_COLORS, button, coach, confirmBox, debounce, formatTime, h, modal,
-  progressOverlay, toast } from "./ui.js";
+import { NAME_COLOR, QUESTION_COLORS, button, coach, confirmBox, debounce, formatTime, h, modal, progressOverlay, toast, isSlide, paperLabel, PAPERS } from "./ui.js";
 
-const PAPERS = ["A4", "B5", "A3"];
 const GRID = "5mm"; // engine/slicer.DENSITY
 
 // --- Grid maths (mirrors engine/slicer.py) ---------------------------------------------
@@ -442,7 +440,7 @@ export function renderBoxes() {
       button(t("step2.boxes.use_new_grid"), () => changeLayout({ density: GRID }), "small")) : null,
     h("div", { class: "row" }, h("span", { class: "muted small" }, t("step1.paper")),
       h("div", { class: "seg" }, PAPERS.map((p) => h("button", { type: "button",
-        class: c.layout.paper === p ? "on" : "", onclick: () => changeLayout({ paper: p }) }, p)))),
+        class: c.layout.paper === p ? "on" : "", onclick: () => changeLayout({ paper: p, landscape: landscapeFor(c, p) }) }, paperLabel(p))))),
     h("label", { class: "check small" }, h("input", { type: "checkbox", checked: showLabels,
       onchange: (e) => { app.draft.showLabels = e.target.checked; render(); } }), t("step2.boxes.show_labels")),
     h("label", { class: "inline small" }, t("step2.boxes.draw_on"),
@@ -705,6 +703,13 @@ function checkStrip(boxes, c, drawingOn) {
     h("p", { class: "muted small" }, t("step2.boxes.check_hint")),
     pick.map((s) => h("figure", {}, h("img", { src: `/api/preview-crop/${s.id}?boxes=${q}`, alt: s.display_name, loading: "lazy" }),
       h("figcaption", {}, s.display_name))));
+}
+
+// Slides are landscape. Coming back from a slide size, go by the page on screen.
+function landscapeFor(c, paper) {
+  if (isSlide(paper)) return true;
+  const page = document.querySelector(".sheet img");
+  return isSlide(c.layout.paper) && page ? page.naturalWidth > page.naturalHeight : c.layout.landscape;
 }
 
 async function changeLayout(change) {

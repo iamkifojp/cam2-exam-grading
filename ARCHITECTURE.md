@@ -149,7 +149,7 @@ through `storage.resolve_path()`.
 ├── cam2.lock             "open on <computer>" (advisory)
 ├── scans/                copies of the scans, or one PDF per paper cut from a stack
 │   └── sides/            booklets only: each paper's sides as scanned, before unfolding
-├── crops/<id>/<student>.png   one image per question per student
+├── crops/<id>/<student>.png   one image per question per student (.jpg for a question on a slide size)
 ├── thumbs/               page-1 thumbnails for the Step 1 check
 ├── backups/              daily copies of the two JSON files (newest 14)
 └── reports/              Excel gradebook and student_pdfs/
@@ -232,7 +232,7 @@ instead of one big database.
 ## Grid geometry
 
 - **Grid sizes.** New sessions use one grid of ~5 mm cells (density
-  `"5mm"`: A4 42 × 60, B5 36 × 51, A3 60 × 84). Teachers drag boxes rather
+  `"5mm"`: A4 42 × 60, B5 36 × 51, A3 60 × 84, slides 51 × 29 and 51 × 38 turned). Teachers drag boxes rather
   than type cell names, so the grid only sets how finely a box can follow the
   paper. Older sessions keep CAM's `"normal"` (compact, ~1.4 cm) or `"fine"`
   (~1 cm) grid, because their saved ranges name those cells; any layout

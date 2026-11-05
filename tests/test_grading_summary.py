@@ -670,5 +670,57 @@ class ClassTests(unittest.TestCase):
                          {"graded": 8, "total": 8, "students_done": 2, "students_total": 2})
 
 
+
+class CommentLimitTests(unittest.TestCase):
+    def setUp(self):
+        self.config, self.grades = marks_exam()
+
+    def question(self, comment):
+        gs.set_grade(self.config, self.grades, "s1", "q1", comment=comment)
+
+    def refused(self, call, limit):
+        with self.assertRaises(UserError) as ctx:
+            call()
+        self.assertEqual((ctx.exception.code, ctx.exception.params["limit"]), ("comment_too_long", limit))
+
+    def test_question_comment_stops_at_300(self):
+        self.question("x" * 300)
+        self.refused(lambda: self.question("x" * 301), 300)
+        self.assertEqual(self.grades["grades"]["s1"]["q1"]["comment"], "x" * 300)
+
+    def test_overall_comment_stops_at_600(self):
+        gs.set_overall_comment(self.grades, "s1", "x" * 600)
+        self.refused(lambda: gs.set_overall_comment(self.grades, "s1", "x" * 601), 600)
+        self.assertEqual(self.grades["overall"]["s1"]["comment"], "x" * 600)
+
+    def test_japanese_is_counted_in_characters(self):
+        self.question("字" * 300)
+        self.refused(lambda: self.question("字" * 301), 300)
+
+    def test_a_refused_comment_changes_nothing_else(self):
+        self.refused(lambda: gs.set_grade(self.config, self.grades, "s1", "q1", value=4, comment="x" * 301), 300)
+        self.assertEqual(self.grades["grades"], {})
+
+    def test_a_saved_longer_comment_is_kept_or_shortened_but_cannot_grow(self):
+        long_ = "x" * 400
+        self.grades["grades"] = {"s1": {"q1": {"value": 3, "comment": long_}}}
+        self.grades["overall"] = {"s1": {"comment": "y" * 700}}
+        gs.set_grade(self.config, self.grades, "s1", "q1", value=4)            # a grade alone leaves it
+        self.assertEqual(self.grades["grades"]["s1"]["q1"]["comment"], long_)
+        self.question(long_)                                                    # saving it unchanged
+        self.question("z" * 400)                                                # the same length, reworded
+        self.refused(lambda: self.question("x" * 401), 300)
+        self.question("x" * 350)
+        self.refused(lambda: self.question("x" * 351), 300)
+        gs.set_overall_comment(self.grades, "s1", "y" * 700)
+        self.refused(lambda: gs.set_overall_comment(self.grades, "s1", "y" * 701), 600)
+        gs.set_overall_comment(self.grades, "s1", "y" * 10)
+
+    def test_the_generated_line_does_not_count(self):
+        line = "Areas to develop: check calculations."
+        self.grades["grades"] = {"s1": {"q1": {"value": None, "comment": line, "keyword_text": line}}}
+        self.question(f"{line}\n{'x' * 300}")
+        self.refused(lambda: self.question(f"{line}\n{'x' * 301}"), 300)
+
 if __name__ == "__main__":
     unittest.main()

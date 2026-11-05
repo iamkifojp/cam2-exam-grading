@@ -134,7 +134,7 @@ You will need:
   can be unstapled and scanned open on A3, and CAM2 puts their pages back in
   order. One file per student and phone scans work too. The start screen's
   **How to scan your papers** has the details;
-- the paper size (A4, B5 or A3);
+- the paper size (A4, B5, A3, or a slide size for decks saved as PDFs);
 - optionally, your class list in Excel or CSV.
 
 ## For developers

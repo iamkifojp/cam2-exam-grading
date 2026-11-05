@@ -4,6 +4,32 @@ All notable changes to CAM2 are listed here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates are
 year-month-day.
 
+## [Unreleased]
+
+For the next test build. Sessions stay at version 2.
+
+### Added
+
+- **Slide decks saved as PDFs.** `Slide 16:9` and `Slide 4:3` are new paper sizes with
+  square cells of about 5 mm (51 × 29 and 51 × 38). A PDF is recognised by the shape of
+  its landscape pages, so PowerPoint's and Google's sizes both work. Photos of the same
+  shape aren't taken for slides, even saved as PDFs, and US Letter still isn't recognised.
+  Trying a slide size in Step 1 and going back to a paper size puts the landscape box
+  back as it was. A question on a
+  slide size is cropped as a JPEG, because a class's whole-slide PNGs came to about
+  1.6 GB on a photo-heavy test deck, and about 0.2 GB as JPEGs.
+- **Limits on comment length:** 300 characters on a question and 600 for an overall
+  comment. A counter shows from 80% of the limit. A longer comment is refused and stays
+  in the box, unsaved, until it is shortened, and CAM2 won't leave the screen until then.
+  Grades and quick comments still work meanwhile, and the line quick comments generate
+  doesn't count. A longer comment already saved is never cut. It can be kept or
+  shortened, but can't grow.
+
+### Note
+
+An older CAM2 can't open a session on a slide size. It says **Unknown paper size** and
+changes nothing in the session folder, but needs restarting before it opens another.
+
 ## [0.3.1-dev] - 2026-11-05
 
 A test build with fixes from colleagues' first tries of `v0.3.0-dev`. Sessions are
