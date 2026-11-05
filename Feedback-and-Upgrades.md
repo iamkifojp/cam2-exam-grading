@@ -291,9 +291,9 @@ The list rules could live in CAM2's `engine/keywords.py`, for CAM's workspace to
 
 **What happens:** in CAM's grading workspace, changing a tick replaces the whole comment with the generated lines, so anything typed is lost. The project lead has hit this too. It is meant to keep the teacher's text.
 
-**Workaround for now:** tick the comments first, then type the custom comment.
+**Workaround for now:** tick the comments first, then type the custom comment. Set the deadline before writing any comments.
 
-**Cause:** `st.comment = autoComment(st)` in `cam_grading_workspace/app.py` rebuilds the comment from the ticks alone. The Late checkbox does the same.
+**Cause:** `st.comment = autoComment(st)` in `cam_grading_workspace/app.py` rebuilds the comment from the ticks alone. The Late checkbox does the same. So does changing the deadline, for every student in the task; this comes from reading the code and hasn't been run.
 
 **Fix:** remember the line last generated and replace only that, as CAM2 does with `keyword_text` in `engine/keywords.py`. Saved comments have no remembered line, so the first change on one needs care not to lose or repeat its text.
 
