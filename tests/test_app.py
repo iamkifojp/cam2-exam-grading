@@ -13,7 +13,9 @@ import time
 import unittest
 from unittest import mock
 
+import pymupdf as fitz
 from openpyxl import Workbook
+from PIL import Image
 
 from app import create_app
 from appstate import AppState
@@ -695,6 +697,116 @@ class SafetyTests(AppTestCase):
         err = self.post("/api/setup/mode", {"mode": "marks"}, status=400)
         self.assertEqual(err["error"], "no_open_session")
 
+
+
+class SlideDeckTests(AppTestCase):
+    """From choosing a 12-screen deck to a report."""
+
+    SCREENS = 12
+
+    def setUp(self):
+        super().setUp()
+        self.decks = os.path.join(self.root, "decks")
+        os.makedirs(self.decks)
+        layout = Layout("Slide 16:9", landscape=True)
+        for name in ("Tanaka Hana.pdf", "Sato Ken.pdf"):
+            make_pdf(os.path.join(self.decks, name), pages=self.SCREENS, size=(13.333 * 72, 7.5 * 72),
+                     fills={p: [(layout, 25, 14, RED)] for p in range(1, self.SCREENS + 1)})
+
+    def test_a_deck_goes_from_choosing_the_file_to_a_report(self):
+        info = self.post("/api/inspect", {"kind": "folder", "path": self.decks})
+        self.assertEqual((info["paper"], info["landscape"]), ("Slide 16:9", True))
+        data = self.post("/api/session/create", {
+            "exam_name": "Final report", "paper": info["paper"], "landscape": info["landscape"],
+            "save_folder": os.path.join(self.root, "sessions"),
+            "source": {"type": "folder", "path": self.decks}})
+        job = self.wait(data["job"])
+        self.assertEqual(job["status"], "done", job.get("error"))
+        self.assertEqual(job["session"]["grid"], {"cols": 51, "rows": 29})
+        self.assertEqual(job["session"]["config"]["version"], model.VERSION)
+
+        self.post("/api/setup/mode", {"mode": "marks"})
+        questions = [{"id": f"q{n}", "label": f"Screen {n:02d}", "boxes": [f"page{n}!A1:AY29"], "max": 8}
+                     for n in range(1, self.SCREENS + 1)]
+        self.post("/api/setup/questions", {"name_box": ["page1!A1:J3"], "questions": questions})
+        job = self.wait(self.post("/api/slice")["job"])
+        self.assertEqual((job["status"], job["result"]["errors"]), ("done", []))
+        self.assertEqual(job["result"]["crops"], (self.SCREENS + 1) * 2)
+
+        res = self.client.get("/api/crop/q12/s001")
+        self.assertEqual(res.mimetype, "image/jpeg")
+        with Image.open(io.BytesIO(res.data)) as im:
+            self.assertEqual(im.size, (2667, 1500))
+        res.close()
+        res = self.client.get(f"/api/crop/{model.NAME_BOX_ID}/s001")
+        self.assertEqual(res.mimetype, "image/png")
+        res.close()
+
+        for question in questions:
+            self.post("/api/grade", {"student_id": "s001", "question_id": question["id"], "value": 5})
+        self.post("/api/overall", {"student_id": "s001", "comment": "A strong portfolio."})
+        job = self.wait(self.post("/api/export", {"language": "en"})["job"])
+        self.assertEqual(job["status"], "done", job.get("error"))
+        self.assertEqual((job["result"]["pdfs"], job["result"]["errors"]), (2, []))
+        folder = os.path.join(job["result"]["folder"], "student_pdfs")
+        pictures = []
+        for name in os.listdir(folder):
+            with fitz.open(os.path.join(folder, name)) as doc:
+                pictures.append(sum(len(p.get_images()) for p in doc))
+        self.assertEqual(max(pictures), self.SCREENS)        # a report shows every screen
+
+    def test_a_session_on_paper_keeps_its_layout_and_png_crops(self):
+        self.create()
+        self.set_up_questions()
+        res = self.client.get("/api/crop/q1/s001")
+        self.assertEqual(res.mimetype, "image/png")
+        res.close()
+        config = self.client.get("/api/state").get_json()["session"]["config"]
+        self.assertEqual(config["layout"], {"paper": "A4", "density": "5mm", "landscape": False})
+
+
+class CommentLimitRouteTests(AppTestCase):
+    def setUp(self):
+        super().setUp()
+        self.session = self.create()
+        self.set_up_questions()
+
+    def test_limits_are_told_to_the_page(self):
+        session = self.client.get("/api/state").get_json()["session"]
+        self.assertEqual(session["comment_limits"], {"question": 300, "overall": 600})
+
+    def test_a_long_comment_is_refused_and_nothing_is_lost(self):
+        self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "comment": "x" * 300})
+        err = self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "comment": "x" * 301}, status=400)
+        self.assertEqual(err["error"], "comment_too_long")
+        self.assertIn("300", err["message"])
+        self.post("/api/overall", {"student_id": "s001", "comment": "y" * 600})
+        err = self.post("/api/overall", {"student_id": "s001", "comment": "y" * 601}, status=400)
+        self.assertEqual(err["error"], "comment_too_long")
+        grades = self.client.get("/api/state").get_json()["session"]["grades"]
+        self.assertEqual(grades["grades"]["s001"]["q1"]["comment"], "x" * 300)
+        self.assertEqual(grades["overall"]["s001"]["comment"], "y" * 600)
+
+    def test_a_session_with_a_longer_comment_opens_and_saves_with_it_unchanged(self):
+        folder = self.session["folder"]
+        path = os.path.join(folder, "grades.json")
+        self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "value": 3})
+        self.post("/api/session/close")
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        data["grades"]["s001"]["q1"]["comment"] = "長" * 500
+        data["overall"] = {"s001": {"comment": "y" * 900}}
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, ensure_ascii=False)
+        self.post("/api/session/open", {"folder": folder})
+        self.post("/api/grade", {"student_id": "s001", "question_id": "q2", "value": 2})
+        self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "value": 4})
+        self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "comment": "長" * 500})
+        with open(path, encoding="utf-8") as fh:
+            saved = json.load(fh)
+        self.assertEqual(saved["grades"]["s001"]["q1"]["comment"], "長" * 500)
+        self.assertEqual(saved["overall"]["s001"]["comment"], "y" * 900)
+        self.assertEqual(saved["version"], model.VERSION)
 
 if __name__ == "__main__":
     unittest.main()

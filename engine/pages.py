@@ -321,7 +321,8 @@ def preview_first_paper(source: dict, files: Sequence[str], width: int = 180,
         doc = build_paper(sources, source, papers[0])
         try:
             rect = doc[0].rect
-            detected = detect_paper_mm(rect.width * 25.4 / 72, rect.height * 25.4 / 72)
+            from_pdf = papers[0]["sides"][0].path.lower().endswith(PDF_EXT)
+            detected = detect_paper_mm(rect.width * 25.4 / 72, rect.height * 25.4 / 72, slides=from_pdf)
             for page in list(doc)[:max_pages]:
                 zoom = width / max(page.rect.width, 1)
                 pix = page.get_pixmap(matrix=_fitz().Matrix(zoom, zoom))

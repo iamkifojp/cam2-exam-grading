@@ -3,7 +3,7 @@
 import { get, post } from "./api.js";
 import { loadStrings, t, language } from "./i18n.js";
 import { act, app, config, handleError, onRender, render } from "./store.js";
-import { button, confirmBox, formatTime, h } from "./ui.js";
+import { button, commentRefused, confirmBox, formatTime, h } from "./ui.js";
 import { renderStart, openHostExam, openSession } from "./start.js";
 import { renderNewSession, renderScanCheck } from "./step1.js";
 import { saveQuestions } from "./boxes.js";
@@ -33,7 +33,7 @@ export function canGoTo(step) {
 }
 
 export async function goTo(step, { next = false, draft = null } = {}) {
-  if (!next && !canGoTo(step)) return;
+  if (commentRefused() || (!next && !canGoTo(step))) return;
   await saveQuestions.flush();          // leaving the step drops the draft a waiting save needs
   const data = await act(post("/api/step", { step }), { rerender: false });
   if (data) {
@@ -117,6 +117,7 @@ async function reopenSession() {
 }
 
 async function closeSession() {
+  if (commentRefused()) return;
   try {
     const data = await post("/api/session/close");
     app.session = null;

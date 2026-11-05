@@ -8,7 +8,7 @@ import { post } from "./api.js";
 import { t } from "./i18n.js";
 import { goTo } from "./main.js";
 import { act, app, config, criteriaOf, gradeOf, gradedWith, handleError, render } from "./store.js";
-import { button, debounce, formatTime, h, modal } from "./ui.js";
+import { button, commentField, commentRefused, debounce, formatTime, h, modal } from "./ui.js";
 import { parseRange } from "./boxes.js";
 
 const NA = "not_answered";
@@ -83,6 +83,7 @@ function firstPage(qid) {
 // teacher chose it, opened at the question's page. "Now grading" shows only on
 // the paper that "Go to Qn" lands on.
 function moveTo(changes) {
+  if (commentRefused()) return;
   const d = draft();
   d.arrived = false;
   Object.assign(d, changes);
@@ -368,7 +369,6 @@ function gradeCard(c, d, item, student) {
   const q = item.q;
   const r = item.r;
   const value = valueOf(student.id, q.id, r?.id);
-  const comment = entry(student.id, q.id)?.comment || "";
   const choose = (v) => setGrade(student.id, q.id, v, r?.id);
   // Not answered is about the student's answer, so it covers every criterion.
   const notAnswered = () => setGrade(student.id, q.id, NA);
@@ -424,10 +424,11 @@ function gradeCard(c, d, item, student) {
       h("input", { type: "checkbox", checked: picked.includes(k.label),
         onchange: (e) => toggleKeyword(k.label, e.target.checked) }), k.label))));
 
-  const commentBox = h("textarea", { id: "comment-box", rows: "3", placeholder: t("grade.comment_placeholder"),
-    "aria-label": t("grade.comment_placeholder"),
-    oninput: (e) => saveComment(student.id, q.id, e.target.value),
-    onblur: () => saveComment.flush() }, comment);
+  const commentBox = commentField({ key: `${student.id}/${q.id}`, limit: app.session.comment_limits.question,
+    saved: () => entry(student.id, q.id)?.comment || "", line: entry(student.id, q.id)?.keyword_text || "",
+    save: (text) => saveComment(student.id, q.id, text), flush: saveComment.flush,
+    attrs: { id: "comment-box", rows: "3", placeholder: t("grade.comment_placeholder"),
+      "aria-label": t("grade.comment_placeholder") } });
 
   const nextId = nextStudentId(c, d, 1);
   const outOf = r ? "" : t("step4.out_of", { max: q.max });

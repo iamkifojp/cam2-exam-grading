@@ -371,6 +371,8 @@ table.preview tr.header-row td { color: var(--muted); font-style: italic; }
 .band-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .descriptor { margin: 4px 0 0; font-size: .875rem; line-height: 1.4; white-space: pre-wrap; }
 .grade-card .comment { margin: 12px 0; }
+.comment-note { margin: 4px 0 0; color: var(--muted, inherit); }
+textarea.too-long { border-color: var(--warn); outline-color: var(--warn); }
 .grade-card #next-paper { width: 100%; }
 /* Which question this is, and the move to the next one, must not be missed:
    an answer read against the wrong question looks like a very wrong answer. */

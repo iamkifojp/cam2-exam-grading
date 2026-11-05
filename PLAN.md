@@ -56,7 +56,8 @@ Everything that decides where files live is settled here, before anything is wri
      - **Pages in order:** loose or stapled sheets, or answer sheets.
      - **Folded booklet, scanned open:** each scanned page holds two booklet pages side by side. The teacher gives the booklet's page count (4, 8, 12 …), and CAM2 cuts every side in half and puts the pages in reading order (for 8 pages the sides hold 8|1, 2|7, 6|3, 4|5). Two boxes fix copiers that turn every front or every back upside down. A third, *Inside sheets first*, is for booklets that were opened, unstapled and stacked as they lay, so each one's inside sheet came first, inner face up (the sides are then read backwards). When the scans are landscape, CAM2 suggests this layout.
    - **Preview:** paper 1 appears exactly as it will be imported, with the number of papers, so a wrong page count or upside-down backs show before anything is copied.
-3. **Paper size:** three big buttons, **A4 / B5 / A3**, pre-selected from the PDF's page size (for a booklet, from the unfolded page). The teacher confirms.
+3. **Paper size:** big buttons, **A4 / B5 / A3 / Slide 16:9 / Slide 4:3**, pre-selected from the PDF's page size (for a booklet, from the unfolded page). The teacher confirms.
+   - Slide sizes are recognised by shape, on landscape PDF pages only, after the paper sizes, because PowerPoint and Google decks differ in size but not shape. Phone photos are 4:3 or 16:9 too, so pictures are never taken for slides.
    - B5 matches both the ISO size (176×250 mm) and the Japanese JIS size (182×257 mm).
    - Landscape pages, such as a folded A3 sheet scanned flat, get the grid turned to match.
 4. **Where should this grading session be saved?** A native folder picker. The default is `Documents/CAM2 Exam Grading Sessions/<Exam name>`. CAM2 checks that the folder can be written to before continuing. If the chosen folder already has other files in it, CAM2 makes an `<Exam name>` folder inside it rather than scattering files.
@@ -391,6 +392,14 @@ cam2-exam-grading\
 ## 8. Decisions
 
 **Decided**
+- **Comment limits (2026-11-05):** 300 characters on a question and 600 for an overall comment, checked in `set_grade` and `set_overall_comment`.
+  - Characters, not words, because Japanese has no spaces. The browser counts the same way as the server.
+  - A longer comment is refused with a short message, because a browser's length limit silently trims pasted text. It stays in the box, unsaved and kept across redraws, and CAM2 won't leave the screen until it's shortened. Grades and ticks still work.
+  - A saved comment is never cut. A longer one can be kept or shortened, but can't grow.
+  - The line generated from ticks doesn't count, and never stops a tick.
+  - The session's format doesn't change.
+  - Notes (F2) and their limits come later.
+- **Slide crops (2026-11-05):** a question on a slide size is cropped as a JPEG at quality 85, since the paper size says which, so the session gains no new field. Measured on a fictional 12-screen deck for 28 students: PowerPoint size, all photos, 1.62 GB of PNGs and 0.19 GB of JPEGs; a photo and text on each slide, 0.83 GB and 0.11 GB. Name crops stay PNG, because CAM reads them as PNG. Written papers stay PNG, for sharp handwriting.
 - **Mac signing:** the Mac package ships **unsigned**. Teachers approve it once with **Open Anyway** (§5).
   - The `READ ME FIRST` explains this step in EN and JA, and the quick guide shows it with screenshots.
   - Signing and notarising (Apple Developer account, US$99/year) can be added later without changing the app.

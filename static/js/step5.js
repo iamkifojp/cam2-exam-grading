@@ -5,7 +5,7 @@ import { t, language } from "./i18n.js";
 import { goTo } from "./main.js";
 import { openAddPapers } from "./step1.js";
 import { act, app, config, criteriaOf, gradeOf, gradedWith, handleError, render, usedCriteria } from "./store.js";
-import { button, coach, confirmBox, debounce, formatTime, h, modal, progressOverlay, toast } from "./ui.js";
+import { button, coach, commentField, confirmBox, debounce, formatTime, h, modal, progressOverlay, toast } from "./ui.js";
 
 const NA = "not_answered";
 
@@ -200,9 +200,11 @@ ${action}` : action,
         h("td", { class: "num-col" }, overrideInput(`final-${s.id}-${r.id}`, rr.final, null, top,
           (v) => ({ student_id: s.id, final_levels: { [r.id]: v } }), false, t("step5.final", { name: r.name })))];
     });
-    const comment = h("textarea", { id: `overall-${s.id}`, rows: "2", class: "overall-comment",
-      placeholder: t("step5.comment_placeholder"), "aria-label": t("step5.overall_comment"),
-      oninput: (e) => saveComment(s.id, e.target.value), onblur: () => saveComment.flush() }, res.comment || "");
+    const comment = commentField({ key: `overall/${s.id}`, limit: app.session.comment_limits.overall,
+      saved: () => app.session.grades.overall?.[s.id]?.comment || "",
+      save: (text) => saveComment(s.id, text), flush: saveComment.flush,
+      attrs: { id: `overall-${s.id}`, rows: "2", class: "overall-comment",
+        placeholder: t("step5.comment_placeholder"), "aria-label": t("step5.overall_comment") } });
     return h("tr", { class: res.complete ? "" : "incomplete" },
       h("td", { class: "num-cell" }, String(i + 1)),
       h("td", { class: "sticky-col" }, h("strong", {}, s.display_name), choiceButtons(c, s, res)),

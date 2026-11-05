@@ -511,7 +511,8 @@ def _forget_student_files(session: storage.Session, student_id: str) -> None:
     paths = [session.path(f"{storage.THUMBS_DIR}/{student_id}.jpg")]
     crops = session.path(storage.CROPS_DIR)
     if os.path.isdir(crops):
-        paths += [os.path.join(crops, r, f"{student_id}.png") for r in os.listdir(crops)]
+        paths += [os.path.join(crops, r, f"{student_id}.{ext}") for r in os.listdir(crops)
+                  for ext in ("png", "jpg")]
     for path in paths:
         try:
             os.remove(path)

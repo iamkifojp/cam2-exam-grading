@@ -176,7 +176,7 @@ Highlights and comment stamps are two separate tools, because teachers will use 
 | The question's comment | 300 characters, about 50 words | Room for a few sentences, not an essay |
 | The overall comment | 600 characters, about 100 words | The one place for a longer message, and still reasonable to write for a whole class |
 
-**The question and overall comment limits are agreed and come first (2026-11-05).** They go into the next CAM2 release, ahead of the rest of F2, and don't change the session's format (CAM's upgrade plan, Phase 1 and Q8). The other limits come with notes.
+**The question and overall comment limits are agreed and come first (2026-11-05).** They're built for the next CAM2 release, ahead of the rest of F2, and don't change the session's format (CAM's upgrade plan, Phase 1 and Q8). The design is in [PLAN.md](PLAN.md). The other limits come with notes.
 
 Three examples, with their length in characters:
 

@@ -72,6 +72,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
                            keywords=keywords.keyword_list(config, language()),
                            report_options=workflow.report_options(config)),
             "grid": {"cols": layout.cols, "rows": layout.rows},
+            "comment_limits": {"question": grading_summary.MAX_QUESTION_COMMENT,
+                               "overall": grading_summary.MAX_OVERALL_COMMENT},
             "grades": {"grades": grades.get("grades") or {}, "overall": grades.get("overall") or {}},
             "locked_questions": [q["id"] for q in config.get("questions") or []
                                  if grading_summary.question_has_grade(grades, q["id"])],
@@ -436,7 +438,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         known = {q["id"] for q in state.config.get("questions") or []} | {model.NAME_BOX_ID}
         if region_id not in known:
             abort(404)
-        return session_file(f"{storage.CROPS_DIR}/{region_id}/{student_id}.png", "image/png")
+        name = slicer.crop_file(region_id, student_id, Layout.from_config(state.config.get("layout")))
+        return session_file(f"{storage.CROPS_DIR}/{name}", "image/jpeg" if name.endswith(".jpg") else "image/png")
 
     @app.get("/api/page/<student_id>/<int:page>")
     def page_image(student_id, page):

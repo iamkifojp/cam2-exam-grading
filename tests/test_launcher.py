@@ -126,6 +126,17 @@ class RunningInstanceTests(unittest.TestCase):
         with self.assertRaises(OSError):
             launcher._ping(url)
 
+    def test_a_different_version_is_stopped_in_both_directions(self):
+        for running, starting in (("0.3.2-dev", "0.3.1-dev"), ("0.3.1-dev", "0.3.2-dev")):
+            with self.subTest(running=running, starting=starting):
+                url, requests = self.start_server(running)
+                with mock.patch.object(launcher, "VERSION", starting), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    self.assertIsNone(launcher.running_instance())
+                self.assertEqual(requests, ["/api/quit"], "nothing is handed to the other version")
+                with self.assertRaises(OSError):
+                    launcher._ping(url)
+
     def test_nothing_running(self):
         with mock.patch.object(launcher, "_server_file", return_value=os.devnull + "-none"):
             self.assertIsNone(launcher.running_instance())
