@@ -1,6 +1,6 @@
 # CAM2 Feedback and Upgrades
 
-What colleagues have asked for, what each request would take, and what was decided. Read this when planning a new version. Once something is agreed for a version, its design moves to [PLAN.md](PLAN.md), and what shipped goes in [CHANGELOG.md](CHANGELOG.md).
+What colleagues have asked for, optional ideas from research, what each would take, and what was decided. Read this when planning a new version. Once something is agreed for a version, its design moves to [PLAN.md](PLAN.md), and what shipped goes in [CHANGELOG.md](CHANGELOG.md).
 
 **Suggesters stay anonymous: entries give a subject or role, never a name.**
 
@@ -18,10 +18,17 @@ What colleagues have asked for, what each request would take, and what was decid
 | [F6](#f6-exam-comments-should-carry-weight-in-cams-term-comments) | Exam comments should carry weight in CAM's term comments | Project lead | Small, in CAM | Gap confirmed; to plan |
 | [F7](#f7-a-permanent-place-for-a-years-work) | A permanent place for a year's work | Project lead | Medium | Direction agreed; not being built yet |
 | [F8](#f8-compact-and-delete-finished-sessions) | Compact and delete finished sessions on CAM2's start screen | Project lead | Small to medium | Proposed; not being built yet |
+| [F9](#f9-grading-from-the-keyboard) | Grading from the keyboard | Research | Small | Optional; recommended |
+| [F10](#f10-the-spread-of-grades-while-grading) | The spread of grades while grading, and clicking a band to review it | Research | Small to medium | Optional; recommended |
+| [F11](#f11-gallery-of-one-question) | Gallery of one question across the class | Research | Small to medium | Optional; recommended |
+| [F12](#f12-calibration-mode) | Calibration mode: trial changes, comparison and audit | Research | Large | Optional; recommended only in part |
+| [F13](#f13-straightening-crooked-scans) | Straightening crooked scans | Research | Medium | Optional; check the need first |
+| [F14](#f14-class-analysis) | Class analysis and exports | Research | Small to medium | Optional; recommended only in part |
+| [F15](#f15-rubric-points-that-update-totals) | Rubric points that update totals everywhere | Research | Large | Optional; mostly works already |
 
 **Size** is a rough guess at the work, including tests and the English and Japanese text. Small is about half a day (around 100 lines). Medium is a few days (around 500 lines), plus time for a teacher to try it.
 
-**Status** is one of: Proposed, Agreed for a version, Done, or Not doing (with the reason).
+**Status** is one of: Proposed, Optional (an idea to consider, which nobody has asked for yet), Agreed for a version, Done, or Not doing (with the reason).
 
 ### Checking a new request
 
@@ -489,6 +496,164 @@ Y8 Science Midterm                          2.1 GB   [Compact?]  Linked to CAM
 | `engine/storage.py`, `app.py` | Folder size, compact and delete routes, whether a session is linked to CAM, and the longer list |
 | `engine/workflow.py`, `app.py` | Rebuild crops when a compacted session opens (`slice_session` removes the whole `crops/` folder, name crops included, then rebuilds them all) |
 | `i18n/en.json`, `i18n/ja.json`, `tests/` | The wording, and tests that reports keep their images after compacting and that Delete leaves other files alone |
+
+### Ideas from research (F9 to F15)
+
+**From:** project lead, from research into digital grading software using Gemini, 2026-11-05. These are optional ideas to consider for the next build. No colleague has asked for them yet.
+
+**Where the research places CAM2:** a small offline download for one teacher, between cloud subscriptions (Gradescope, Crowdmark), institutional servers (Plom, Submitty), bubble-sheet readers, and closed Japanese products (EdLog Clip, リアテンダント). These comparisons haven't been checked. Its claim that the 3–4 band gets overcrowded in MYP grading also hasn't been checked against real class data.
+
+**The research's suggested order, and what these notes suggest instead:**
+
+| Research's version | What it holds | Suggestion |
+|---|---|---|
+| v0.4.0 | Keyboard ([F9](#f9-grading-from-the-keyboard)), spread of grades ([F10](#f10-the-spread-of-grades-while-grading)), gallery ([F11](#f11-gallery-of-one-question)) | Best value of the set. They add no new kind of saved data, so the session file and what CAM reads stay as they are |
+| v0.5.0 | Calibration ([F12](#f12-calibration-mode)), rubric structure ([F15](#f15-rubric-points-that-update-totals)), straightening ([F13](#f13-straightening-crooked-scans)) | Take only the parts recommended below, once colleagues have tried the first group |
+| v1.0.0 | Class list, analysis and return slips ([F14](#f14-class-analysis)) | The class list and a form of slip already exist. Add the analysis sheet when convenient |
+
+### F9: Grading from the keyboard
+
+**From:** research, 2026-11-05. **Size:** Small. **Status:** Optional; recommended
+
+**The idea:** grade a whole question without touching the mouse.
+
+**What CAM2 does today:** Step 4 has no keyboard shortcuts. After a grade, the cursor moves to **Next paper**, so pressing Enter already moves on. Choosing the grade still takes the mouse, or Tab.
+
+**Proposal:**
+
+| Key | Action |
+|---|---|
+| `0`–`9` | Give that level or mark, on questions with grade buttons |
+| `←` `→` | Previous or next paper |
+| `N` | Not answered |
+| `C` | Go to the comment box |
+| `Esc` | Leave the comment box |
+
+- **Keys do nothing while the teacher is typing,** including during Japanese input, so a comment can't change a grade.
+- **Questions with many marks already have a number box,** which keeps working as it does.
+- **A short line under the card lists the keys,** with no setting to turn them on.
+
+**Not quite "no mouse":** under [F2](#f2-notes-drawn-on-the-answer-image), comment stamps and highlights are dragged onto the answer. So the keyboard covers grades and moving between papers, and comments stay typed or dragged.
+
+**Still to decide:**
+
+1. **Can a number key change a grade already given?** One stray key could silently change a paper's grade. Recommended: on a graded paper, the key shows a short "Change 4 to 5?" that Enter confirms.
+2. **Trying it:** does this feel faster than clicking on a school laptop?
+
+### F10: The spread of grades while grading
+
+**From:** research, 2026-11-05. **Size:** Small to medium. **Status:** Optional; recommended
+
+**The idea:** show how grades are spreading across the bands while the teacher grades, as a prompt when standards start to drift. Clicking a band reviews only those papers.
+
+**What CAM2 does today:** Step 5 and the gradebook show each question's average, highest and lowest, but no counts per band. Step 4 can already narrow the papers with **Show ungraded only** (`visibleStudents`), so a band filter fits beside it.
+
+**Proposal:**
+
+```
+Q3 · Criterion B    0: 1   1–2: 3   3–4: 12   5–6: 6   7–8: 2   Ungraded: 1
+```
+
+- **One line above the paper strip,** with a small bar for each count, for the current question and criterion. The whole paper's results stay in Step 5.
+- **The bands are the teacher's own,** from the rubric (`band_for_level`), so nothing here is specific to MYP. A marks question shows each mark, or ranges if there are many. **Not answered** gets its own count.
+- **Clicking a band** narrows the strip and ◀ ▶ to those papers, in an amber frame with a **Show all** button.
+- **The list is fixed on entry.** A paper moved from 3–4 to 5–6 stays in the list until the teacher leaves, so it doesn't vanish on screen.
+- **Grades save as usual,** straight away. See [F12](#f12-calibration-mode) on why there is no trial copy.
+
+**To watch:** criterion grading compares work with the descriptors, not with other students. A live spread could push a teacher towards an expected shape. It is worth asking colleagues whether it helps or distracts before it becomes permanent.
+
+**What changes:** `static/js/step4.js` and `static/app.css` mainly, with the counts worked out from the grades already in the browser, or added to `engine/grading_summary.py` so that [F14](#f14-class-analysis) can share them.
+
+### F11: Gallery of one question
+
+**From:** research, 2026-11-05. **Size:** Small to medium. **Status:** Optional; recommended
+
+**The idea:** a full-screen grid showing every student's answer to the current question, opened with a button or `G`. It is for comparing answers, and grading stays in the normal view.
+
+**What CAM2 does today:** the paper strip shows who is graded, but only one answer can be seen at a time. [F5](#f5-move-drafts-and-assignments-into-cam2-and-retire-the-workspace) also lists a gallery as something the workspace has and CAM2 lacks.
+
+**Proposal:**
+
+- **Each card shows** the answer image, with its grade or **Ungraded**, in colour as well as words. Clicking a card goes to that paper and closes the gallery. `Esc` closes it.
+- **Sort by grade,** so that all the 3–4s sit together. This is where the comparison pays off, and it pairs well with [F10](#f10-the-spread-of-grades-while-grading).
+- **Names stay hidden** when **Hide student names** is on.
+- **Images load as they scroll into view,** because the crops are full-size files and a cloud drive may have to download them. A question with tall answers may need a size limit on each card.
+- **Enlarge on hover** could come later, after trying it on a trackpad.
+
+**Left out:** the research's **Flagged for review** colour, because CAM2 has no flag for review. Adding one would be a separate request.
+
+### F12: Calibration mode
+
+**From:** research, 2026-11-05. **Size:** Large. **Status:** Optional; recommended only in part
+
+**The idea:** a separate mode for re-judging a crowded band, with trial changes that can be applied or discarded, a checklist for separating levels, a comparison against a benchmark paper, and an audit on leaving.
+
+| Part | Suggestion | Why |
+|---|---|---|
+| Review only one band | **Yes,** as [F10](#f10-the-spread-of-grades-while-grading) | Most of the benefit, for little work |
+| Trial changes in a separate copy, then **Apply** or **Discard** | **No** | Every grade is saved at once, with save checks, an emergency copy and warnings about a second computer. A separate copy of grades sits outside all of that, so a crash could lose a review. It also raises the question of which grades reports and CAM should read |
+| Summary on leaving a review | **Later, if wanted** | When a band review ends: *22 reviewed, 15 unchanged, 4 raised, 3 lowered*, with a **Put these back** button. The start grades are kept only for that review, so there is still one set of grades and no new mode. This gives most of what the trial copy was for |
+| Temporary checklist for separating levels | **No** | A new thing to set up and explain. The band's descriptor is already on the card, and the teacher can note a rule elsewhere |
+| Benchmark paper beside the current one | **Later, if wanted** | A real help for consistency, but medium work on a screen already split in two. Try it after [F11](#f11-gallery-of-one-question), which may cover the need |
+
+**Why not the whole mode:** CAM2 aims to have few options and no training, and a mode with its own rules is the opposite. This should only come back if teachers ask for it after using [F10](#f10-the-spread-of-grades-while-grading).
+
+### F13: Straightening crooked scans
+
+**From:** research, 2026-11-05. **Size:** Medium. **Status:** Optional; check the need first
+
+**The idea:** document feeders can turn pages by about 0.5° to 3°, so the handwriting near a box's edge can be cut off. Straighten each page before cropping.
+
+**Why it could matter:** **✎ Adjust this box** re-crops that question for every paper. One crooked paper therefore means widening the box for the whole class. **See whole page** still shows clipped writing on screen, but the report prints only the crop.
+
+**First, check the need:** look at real class scans from school photocopiers and count how many answers get clipped. Paper shifting sideways or up and down may be as common as turning, and straightening doesn't fix that. Nor does it fix the perspective in phone photos.
+
+**Don't use the code in the research as written:**
+
+- **It adds OpenCV and NumPy,** which CAM2 doesn't otherwise use, and would add tens of megabytes to each download. The project's rule is to avoid new dependencies unless they fix a bug.
+- **It measures the wrong thing.** `minAreaRect` fits a rectangle around all the ink on the page, not the lines of text. A scanner's dark edge, a margin note or a page's uneven writing can change the angle it finds.
+- **Its angle rule may be out of date.** As far as I know, `minAreaRect` changed how it reports angles from OpenCV 4.5. The code's `angle < -45` check would then be wrong for some pages, and they would stay crooked with no warning. This hasn't been tested.
+
+**If real scans show the need:**
+
+- **Find the angle with Pillow,** which CAM2 already ships. Shrink a copy of the page, try small angles, and choose the one that gives the sharpest rows of text. This should take about 50 lines, and needs trying on real scans, including handwriting and Japanese vertical text.
+- **Find the angle when scans come in, and save it per page.** Crops rebuilt later ([F8](#f8-compact-and-delete-finished-sessions)) then come out identical.
+- **Never change the scan file.** Turn the page in `load_page_image`, which serves the crops and the page previews, so the box drawing, **See whole page** and the crops all agree.
+- **Stay inside 0.2° to about 5°,** and leave other pages alone. Tiny turns only blur the writing. Page fixes for booklets and upside-down pages come first.
+- **Don't change sessions that are already sliced,** because their crops, and [F2](#f2-notes-drawn-on-the-answer-image)'s note positions, must stay on the same writing.
+
+### F14: Class analysis
+
+**From:** research, 2026-11-05. **Size:** Small to medium. **Status:** Optional; recommended only in part
+
+**The idea:** the class statistics schools expect, as exports.
+
+| Part | Today | Suggestion |
+|---|---|---|
+| Class list matched to papers | **Already there** (Step 3) | Nothing to do |
+| Average, highest and lowest | **Already there,** per question, section and total, in Step 5 and the gradebook | Nothing to do |
+| Spread across bands | Not there | **Yes,** as a sheet in the gradebook, sharing [F10](#f10-the-spread-of-grades-while-grading)'s counts. Also shows each question's average as a percentage of its maximum, which shows which questions the class found hard |
+| Standard deviation | Not there | **Add to that sheet if wanted.** One extra column, though many teachers won't use it |
+| Discrimination index (top 27% against bottom 27%) | Not there | **Later, and only for marks.** It ranks students by total, and a levels paper has no total because levels are never added. In a class of 25 it compares about 7 students with 7, so a single answer can swing it, and it would need a note saying it is rough. Choice questions need their own rule too |
+| `Class_Criterion_Summary.csv` | Excel gradebook | **Not needed yet.** Add a CSV when a real system needs one. CAM already reads the session itself |
+| One-page return slips | **Mostly there.** Reports can already leave out images by section, rubric tables and section results | **Nothing to do** unless teachers ask. A report with images off is close to a slip |
+
+**Scope:** all of this stays within one exam. Comparing exams or classes over time belongs in CAM ([F7](#f7-a-permanent-place-for-a-years-work)).
+
+### F15: Rubric points that update totals
+
+**From:** research, 2026-11-05. **Size:** Large. **Status:** Optional; mostly works already
+
+**The idea:** store each rubric item's points apart from what each student was given, so that changing an item's points updates every student's total.
+
+**What CAM2 does today:** the useful part already works. Grades store only each student's mark or level. Totals, percentages and section results are worked out when they are shown or exported (`student_summary`), so changing a question's maximum or a section's weighting updates everyone. Rubric wording is also kept apart from the grades.
+
+**Why not the research's structure:** it turns each level into points that are added up. CAM2 deliberately reports levels as given (`B5`) and never adds them, or adds them to marks. So this would change what a level means, for no gain.
+
+**Two things that remain:**
+
+- **Count beside each band:** this is [F10](#f10-the-spread-of-grades-while-grading).
+- **Reusable marking items** (for example *-1, units missing*, where changing it to *-2* updates everyone who has it) would be a real new feature. It is a different way of grading from CAM2's single mark per question, as used in Gradescope. It should wait until a colleague asks for it, and needs its own design.
 
 ## Done
 
