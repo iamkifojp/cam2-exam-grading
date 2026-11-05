@@ -217,6 +217,8 @@ in [PLAN.md](PLAN.md).
   folder are organised.
 - [PLAN.md](PLAN.md) is the implementation plan.
 - [CHANGELOG.md](CHANGELOG.md) lists changes by phase.
+- [Feedback-and-Upgrades.md](Feedback-and-Upgrades.md) collects colleagues' requests
+  for future versions.
 
 ### Keeping student data out of the repository
 
