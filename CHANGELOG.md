@@ -4,12 +4,21 @@ All notable changes to CAM2 are listed here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates are
 year-month-day.
 
-## [Unreleased]
+## [0.3.1-dev] - 2026-11-05
+
+A test build with fixes from colleagues' first tries of `v0.3.0-dev`. Sessions are
+unchanged, so they open in either version.
 
 ### Added
 - **How to unblock CAM2 on Windows,** in the README, READ ME FIRST and the Windows
-  quick guide, after colleagues had to tick **Unblock** in the file's Properties to
-  start it. READ ME FIRST and the quick guide reach teachers with the next build.
+  quick guide. Colleagues had to tick **Unblock** in the file's Properties to start
+  CAM2, and their school laptops have no **More info > Run anyway**.
+- **What to do when the Mac's approval gets stuck,** in READ ME FIRST: restart the Mac
+  and open CAM2 again. The Mac quick guide has no room for it.
+
+### Fixed
+- **A new version no longer opens an older one that is still running.** It stops the
+  older one and starts itself, and this works from `v0.2.0-dev` and `v0.3.0-dev`.
 
 ### Changed
 - **The README says "weightings"** rather than "shares of the paper", which confused

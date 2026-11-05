@@ -69,7 +69,7 @@ listing the questions, sections and rubrics.
 ## Status
 
 **The app is built; testing is the last stage.** Everything above works in English and
-Japanese, and is in the test build `v0.3.0-dev`, which colleagues are trying with
+Japanese, and is in the test build `v0.3.1-dev`, which colleagues are trying with
 made-up sample exams on their own computers.
 
 | Stage | | State |
@@ -81,9 +81,9 @@ made-up sample exams on their own computers.
 | Phase 4b | Scanning guide, booklets, page fixes, late papers | ✅ done |
 | Phase 4c | Questions assessed on several criteria | ✅ done |
 | Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Built and tested on the computers that made them; tests on other computers next |
-| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ⏳ Phases 1 to 6 of 7 done. Phase 7: sample exams made and tried on Windows; test build `v0.3.0-dev` with colleagues |
+| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ⏳ Phases 1 to 6 of 7 done. Phase 7: sample exams made and tried on Windows; test build `v0.3.1-dev` with colleagues |
 
-All 328 automated tests pass, and every finished stage was also tried out in a
+All 331 automated tests pass, and every finished stage was also tried out in a
 browser with sample papers. CAM2 can also be run from the source code (see
 [For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
 [CHANGELOG.md](CHANGELOG.md) the details of each stage.
@@ -93,7 +93,7 @@ browser with sample papers. CAM2 can also be run from the source code (see
 The downloads are test builds for now, as they are still being tried on other
 computers. They are on this repository's
 [Releases](https://github.com/iamkifojp/cam2-exam-grading/releases) page. The current
-one is `v0.3.0-dev`:
+one is `v0.3.1-dev`:
 
 | Computer | Download | First start |
 |---|---|---|

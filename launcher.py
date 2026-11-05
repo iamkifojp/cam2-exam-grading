@@ -1,6 +1,7 @@
 """Start CAM2 Exam Grading.
 
-* If CAM2 is already running on this computer, just open the browser on it.
+* If this version of CAM2 is already running on this computer, just open the
+  browser on it. Another version that is running is stopped first.
 * Otherwise start the server on 127.0.0.1 only (nothing is visible on the
   school network), on the first free port from 5182, and open the browser.
 * Stop by itself once no CAM2 tab has sent a heartbeat for 10 minutes
@@ -30,7 +31,7 @@ import webbrowser
 
 from werkzeug.serving import make_server
 
-from app import create_app
+from app import VERSION, create_app
 from appstate import AppState
 from engine import host, pickers, storage
 from engine.errors import UserError
@@ -38,6 +39,7 @@ from engine.errors import UserError
 DEFAULT_PORT = 5182
 IDLE_SECONDS = 10 * 60
 CHECK_SECONDS = 30
+STOP_WAIT_CHECKS = 50
 SERVER_FILE = "server.json"
 
 
@@ -66,15 +68,39 @@ def watch_idle(state: AppState, idle: int, shutdown, clock=time.monotonic, sleep
             return
 
 
+def _ping(url: str) -> dict:
+    with urllib.request.urlopen(url + "api/ping", timeout=1.5) as resp:
+        return json.load(resp)
+
+
+def stop_instance(url: str) -> None:
+    """Ask a running CAM2 to quit, and wait until it has stopped answering."""
+    with urllib.request.urlopen(urllib.request.Request(url + "api/quit", method="POST"), timeout=10):
+        pass
+    for _ in range(STOP_WAIT_CHECKS):
+        time.sleep(0.2)
+        try:
+            _ping(url)
+        except OSError:
+            return
+
+
 def running_instance() -> str | None:
-    """URL of a CAM2 server already running on this computer, if any."""
+    """URL of a CAM2 server of this version already running on this computer, if any.
+
+    One of another version is stopped instead. Opening it would show the teacher
+    that version, which may not be able to open sessions this one has saved.
+    """
     try:
         with open(_server_file(), encoding="utf-8") as fh:
             port = int(json.load(fh)["port"])
         url = f"http://127.0.0.1:{port}/"
-        with urllib.request.urlopen(url + "api/ping", timeout=1.5) as resp:
-            if json.load(resp).get("app") == "cam2":
+        found = _ping(url)
+        if found.get("app") == "cam2":
+            if found.get("version") == VERSION:
                 return url
+            print(f"Stopping CAM2 {found.get('version')} to start {VERSION}.")
+            stop_instance(url)
     except (OSError, ValueError, KeyError):
         pass
     return None

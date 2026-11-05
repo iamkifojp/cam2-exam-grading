@@ -1,11 +1,17 @@
 """The idle watchdog that stops CAM2 once no tab is open, including after
-the computer has been asleep, and how a double-click starts the Mac app.
+the computer has been asleep, how a double-click starts the Mac app, and what
+happens when a CAM2 is already running.
 
 Run:  python -m unittest tests.test_launcher
 """
 
 import contextlib
+import http.server
 import io
+import json
+import os
+import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -60,6 +66,69 @@ class MacDoubleClickTests(unittest.TestCase):
             started, popen = self.start(platform, frozen, argv)
             self.assertFalse(started)
             popen.assert_not_called()
+
+
+class RunningInstanceTests(unittest.TestCase):
+    """A small stand-in for a running CAM2, which stops when told to quit."""
+
+    def start_server(self, version):
+        requests = []
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.reply({"app": "cam2", "version": version})
+
+            def do_POST(self):
+                requests.append(self.path)
+                self.reply({"ok": True})
+                threading.Thread(target=self.server.shutdown).start()
+
+            def reply(self, data):
+                body = json.dumps(data).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+
+        def serve():
+            server.serve_forever()
+            server.server_close()
+
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join)
+        self.addCleanup(lambda: requests or server.shutdown())
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        path = os.path.join(folder.name, launcher.SERVER_FILE)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"port": server.server_address[1]}, fh)
+        patcher = mock.patch.object(launcher, "_server_file", return_value=path)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return f"http://127.0.0.1:{server.server_address[1]}/", requests
+
+    def test_the_same_version_is_left_running(self):
+        url, requests = self.start_server(launcher.VERSION)
+        self.assertEqual(launcher.running_instance(), url)
+        self.assertEqual(requests, [])
+
+    def test_another_version_is_stopped_before_the_new_one_starts(self):
+        url, requests = self.start_server("0.0.1-old")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(launcher.running_instance())
+        self.assertEqual(requests, ["/api/quit"])
+        with self.assertRaises(OSError):
+            launcher._ping(url)
+
+    def test_nothing_running(self):
+        with mock.patch.object(launcher, "_server_file", return_value=os.devnull + "-none"):
+            self.assertIsNone(launcher.running_instance())
 
 
 class WatchdogTests(unittest.TestCase):

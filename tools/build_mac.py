@@ -43,6 +43,8 @@ This download is for Macs with an Apple chip (M1 or later).
      d. Enter your password and click "OK".
    You only do this once. Moving the folder or downloading a new version may
    bring it back. The quick guide has pictures of these steps.
+   If nothing happens after your password, or an error appears with only an "OK"
+   button, restart your Mac and open CAM2 again. Your approval is kept.
 4. If your Mac asks whether CAM2 may use a folder such as Documents, click
    "Allow". CAM2 needs this to read your scans and save your work there.
 5. CAM2 opens in your web browser. Nothing is installed and nothing leaves this
@@ -88,6 +90,8 @@ CAM2 Exam Grading - 最初にお読みください
    これは最初の1回だけです。フォルダーを移動したときや新しいバージョンをダウン
    ロードしたときには、再度必要になることがあります。手順の画像はクイックガイドに
    あります。
+   パスワードを入力しても何も起こらないときや、「OK」ボタンだけのエラーが表示される
+   ときは、Macを再起動してからCAM2をもう一度開いてください。許可は保持されています。
 4. 書類フォルダーなどへのアクセスを求められたら、「許可」をクリックしてください。
    スキャンを読み込み、作業内容をそこへ保存するために必要です。
 5. CAM2はWebブラウザーで開きます。インストールは不要で、データがこのコンピューター
