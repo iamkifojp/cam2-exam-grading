@@ -97,12 +97,12 @@ START_STEPS = {
         """
 <li>Unzip the download, open the folder and double-click <b>Start CAM2 Exam Grading</b>.</li>
 <li>If Windows says <i>Windows protected your PC</i>, click <b>More info</b>, then <b>Run anyway</b>.</li>
-<li>If it still won't start, right-click <b>Start CAM2 Exam Grading</b> and choose <b>Properties</b>. On the <b>General</b> tab, tick <b>Unblock</b>, then click <b>OK</b>.</li>
+<li>If those options aren't there, as on some school computers, or it still won't start, right-click <b>Start CAM2 Exam Grading</b> and choose <b>Properties</b>. On the <b>General</b> tab, tick <b>Unblock</b>, then click <b>OK</b>.</li>
 """,
         """
 <li>ダウンロードしたzipを展開し、フォルダーを開いて<b>「Start CAM2 Exam Grading」</b>をダブルクリックします。</li>
 <li>「WindowsによってPCが保護されました」と表示されたら、<b>「詳細情報」</b>、<b>「実行」</b>の順にクリックします。</li>
-<li>それでも起動しないときは、<b>「Start CAM2 Exam Grading」</b>を右クリックして<b>「プロパティ」</b>を選び、<b>「全般」</b>タブの<b>「許可する」</b>または<b>「ブロックの解除」</b>にチェックを入れて<b>「OK」</b>をクリックします。</li>
+<li>学校のコンピューターなどでこれらが表示されないときや、それでも起動しないときは、<b>「Start CAM2 Exam Grading」</b>を右クリックして<b>「プロパティ」</b>を選び、<b>「全般」</b>タブの<b>「許可する」</b>にチェックを入れて<b>「OK」</b>をクリックします。</li>
 """),
     "mac": (
         """

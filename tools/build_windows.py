@@ -44,7 +44,8 @@ CAM2 Exam Grading - READ ME FIRST
 4. CAM2 opens in your web browser. Nothing is installed and nothing leaves this
    computer: CAM2 only talks to your own browser.
 
-If CAM2 won't start, or there is no "Run anyway" button, unblock it:
+Some school computers have no "More info" or "Run anyway" option. If so, or if
+CAM2 won't start, unblock it:
 right-click "Start CAM2 Exam Grading" and choose Properties. On the General tab,
 tick "Unblock", then click OK. For your next download, do this to the zip before
 you unzip it. If there is no "Unblock" tick box, Windows hasn't marked that file.
@@ -82,9 +83,10 @@ CAM2 Exam Grading - 最初にお読みください
 4. CAM2はWebブラウザーで開きます。インストールは不要で、データがこのコンピューター
    の外に出ることはありません。CAM2はお使いのブラウザーとだけ通信します。
 
-CAM2が起動しないときや「実行」ボタンがないときは、ブロックを解除してください。
+学校のコンピューターなどでは、「詳細情報」や「実行」が表示されないことがあります。
+その場合やCAM2が起動しない場合は、ブロックを解除してください。
 「Start CAM2 Exam Grading」を右クリックして「プロパティ」を選び、「全般」タブの
-「許可する」または「ブロックの解除」にチェックを入れて「OK」をクリックします。次回
+「許可する」にチェックを入れて「OK」をクリックします。次回
 ダウンロードしたときは、展開する前にzipに対して同じ操作をしてください。チェック欄が
 ない場合、そのファイルはブロックされていません。
 
