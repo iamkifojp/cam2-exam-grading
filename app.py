@@ -26,7 +26,7 @@ from engine.pickers import documents_folder, open_in_file_manager, pick_folder, 
 from engine.slicer import Layout
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-VERSION = "0.3.1-dev"
+VERSION = "0.3.2-dev"
 
 
 def create_app(state: AppState | None = None, shutdown=None) -> Flask:

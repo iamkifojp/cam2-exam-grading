@@ -4,9 +4,10 @@ All notable changes to CAM2 are listed here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates are
 year-month-day.
 
-## [Unreleased]
+## [0.3.2-dev] - 2026-11-06
 
-For the next test build. Sessions stay at version 2.
+A test build with slide pages and limits on comment length. Sessions stay at
+version 2, so they open in `v0.3.1-dev` too, except a session on a slide size (see the note).
 
 ### Added
 
@@ -15,9 +16,9 @@ For the next test build. Sessions stay at version 2.
   its landscape pages, so PowerPoint's and Google's sizes both work. Photos of the same
   shape aren't taken for slides, even saved as PDFs, and US Letter still isn't recognised.
   Trying a slide size in Step 1 and going back to a paper size puts the landscape box
-  back as it was. A question on a
-  slide size is cropped as a JPEG, because a class's whole-slide PNGs came to about
-  1.6 GB on a photo-heavy test deck, and about 0.2 GB as JPEGs.
+  back as it was. A question on a slide size is cropped as a JPEG, because a class's
+  whole-slide PNGs came to about 1.6 GB on a photo-heavy test deck, and about 0.2 GB as
+  JPEGs.
 - **Limits on comment length:** 300 characters on a question and 600 for an overall
   comment. A counter shows from 80% of the limit. A longer comment is refused and stays
   in the box, unsaved, until it is shortened, and CAM2 won't leave the screen until then.

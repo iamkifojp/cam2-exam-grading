@@ -665,3 +665,4 @@ From colleagues trying the test builds. Details are in [PLAN.md](PLAN.md) §8.
 |---|---|
 | School laptops have no **Run anyway**, so say how to unblock CAM2 on Windows | `v0.3.1-dev` |
 | A new version opened an older CAM2 that was still running | `v0.3.1-dev` |
+| Limits on the length of a question's comment and the overall comment (F2's first part) | `v0.3.2-dev` |

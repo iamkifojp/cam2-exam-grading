@@ -1,6 +1,6 @@
 # CAM2 — Exam Sections & Report Options (Implementation Plan)
 
-> **Status:** agreed design (2026-11-02). Phases 1 to 6, the engine, the screens, the report and the gradebook, are built (2026-11-03). Phase 7, testing, has its sample exams, tried on Windows; the test build for colleagues is `v0.3.1-dev`. It adds to [PLAN.md](PLAN.md), which has been brought into line with it; for the details of sections, mixed papers and the report, this plan is the one to read.
+> **Status:** agreed design (2026-11-02). Phases 1 to 6, the engine, the screens, the report and the gradebook, are built (2026-11-03). Phase 7, testing, has its sample exams, tried on Windows; the test build for colleagues is `v0.3.2-dev`. It adds to [PLAN.md](PLAN.md), which has been brought into line with it; for the details of sections, mixed papers and the report, this plan is the one to read.
 
 ---
 
