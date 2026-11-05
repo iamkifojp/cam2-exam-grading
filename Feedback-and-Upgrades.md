@@ -4,7 +4,7 @@ What colleagues have asked for, optional ideas from research, what each would ta
 
 **Suggesters stay anonymous: entries give a subject or role, never a name.**
 
-**Nothing here is being built yet, and no new build is planned until the new CAM2 release is ready.** More feedback is still to come (2026-11-05).
+**Nothing here is being built yet, and no new build is planned until the new CAM2 release is ready.** The exception is the limits on comment length from [F2](#f2-notes-drawn-on-the-answer-image), which are agreed for that release. More feedback is still to come (2026-11-05).
 
 ## Requests
 
@@ -174,6 +174,9 @@ Highlights and comment stamps are two separate tools, because teachers will use 
 | Notes on one answer | 8 | Keeps feedback readable. This needs its own check (see below) |
 | One list comment or note | 120 characters, about 20 words (agreed) | Room for one clear point, and no essays. It is about two lines on the report in English and about three in Japanese |
 | The question's comment | 300 characters, about 50 words | Room for a few sentences, not an essay |
+| The overall comment | 600 characters, about 100 words | The one place for a longer message, and still reasonable to write for a whole class |
+
+**The question and overall comment limits are agreed and come first (2026-11-05).** They go into the next CAM2 release, ahead of the rest of F2, and don't change the session's format (CAM's upgrade plan, Phase 1 and Q8). The other limits come with notes.
 
 Three examples, with their length in characters:
 
@@ -219,9 +222,8 @@ Details of the limits:
 
 **Still to decide:**
 
-1. **The overall comment.** Recommended: a limit of 600 characters, because it is the one place for a longer message.
-2. **Whole page view.** Recommended: notes only on the answer view in the first version, because that is the image the report prints, so the list can't be dragged from while the whole page is showing. Page positions make it easy to show them there later.
-3. **Try it with the biology colleague before building the extras.** Ask whether they would use tick and cross stamps.
+1. **Whole page view.** Recommended: notes only on the answer view in the first version, because that is the image the report prints, so the list can't be dragged from while the whole page is showing. Page positions make it easy to show them there later.
+2. **Try it with the biology colleague before building the extras.** Ask whether they would use tick and cross stamps.
 
 ### F3: One comment list across CAM2 and CAM
 
