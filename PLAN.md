@@ -381,7 +381,7 @@ cam2-exam-grading\
 - **The zip:** made with `ditto`, because `shutil.make_archive` would break the links and signature inside the `.app`. The builder checks the app from a copy unzipped again.
 - **The first-run approval:** tried on 2026-11-02 with a zip really downloaded through a browser, on macOS 27 in English. The Mac blocks the `.app` (**Done**); System Settings → Privacy & Security → Security has **Open Anyway**; a message asks again (**Open Anyway**); then the password; then CAM2 opens. The READ ME and quick guide follow this, and the guide shows it with screenshots from `tools/guide_images`. The Japanese button names haven't been seen on a Mac in Japanese yet, and the screenshots are in English.
 - **Licences:** both downloads carry the same files. The finished bundle's Python packages and libraries were checked against `licences/NOTICE.txt` and `licences/THIRD-PARTY-NOTICES.txt`.
-- **Releasing it:** the latest pre-release, `v0.3.1-dev` (tag at `c1a0594`), has both zips, the sample exams and the two source archives. For each new version:
+- **Releasing it:** the latest pre-release, `v0.3.2-dev` (tag at `4423090`), has both zips, the sample exams and the two source archives. For each new version:
   1. Change `VERSION` in `app.py`, update the documents, and commit and push. Anything committed after this isn't in the downloads.
   2. Build the Windows zip from that commit. On the Mac, `git pull` and check that `git rev-parse HEAD` shows the same commit, then build the Mac zip.
   3. Copy the Mac zip to Windows as it is, without unzipping it there. A zip made again on Windows would break the links and signature inside the `.app`.
