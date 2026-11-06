@@ -68,7 +68,7 @@ listing the questions, sections and rubrics.
 
 ## Status
 
-**The app is built; testing is the last stage.** Everything above works in English and
+**The app is built, and colleagues are using the test builds.** Everything above works in English and
 Japanese, and is in the test build `v0.3.2-dev`, which colleagues are trying with
 made-up sample exams on their own computers.
 
@@ -80,8 +80,8 @@ made-up sample exams on their own computers.
 | Phase 4 | Step ⑤ review, student PDFs and Excel gradebook | ✅ done |
 | Phase 4b | Scanning guide, booklets, page fixes, late papers | ✅ done |
 | Phase 4c | Questions assessed on several criteria | ✅ done |
-| Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ⏳ Built and tested on the computers that made them; tests on other computers next |
-| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ⏳ Phases 1 to 6 of 7 done. Phase 7: sample exams made and tried on Windows; test build `v0.3.2-dev` with colleagues |
+| Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ✅ Built, tested on the computers that made them, and used by colleagues on their own computers |
+| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ✅ Done. Phase 7: sample exams tried on Windows, and test builds used by colleagues (now `v0.3.2-dev`) |
 
 All 354 automated tests pass, and every finished stage was also tried out in a
 browser with sample papers. CAM2 can also be run from the source code (see
