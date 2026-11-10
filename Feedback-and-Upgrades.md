@@ -4,23 +4,23 @@ What colleagues have asked for, optional ideas from research, what each would ta
 
 **Suggesters stay anonymous: entries give a subject or role, never a name.**
 
-**Nothing here is being built yet, and no new build is planned until the new CAM2 release is ready.** The exception is the limits on comment length from [F2](#f2-notes-drawn-on-the-answer-image), which are agreed for that release. More feedback is still to come (2026-11-05).
+**Update, 2026-11-10:** F1, the remaining F2 annotation work and F11 are agreed for the next release. Their current implementation requirements and acceptance checks are in [doc/next-release-plan.md](doc/next-release-plan.md), which supersedes conflicting proposals below. Coding has not started under that plan. F2's question/overall comment limits already shipped in `v0.3.2-dev`. Other entries retain their status unless explicitly updated.
 
 ## Requests
 
 | # | Request | From | Size | Status |
 |---|---|---|---|---|
-| [F1](#f1-highest-level-for-a-question-or-section) | Highest level for a question or section, for banded papers | Several colleagues | Small | Proposed |
-| [F2](#f2-notes-drawn-on-the-answer-image) | Notes drawn on the answer image | Biology colleague | Medium | Proposed; main design choices agreed |
+| [F1](#f1-highest-level-for-a-question-or-section) | Highest level for a question or section, for banded papers | Several colleagues | Small | Agreed for next release (F1) |
+| [F2](#f2-notes-drawn-on-the-answer-image) | Notes drawn on the answer image | Biology colleague | Medium | Agreed for next release; comment limits already shipped |
 | [F3](#f3-one-comment-list-across-cam2-and-cam) | One comment list across CAM2 and CAM's grading workspace, with stamps in both | Project lead | Medium, mostly in CAM | On hold; F5 would replace it |
-| [F4](#f4-bug-ticking-in-cam-wipes-typed-comments) | Bug: ticking in CAM wipes typed comments | Project lead | Small | To fix with the new CAM2 release |
+| [F4](#f4-bug-ticking-in-cam-wipes-typed-comments) | Bug: ticking in CAM wipes typed comments | Project lead | Small | Fixed in CAM’s November 8 release; historical description below |
 | [F5](#f5-move-drafts-and-assignments-into-cam2-and-retire-the-workspace) | Move drafts and assignments into CAM2, and retire CAM's grading workspace | Project lead | Large, in stages | Direction agreed; not being built yet |
-| [F6](#f6-exam-comments-should-carry-weight-in-cams-term-comments) | Exam comments should carry weight in CAM's term comments | Project lead | Small, in CAM | Gap confirmed; to plan |
+| [F6](#f6-exam-comments-should-carry-weight-in-cams-term-comments) | Exam comments should carry weight in CAM's term comments | Project lead | Small, in CAM | Shipped in CAM’s November 8 release; historical description below |
 | [F7](#f7-a-permanent-place-for-a-years-work) | A permanent place for a year's work | Project lead | Medium | Direction agreed; not being built yet |
 | [F8](#f8-compact-and-delete-finished-sessions) | Compact and delete finished sessions on CAM2's start screen | Project lead | Small to medium | Proposed; not being built yet |
 | [F9](#f9-grading-from-the-keyboard) | Grading from the keyboard | Research | Small | Optional; recommended |
 | [F10](#f10-the-spread-of-grades-while-grading) | The spread of grades while grading, and clicking a band to review it | Research | Small to medium | Optional; recommended |
-| [F11](#f11-gallery-of-one-question) | Gallery of one question across the class | Research | Small to medium | Optional; recommended |
+| [F11](#f11-gallery-of-one-question) | Gallery of answers or whole papers across the class, 2–5 columns | Research; now requested by teacher | Small to medium | Agreed for next release |
 | [F12](#f12-calibration-mode) | Calibration mode: trial changes, comparison and audit | Research | Large | Optional; recommended only in part |
 | [F13](#f13-straightening-crooked-scans) | Straightening crooked scans | Research | Medium | Optional; check the need first |
 | [F14](#f14-class-analysis) | Class analysis and exports | Research | Small to medium | Optional; recommended only in part |
@@ -61,7 +61,7 @@ Copy this under [Details](#details), and add a row to the table above.
 
 ### F1: Highest level for a question or section
 
-**From:** several colleagues, 2026-11-05. **Size:** Small. **Status:** Proposed
+**From:** several colleagues, 2026-11-05. **Size:** Small. **Status:** Agreed for next release (2026-11-10); see the implementation handoff.
 
 **What they asked:** many papers are banded or tiered. Section 1 targets Criterion A levels 1–2, section 2 targets 3–4, and so on. This already works in CAM2, but nothing stops a teacher giving a level above what the question could earn.
 
@@ -95,7 +95,7 @@ Copy this under [Details](#details), and add a row to the table above.
 
 ### F2: Notes drawn on the answer image
 
-**From:** biology colleague, 2026-11-05. **Size:** Medium. **Status:** Proposed; main design choices agreed
+**From:** biology colleague, 2026-11-05. **Size:** Medium. **Status:** Agreed for next release (2026-11-10), including long structured answers and essays; see the implementation handoff.
 
 **What they asked:** to mark up the student's answer image with comments, as in the Kami app. Kami also has OCR, which is out of scope. They mainly want to highlight a line in the answer.
 
@@ -568,7 +568,7 @@ Q3 · Criterion B    0: 1   1–2: 3   3–4: 12   5–6: 6   7–8: 2   Ungrade
 
 ### F11: Gallery of one question
 
-**From:** research, 2026-11-05. **Size:** Small to medium. **Status:** Optional; recommended
+**From:** research, 2026-11-05; requested by the teacher, 2026-11-10. **Size:** Small to medium. **Status:** Agreed for next release. The handoff extends this to question/whole-paper views with 2–5 columns, opening a card to grade. The original proposal below is background.
 
 **The idea:** a full-screen grid showing every student's answer to the current question, opened with a button or `G`. It is for comparing answers, and grading stays in the normal view.
 

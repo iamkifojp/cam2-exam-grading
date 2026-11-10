@@ -68,6 +68,8 @@ listing the questions, sections and rubrics.
 
 ## Status
 
+**Next upgrade:** the [implementation handoff](doc/next-release-plan.md) records the agreed data-integrity fixes, maintenance changes, rubric ceilings, annotations and class grid. These are planned, not features in the current download.
+
 **The app is built, and colleagues are using the test builds.** Everything above works in English and
 Japanese, and is in the test build `v0.3.2-dev`, which colleagues are trying with
 made-up sample exams on their own computers.
