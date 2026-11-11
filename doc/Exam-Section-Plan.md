@@ -1,6 +1,6 @@
 # CAM2 — Exam Sections & Report Options (Implementation Plan)
 
-> **Status:** agreed design (2026-11-02). Phases 1 to 6, the engine, the screens, the report and the gradebook, are built (2026-11-03). Phase 7, testing, is done: its sample exams were tried on Windows, and colleagues have used the test builds (now `v0.3.2-dev`) largely without problems (2026-11-06). It adds to [PLAN.md](PLAN.md), which has been brought into line with it; for the details of sections, mixed papers and the report, this plan is the one to read.
+> **Status:** agreed design (2026-11-02). Phases 1 to 6, the engine, the screens, the report and the gradebook, are built (2026-11-03). Phase 7, testing, is done: its sample exams were tried on Windows, and colleagues have used the test builds (now `v0.3.2-dev`) largely without problems (2026-11-06). It adds to [the original build plan](archive/build-plan-v7.md), which has been brought into line with it; for the details of sections, mixed papers and the report, this plan is the one to read.
 
 ---
 
@@ -118,7 +118,7 @@ Yui Suzuki   Marks 46/55 · 83.6%  [   ]   Marks 6/10 · 60.0%; Grades B6, B5  [
 | Criterion marks, no weighting | The marks of the questions on that criterion, added together: `46 / 55 · 83.6%`. A question on two criteria counts in both. |
 | Criterion marks, with weighting | Each question counts as much here as it does in the overall percentage: its share is section weighting × question maximum ÷ section maximum. The criterion's percentage is the sum of (marks ÷ question maximum × share), divided by the sum of those shares, and rounded once at the end. The report shows only the percentage. |
 | Incomplete papers | An ungraded question stays in the criterion's maximum, as it does in the overall total, and the student is flagged incomplete. |
-| Rubric levels | **Reported as given.** CAM2 no longer averages a student's levels or suggests a final level, and this replaces the rubric rows in PLAN.md §3. Rules for ranking choice-group questions stay as they are. |
+| Rubric levels | **Reported as given.** CAM2 no longer averages a student's levels or suggests a final level, and this replaces the rubric rows in the original build plan (archive/build-plan-v7.md) §3. Rules for ranking choice-group questions stay as they are. |
 | Final level | Optional, and always typed by the teacher. Must be a level in one of the rubric's bands, so the report can always shade the right band. |
 | Short form of a grade | The last letter of the criterion's name when that name ends in a single letter (`Criterion B` or `基準B` gives `B5`). Any other name prints in full (`Knowledge 5`). |
 | Ungraded question | Not counted, and the student is flagged incomplete, as today. |

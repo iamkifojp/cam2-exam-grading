@@ -348,7 +348,7 @@ class SectionPaperTestCase(ReportTestCase):
 
 
 class ReportLayoutTests(SectionPaperTestCase):
-    """The layout in Exam-Section-Plan.md section 6."""
+    """The layout in doc/Exam-Section-Plan.md section 6."""
 
     def test_each_grade_reaches_the_right_students_report(self):
         self.options(section_results=True, overall_criteria=True)

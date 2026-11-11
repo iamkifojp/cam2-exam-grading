@@ -1,6 +1,6 @@
 """Recording grades and working out totals.
 
-Rules (see Exam-Section-Plan.md §3, which replaces the rubric rows in PLAN.md §3):
+Rules (see doc/Exam-Section-Plan.md §3, which replaces the rubric rows in doc/archive/build-plan-v7.md §3):
 
 * A question grades with marks if it has a ``max``, and with rubric levels if
   it has none but is assessed on a criterion (:func:`question_mode`). Marks and
