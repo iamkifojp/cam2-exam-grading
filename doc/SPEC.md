@@ -1,4 +1,4 @@
-# CAM2 — Product Specification
+# CAM2 Grading — Product Specification
 
 **Status:** agreed direction, 2026-11-11. **Applies to:** the first official release, `v1.0.0`.
 **Current build:** `v0.3.2-dev` (session format 2).
@@ -11,7 +11,7 @@ Each feature below is marked **Built** (in `v0.3.2-dev`) or **1.0** (to be built
 
 ## 1. What CAM2 is
 
-CAM2 is a small offline app in which a teacher grades one piece of class work at a time, on screen, and gets a PDF report for each student and an Excel gradebook.
+CAM2 Grading (until 1.0, *CAM2 Exam Grading*; "CAM2" below) is a small offline app in which a teacher grades one piece of class work at a time, on screen, and gets a PDF report for each student and an Excel gradebook.
 
 It runs in two ways, from the same code:
 
@@ -57,7 +57,8 @@ CAM tells CAM2 which kind a task is. The standalone start screen offers only exa
 
 - **Built:** one PDF of the whole class, one file per student, or photos of each page. Batches joined. Folded A3 booklets unfolded. Page fixes (move, turn, remove, blank page, booklet sheet fixes). Late papers added at any time.
 - **Built:** A4, B5 (ISO and JIS), A3, Slide 16:9 and Slide 4:3, detected and confirmed. **1.0:** Slide 16:10.
-- **1.0, assignments and drafts:** a folder of submissions where a student may have **several files**, PDFs and images of different sizes, joined into one paper in a stated order. Files are matched to the class list by student ID or full name in the file name, or by a subfolder per student. Papers may differ in length without a warning.
+- **1.0, assignments and drafts:** a folder of submissions where a student may have **several files**, joined into one paper **in file-name order** (numbers sorted as numbers, so `2` comes before `10`). On the scan check the teacher can **move a whole file earlier or later, move single pages, and remove a file or page** handed in by mistake, so an extra attachment never pushes the assessed pages out of place. Files are matched to the class list by student ID or full name in the file name, or by a subfolder per student. Papers may differ in length without a warning.
+- **CAM2 opens PDFs and pictures only** (JPEG or PNG, for pages scanned or photographed one by one). Anything else is turned into a PDF first, outside CAM2. The guide gives a simple example Apps Script that downloads Classroom work as PDFs named with the class and student first; each school adapts its own.
 - The session folder is portable and holds a copy of the work, so it opens on another computer.
 
 ### 4.2 Set up (exams)
@@ -78,9 +79,10 @@ Assignments and drafts skip box drawing. Their criteria and rubric come from CAM
 - **1.0, annotations:** for long, structured answers in languages, history and economics, and for art.
   - **Numbered comment stamps**, placed exactly where the teacher clicks, with their text in a numbered list. A stamp can be typed directly or dragged from the quick-comment list.
   - **Highlights**, drawn like answer boxes: dragged on the same 5 mm grid and snapping to its cells, in yellow, blue or pink.
+  - **Limits follow the pages an answer covers:** up to 8 notes on each page, and 300 characters of question comment for each page. A three-page essay can take 24 notes and a 900-character comment; a short answer keeps 8 and 300. The overall comment stays at 600. Highlights don't count.
   - Both follow the student's writing when a box is adjusted, print on the report, and reach the gradebook as text. The scan and crop files are never changed.
 - **1.0, class grid:** the whole class at once, in 2, 3, 4 or 5 columns, as **This question** (each student's answer) or **Whole papers**. Clicking a card opens that student for grading and annotating, and returns to the same place in the grid.
-- **1.0, assignments and drafts:** the submission is read page by page with the same stamps and highlights. An assignment gets a level per criterion; a draft gets none. Each student has a **Late** tick. **Partners** can be linked so that group work shares one grade and comment.
+- **1.0, assignments and drafts:** the submission is read page by page with the same stamps and highlights. An assignment gets a level per criterion; a draft is an assignment with no grade, and is otherwise the same, student PDF included. Each student has a **Late** tick. **Partners** can be linked so that group work shares one grade and comment.
 
 ### 4.5 Review and export
 
@@ -90,7 +92,8 @@ Assignments and drafts skip box drawing. Their criteria and rubric come from CAM
 ### 4.6 Work with CAM
 
 - **Built:** CAM opens one exam in CAM2 with its folder and class; CAM reads the session's results, comments and name crops; the teacher is guided back to CAM after sending.
-- **1.0:** CAM opens assignments and drafts in CAM2 the same way. Their grades, comments, note text, Late flags and partner groups reach CAM's gradebook, its Classroom entry routine and its term-comment prompts with nothing lost and nothing duplicated on a re-send.
+- **1.0:** CAM opens assignments and drafts in CAM2 the same way, and **reads their results from the session folder, as it does for exams.** There is no CSV file and no export step to forget. Their grades, comments, note text, Late flags and partner groups reach CAM's gradebook, its Classroom entry routine and its term-comment prompts with nothing lost and nothing duplicated on a re-send.
+- **1.0:** CAM keeps every note, and trims what it sends to the LLM for term comments to a set length per task, so heavy annotation can't crowd the prompt.
 - **1.0:** CAM no longer contains the grading workspace, OAuth set-up or Drive code. Marks and comments already stored in CAM stay.
 - The two apps move together: CAM2 is tagged first, then pulled into CAM with `git subtree`. CAM's copy is never edited in place. A CAM that is too old for a session says so and leaves it alone.
 
@@ -112,7 +115,7 @@ Assignments and drafts skip box drawing. Their criteria and rubric come from CAM
 | Late badge and tick | Late tick in CAM2 |
 | Anonymous grading | Hide names and Shuffle papers |
 | Matching files to students | CAM2's matching by ID or name, and the manual matcher |
-| CSV to CAM, then Classroom entry | CAM2 sends the same information to CAM |
+| CSV to CAM, then Classroom entry | CAM reads the session folder directly; Classroom entry works as before |
 | Google Drive browsing and sign-in | **Removed.** Work is downloaded, or sits in a synced folder |
 | Docs, Slides and Word previews | **Not in CAM2.** The teacher's Apps Script converts them to PDF first |
 | Videos | **Not in CAM2.** Watched online; the grade and comment are entered in CAM |
@@ -126,7 +129,9 @@ Assignments and drafts skip box drawing. Their criteria and rubric come from CAM
 - 1.0 uses **session format 3**. Sessions in formats 1 and 2 open and keep their meaning. An older CAM2 or CAM refuses a format 3 session visibly and does not rewrite it.
 - Annotation positions are stored as fractions of the scanned page, so they don't depend on zoom, screen scaling or how a crop was cut. Highlights snap to the grid when drawn, and are stored the same way.
 
-## 7. The screens
+## 7. The screens and the name
+
+**The name becomes CAM2 Grading** wherever a teacher reads it: the download, the start file, the page title, READ ME FIRST and the guides. The app-data folder (`CAM2 Exam Grading`), the default sessions folder and the repository keep their names, so an update finds every teacher's recent sessions and preferences.
 
 The current design works and stays: the start screen, the five steps, the grading card, the review table. Changes for 1.0 are limited to what the new features need:
 
@@ -155,13 +160,14 @@ The current design works and stays: the start screen, the five steps, the gradin
 
 ## 10. Still to decide
 
-| # | Question | Needed by |
-|---|---|---|
-| 1 | How assignment and draft results reach CAM: the workspace's CSV format (least change in CAM) or the session bridge that exams use | Before Phase H in the plan |
-| 2 | Is 8 notes per answer enough for a three-page essay? Try it on the essay sample | During Phase D |
-| 3 | In what order are a student's several files joined: file name, or newest first as the workspace lists them? | Before Phase G |
-| 4 | Does a draft's student PDF get made at all, or only when the teacher asks? | Before Phase G |
-| 5 | The app's name, *CAM2 Exam Grading*, once it also grades assignments inside CAM | Before release |
+Nothing is open. Settled on 2026-11-11:
+
+- Results reach CAM through the session folder, as exams do.
+- A student's several files join in file-name order, and the teacher can reorder files and pages in CAM2.
+- A draft always gets a student PDF.
+- Up to 8 notes, and 300 characters of comment, for each page of an answer.
+- CAM2 opens only PDFs and pictures.
+- The app is renamed **CAM2 Grading**.
 
 ## 11. Documents
 

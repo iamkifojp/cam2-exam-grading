@@ -1,4 +1,4 @@
-# CAM2 — Plan to the first official release (v1.0.0)
+# CAM2 Grading — Plan to the first official release (v1.0.0)
 
 **Agreed:** 2026-11-11. **Status:** planned; no application code has changed under this plan.
 **What 1.0 must do:** [SPEC.md](SPEC.md). **Coding agent:** Claude Opus, one phase per session. Codex Astra for an independent review of a finished phase, following [AGENTS.md](../AGENTS.md).
@@ -14,10 +14,18 @@ This is the only plan. It replaces the root `PLAN.md`, `Feedback-and-Upgrades.md
 | 2026-11-11 | **Highlights snap to the 5 mm grid** and are drawn like answer boxes. **Comment stamps are placed freely** |
 | 2026-11-11 | **Assignments and drafts open from CAM only.** The standalone start screen stays exam-only |
 | 2026-11-11 | **CGW features CAM2 must cover:** several files per student, partners sharing one grade, a Late flag. Omitting page ranges is not carried over |
+| 2026-11-11 | **Results reach CAM through the session folder,** as exams do. No CSV. It is the route with atomic saves, read-back, a save counter and a version check, and it has no export step to forget and no file to go stale |
+| 2026-11-11 | **Several files join in file-name order,** natural sort. Download times don't show when work was handed in, so "newest" can't be trusted. A wrong file is removed, or moved, on the scan check |
+| 2026-11-11 | **A draft is an assignment with no grade.** It gets a student PDF like any other task |
+| 2026-11-11 | **CAM2 opens PDFs and pictures (JPEG, PNG) only.** The guide carries a simple example Apps Script for downloading and renaming work as PDFs. The teacher's own school script is not shared |
+| 2026-11-11 | **Up to 8 notes per page of an answer,** replacing 8 per answer. A page is used, not a screen, because a screen changes with zoom and window size. CAM trims note text for the LLM prompt |
+| 2026-11-11 | **The app is renamed CAM2 Grading.** Only what teachers read changes; the app-data folder, default sessions folder and repository keep their names |
+| 2026-11-11 | **The teacher can reorder a student's files and pages in CAM2,** so an extra attachment can't put answer boxes on the wrong pages |
+| 2026-11-11 | **The question comment limit is 300 characters per page of the answer,** replacing a flat 300. The overall comment stays at 600 |
 | 2026-11-10 | Class grid has This question and Whole papers views, with 2, 3, 4 or 5 columns |
 | 2026-11-10 | Japanese wording is accepted on colleagues' use. New text still needs English and Japanese |
 | 2026-11-06 | Fix the level buttons moving, and the Total on report box, in the next update |
-| 2026-11-05 | Notes are numbered and kept apart from the question's comment. Limits: 8 list comments, 120 characters per note, 300 per question comment, 600 overall |
+| 2026-11-05 | Notes are numbered and kept apart from the question's comment. Limits: 8 list comments, 120 characters per note (8 notes per answer then; now per page), 300 per question comment, 600 overall |
 | 2026-11-05 | Videos are watched outside CAM2. Docs, Slides and Word files are converted to PDF by the teacher's Apps Script |
 | 2026-11-05 | CAM2 never contacts Google (CAM's D17) |
 
@@ -194,7 +202,8 @@ Notes and highlights are stored in `grades.json` beside that student's question 
 - Authoring is in the answer view. Whole-page view is for context, with a clear way back.
 - **Quick comments** become a list to place, not to tick. Strength and Area to develop stay as optional types, shown with text as well as colour. Text already written by ticks stays as ordinary comment text; old `keywords` and `keyword_text` no longer regenerate, delete or duplicate it. Existing lists are kept, including long ones.
 - **New lists start with four:** *Well explained.* (strength), *More explanation needed.*, *Incomplete answer.*, *Hard to read.* (areas to develop), in both languages.
-- **Limits:** 8 list comments, 8 notes per answer, 120 characters per note. Highlights don't count. Existing text and lists are never cut; they can be kept or shortened, not grown. Count characters the same in Python and JavaScript, and respect Japanese input composition.
+- **Limits:** 8 list comments, 120 characters per note, and **8 notes on each page of an answer**: the count is of notes whose position is on that scanned page, checked on the server and refused with a short message. An answer over three pages can hold 24. Numbers still run through the whole answer. Highlights don't count.
+- **The question comment limit follows the pages too:** 300 characters for each scanned page the answer's boxes cover, so 300 for an ordinary answer and 900 for a three-page essay. `set_grade` works the limit out from the question's boxes, and the browser counter shows the same number. If a box adjustment lowers the limit below a saved comment, the comment is kept and can't grow, as with any comment over its limit. The overall comment stays at 600. Existing text and lists are never cut; they can be kept or shortened, not grown. Count characters the same in Python and JavaScript, and respect Japanese input composition.
 
 ### D3. When a box is adjusted
 
@@ -215,7 +224,7 @@ Notes follow the writing, because page positions don't change. Scan and crop fil
 - The gradebook adds numbered note text to the question's comment cell; the stored comment is untouched. Step 5's comment marker counts notes.
 - Preview, export and re-export agree. Close image and PDF resources per student.
 
-**Accept:** a third-of-a-page answer, a half page, a one-page letter, two- and three-page essays, several boxes on one page, rotated and landscape scans, every slide size. Marks at edges, on each essay page and beside dividers. Zoom, display scaling, re-slicing, excluded marks, criterion switching, fast navigation. Reopen and compare positions and owners. Both languages in preview, PDF and Excel. Annotation-only work, a conflict failure and emergency restore. Try the 8-note limit on the three-page essay with the teacher and agree a change if it is too few.
+**Accept:** a third-of-a-page answer, a half page, a one-page letter, two- and three-page essays, several boxes on one page, rotated and landscape scans, every slide size. Marks at edges, on each essay page and beside dividers. Zoom, display scaling, re-slicing, excluded marks, criterion switching, fast navigation. Reopen and compare positions and owners. Both languages in preview, PDF and Excel. Annotation-only work, a conflict failure and emergency restore. Fill a page to 8 notes and add a ninth; move a note onto a full page; 24 notes and a 900-character comment on the three-page essay, in the report and the gradebook; a 301-character comment refused on a one-page answer.
 
 ## 8. Phase E — class grid (F11)
 
@@ -237,24 +246,25 @@ The interaction comes from CAM's workspace: student cards, a column control, enl
 A task with no answer boxes: each student's submission is one item, read page by page. This is what lets CAM2 take over from the workspace. Full reasoning: [archive/feedback-and-upgrades.md](archive/feedback-and-upgrades.md) F5.
 
 - **Task kind.** The session records `exam`, `assignment` or `draft`. Absent means exam. Only the hand-over from CAM (`engine/host.py`) sets the other two. The standalone start screen doesn't change.
-- **Bringing work in.** A folder of submissions. A student may have several files, PDFs and images of different sizes, joined into one paper in a stated order (SPEC §10, question 3). Match by student ID or full name in the file name, or a subfolder per student; the rules in CAM's `submission_identity.py` are the reference. Unmatched files stay as their own papers for the manual matcher; they are never merged by guess. Different page counts raise no warning.
+- **Bringing work in.** A folder of submissions. A student may have several files, PDFs and images of different sizes, joined into one paper in file-name order, with numbers sorted as numbers. PDFs and pictures (JPEG, PNG) only; any other file is listed as not opened, with the reason, and never dropped silently. Match by student ID or full name in the file name, or a subfolder per student; the rules in CAM's `submission_identity.py` are the reference. Unmatched files stay as their own papers for the manual matcher; they are never merged by guess. Different page counts raise no warning.
+- **Putting files and pages right.** An extra attachment can sort before or after the assessed document. On the scan check, a student's paper lists its files; the teacher can move a whole file earlier or later, remove a file, and use the existing page tools (move, turn, remove, blank page) on single pages. This matters most when the task has answer boxes, because every later page would otherwise be sliced from the wrong place. The check highlights a paper whose page count differs from most of the class, as it does for a folder of scans, so the odd ones are easy to find. Changed papers are re-sliced at once, and a paper with grades, comments or notes can't be changed, as today. The same joining and reordering apply to an exam brought in as several files per student.
 - **No Step 2 boxes and no crops.** The item's parts are its full pages (D1). Pages are rendered from `scans/` when needed, through a bounded cache. Nothing renders a whole class up front.
 - **Mixed page sizes.** There is no paper-size choice. Each page gets a 5 mm grid from its own size, or a nominal grid from its shape when an image has no physical size, so highlights still snap.
-- **Step 4.** The page viewer with the Phase D tools. The note limit applies per page here, not per submission.
+- **Step 4.** The page viewer with the Phase D tools, and the same limit of 8 notes per page. A whole submission has one comment, the overall comment, at 600 characters.
 - **Class grid.** The Whole papers view is the default.
 - **Report.** A layout for whole pages at a readable size, with stamps, highlights and the note list. By default only pages with marks are printed, with an option for every page, to keep PDFs small enough to send.
 - **Protection.** Page fixes, late papers, added files and replacement keep IDs and work, as for exams.
 
-**Accept:** a made-up class with one-file and several-file students, mixed PDFs and photos, portrait and landscape, 1 to 25 pages; an ID match, a name match, a subfolder, a duplicate name and an unmatched file; a late submission; a file added to a student who already has notes; reopen on another computer; report and gradebook in both languages; memory while paging through the class. The standalone start screen and an exam session behave exactly as before.
+**Accept:** a made-up class with one-file and several-file students, an attachment that sorts before the assessed document and one that sorts after, each put right by moving the file, mixed PDFs and photos, portrait and landscape, 1 to 25 pages; an ID match, a name match, a subfolder, a duplicate name and an unmatched file; a late submission; a file added to a student who already has notes; reopen on another computer; report and gradebook in both languages; memory while paging through the class. The standalone start screen and an exam session behave exactly as before.
 
 ## 10. Phase H — assignments, drafts, Late and partners
 
-- **Draft:** no grade controls. The existing refusal of a question with no marks or criteria is lifted for drafts only. A paper counts as seen once it has a comment or a note. Nothing about a draft counts towards a total.
+- **Draft:** an assignment with no grade. No grade controls; everything else is the same, including the student PDF and the report options. The existing refusal of a question with no marks or criteria is lifted for drafts only. A paper counts as seen once it has a comment or a note. Nothing about a draft counts towards a total.
 - **Assignment:** one level per criterion, using the rubric cards and criterion tabs already in Step 4. The criteria come from CAM. The level given is the result; there is no separate final level and no calculation.
 - **Late:** a tick per student, stored with that student's overall record. CAM may fill it in on hand-over. It shows on the card and in the grid, and goes to CAM. It never writes into the comment text.
 - **Partners:** link students into a group. A grade or comment given to one applies to all, by student ID. When a student joins a group that has a grade, the group's grade stands and no comment is lost: comments are combined, not replaced. Notes and highlights stay on each student's own pages. Unlinking leaves each with a copy.
 - **Step 5 and exports** show what applies: no totals for a draft, levels for an assignment, Late and group columns in the gradebook.
-- **Sending to CAM.** Settle SPEC §10 question 1 first. The workspace's CSV carries: student, a grade per criterion, checked keywords, comment, due date, file count, files, Late, assessment mode, focus criteria and draft partner group. Whatever route is chosen, CAM must receive all of these, with the note text added to the comment once, in order.
+- **Sending to CAM.** CAM reads `cam2_session.json` and `grades.json` from the session folder, as for exams; CAM2 writes no CSV. The session must hold everything the workspace's CSV carried: student, a level per criterion, comment, file count and file names, Late, task kind, criteria and partner group. Note text is stored apart from the comment, and CAM joins them when it reads. Document these fields in `engine/model.py` and `ARCHITECTURE.md` as the contract CAM relies on.
 
 **Accept:** a draft with comments only, reopened and re-sent; an assignment on two criteria; Late set by CAM and changed by the teacher; partners linked before and after grading, unlinked, and with one late paper; a refused save while linked; annotation-only feedback. The same results in CAM2's gradebook and in what CAM receives.
 
@@ -263,12 +273,12 @@ A task with no answer boxes: each student's submission is one item, read page by
 This work is in CAM's repository and follows CAM's own plan documents (`docs/CAM2_ENGINE_UPGRADE_PLAN.md`, `docs/CAM2_FEEDBACK_FOR_CAM.md`). This section lists what CAM2 needs from it. Never edit CAM's `exam_grading/` copy; tag CAM2 and `git subtree pull`.
 
 1. Read session format 3. An older CAM reports a newer session and leaves it alone.
-2. The bridge reads note text with each question's comment, once, in order. Highlights add no text. The exam block in term prompts includes it.
+2. The bridge reads note text with each question's comment, once, in order. Highlights add no text. CAM stores every note. For the LLM, the exam and draft blocks in term prompts take the overall comment first, then question comments, then notes, up to a set length per task, cutting at a whole note. Set that length against CAM's existing prompt limit.
 3. **Grade this Assignment** opens CAM2 on an assignment or draft, with its folder, class list, criteria and task kind. The fixed folder is `<class cloud folder>/assignments/<task>/`.
-4. Results from Phase H reach the gradebook, the Classroom Entry tab and `draft_feedback` for term prompts. A re-send neither duplicates nor resurrects anything.
+4. `engine/exam_bridge.py` reads assignment and draft sessions as well as exams, and files them by task kind: today every CAM2 session is filed as an exam (`_ingest_cam2_session` sets `is_exam`) and the Classroom Entry tab leaves exams out. Results reach the gradebook, the Classroom Entry tab and `draft_feedback` for term prompts. A re-read neither duplicates nor resurrects anything.
 5. **Run both side by side:** one real draft, then one real assignment, graded in the workspace and in CAM2, and the results in CAM compared. Drafts first, because a mistake can't touch a mark.
 6. **Remove the workspace:** `cam_grading_workspace/`, OAuth and Drive code, credentials handling and their set-up documents. Marks and comments already in CAM stay. Amend CAM's decision D16.
-7. The Apps Script that turns Classroom work into PDFs covers Docs and Word as well as Slides and PowerPoint.
+7. The guide's example Apps Script turns Classroom work into PDFs named with the class and student first, covering Docs and Word as well as Slides and PowerPoint. It is a simple example to adapt, not the teacher's own school script.
 8. CAM's links to `Feedback-and-Upgrades.md` on GitHub now point at a moved file; update them to this plan.
 
 **Accept:** CAM's test suite, including bridge tests for notes, Late, partners, drafts and re-sends; the side-by-side comparison written up; a clean CAM install with no Google set-up grading an exam, an assignment and a draft.
@@ -292,6 +302,8 @@ Node must be available so the JavaScript check runs. Record real results, skips 
 | Class of 30–40 | Grid identity under sort, shuffle and filter; late papers; bounded memory |
 | Assignment and draft classes | Several files, matching, Late, partners, results in CAM |
 | Save failure during editing | Warning stays, drafts keep their owner, retry, restore, lock release |
+
+**The name.** Change *CAM2 Exam Grading* to *CAM2 Grading* in `tools/cam2.spec`, both builders, READ ME FIRST, the quick guide, `launcher.py`, the page title and both translation files. Leave the app-data folder, the default sessions folder and the lock and file names alone, and check that an updated build still lists a `v0.3.2-dev` computer's recent sessions. CAM's launcher and bundle look for the start file by name, so change them in the same pull.
 
 **Packages.** Build Windows and Apple Silicon from one commit with the existing builders, `tools/cam2.spec` and `requirements-build.txt`. In each frozen build: new assets present, double-click, reopen, pickers, data outside the bundle, the annotation, grid, 16:10 and assignment flows, export in both languages, non-English paths, and replacing a file open in Excel or a PDF viewer.
 
@@ -365,9 +377,9 @@ Keep source commits apart from packaging results. On another computer, check for
 | C: format 3, tiered levels | Not started | Settle every new stored shape first |
 | D: annotations, long-answer reports | Not started | Geometry contract first |
 | E: class grid | Not started | |
-| G: whole-submission tasks | Not started | SPEC §10 questions 3 and 4 |
-| H: assignments, drafts, Late, partners | Not started | SPEC §10 question 1 |
+| G: whole-submission tasks | Not started | |
+| H: assignments, drafts, Late, partners | Not started | Write the session contract for CAM first |
 | I: CAM, workspace removed | Not started | In CAM's repo |
-| J: verification and release | Not started | |
+| J: verification and release | Not started | Includes the rename to CAM2 Grading |
 
 **2026-11-11:** plans consolidated into this document and SPEC.md written. Read the source documents, both reviews, CAM's workspace README, CSV export and CAM2 notes; ran the test suite (354 pass, 1 skipped). No application code changed.
