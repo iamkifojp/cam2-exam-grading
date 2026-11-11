@@ -378,7 +378,7 @@ def give(config, grades, **values):
 
 
 class HowAQuestionIsGradedTests(unittest.TestCase):
-    """Each row of the question table in Exam-Section-Plan.md §2."""
+    """Each row of the question table in doc/Exam-Section-Plan.md §2."""
 
     def setUp(self):
         self.config, self.grades = paper(([("q1", 10, []), ("q2", 10, ["r2"]),
@@ -585,7 +585,7 @@ class WeightingTests(unittest.TestCase):
 
 
 class CriterionMarksTests(unittest.TestCase):
-    """The example in Exam-Section-Plan.md §3: Criterion A has all of Section A
+    """The example in doc/Exam-Section-Plan.md §3: Criterion A has all of Section A
     and 24 / 30 of Section B's 40 marks."""
 
     def exam(self, weighted):

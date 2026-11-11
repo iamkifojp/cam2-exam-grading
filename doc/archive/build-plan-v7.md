@@ -1,15 +1,17 @@
 # CAM2 — Standalone Exam Slicing & Grading App (Implementation Plan)
 
+> **Archived 2026-11-11.** Kept for its reasoning and history. The current plan is [doc/PLAN.md](../PLAN.md) and the specification is [doc/SPEC.md](../SPEC.md); where this file disagrees with them, they are right.
+
 > **Working Directory:** `C:\Project\cam2-exam-grading` (GitHub: `iamkifojp/cam2-exam-grading`)
 > **Forked From:** `C:\Project\criterion-assessment-metrics-public` — grid maths and slicing (`cam_grading_workspace/exam_engine.py`), the save-safety layer (`engine/persistence.py`), the native folder picker (`engine/folder_dialog.py`) and the portable bundle builder (`tools/build_windows_bundle.py`).
 > **Status:** v7. Revised after a review. Adds Windows and Mac packages, A4/B5/A3 paper sizes with a 5 mm grid, a "see whole page" viewer, answer boxes that span several pages, choice questions ("answer 2 of 3"), rubric levels you can set yourself, report-only totals, a fully bilingual app (EN/日本語) and CAM's save-safety checks.
-> **Exam sections and report options** are built, and this plan has been brought into line with them. The details are in [Exam-Section-Plan.md](Exam-Section-Plan.md). The current test build is `v0.3.2-dev`.
+> **Exam sections and report options** are built, and this plan has been brought into line with them. The details are in [Exam-Section-Plan.md](../Exam-Section-Plan.md). The current test build is `v0.3.2-dev`.
 
 ---
 
 ## Next release
 
-The agreed 2026-11-10 implementation scope is in [doc/next-release-plan.md](doc/next-release-plan.md): four data-integrity fixes, the CAM maintenance changes, stable level buttons, Slide 16:10, tiered rubric ceilings, answer annotations and a class grid with question/whole-paper views and 2–5 columns. It includes phased acceptance checks and the coding-agent handoff. Existing Japanese wording is accepted based on colleagues' use and no reported problems; new controls still need EN/JA text.
+The agreed 2026-11-10 implementation scope is in [doc/next-release-plan.md](next-release-plan-2026-11-10.md): four data-integrity fixes, the CAM maintenance changes, stable level buttons, Slide 16:10, tiered rubric ceilings, answer annotations and a class grid with question/whole-paper views and 2–5 columns. It includes phased acceptance checks and the coding-agent handoff. Existing Japanese wording is accepted based on colleagues' use and no reported problems; new controls still need EN/JA text.
 
 ## 1. Goal
 
@@ -207,7 +209,7 @@ The teacher **drags a rectangle** over the page, and it snaps to the grid cells.
 | Marks: question score | A whole number from 0 to the question's maximum. *Not answered* = 0. |
 | Marks: choice group "answer N of M" | N scores count. The group's maximum is the sum of the N largest question maximums. A student who answers more than N gets the best N, or, when the choice is set to **I choose which count**, the N the teacher ticks in Step ⑤ (until then the choice counts nothing and the student is incomplete). |
 | Marks: total | Ordinary questions plus each choice group's contribution. Percentage to 1 decimal place. |
-| Marks: sections and weighting | Each section's marks become a percentage of that section, counted at its share of the paper. Worked out exactly and rounded once, at the end. Details in [Exam-Section-Plan.md](Exam-Section-Plan.md) §3. |
+| Marks: sections and weighting | Each section's marks become a percentage of that section, counted at its share of the paper. Worked out exactly and rounded once, at the end. Details in [Exam-Section-Plan.md](../Exam-Section-Plan.md) §3. |
 | Rubric: levels | **Reported as given** (`B5`), and never averaged, totalled or added to marks. *Not answered* = 0, but in a choice group only the best N count (questions on several criteria rank by the sum of their levels). |
 | Final level | Optional, and always typed by the teacher. It must be a level in one of the rubric's bands. Blank does not print. |
 | Rounding | **Half up**, so 4.5 → 5 and 5.5 → 6. Python's `round()` must not be used, because it rounds halves to even (`round(4.5) == 4`). |

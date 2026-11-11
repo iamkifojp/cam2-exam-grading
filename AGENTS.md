@@ -12,7 +12,7 @@
 - **No Defensive Over-Engineering:** Do NOT suggest `try/except` wrappers, fallback mechanisms, or schema checks for unlikely scenarios. Let unexpected internal errors fail fast and visibly.
 - **Keep It Small:** Do not recommend abstracting simple functions into classes, adding third-party dependencies, or splitting files unless it directly fixes a bug.
 - **Protect Teacher Work:** USB removal, cloud-sync conflicts, files open in Excel/PDF viewers, and interrupted saves are supported everyday conditions. Regressions in the existing save/recovery behavior are in scope; this is distinct from speculative defensive hardening.
-- **Review Implemented Behavior:** Missing wishlist features, cosmetic changes, wording preferences, and general refactoring are not findings. `Feedback-and-Upgrades.md` includes proposals, not requirements for the current app.
+- **Review Implemented Behavior:** Missing wishlist features, cosmetic changes, wording preferences, and general refactoring are not findings. `doc/PLAN.md` and `doc/SPEC.md` describe planned work, not requirements for the current app, until a phase is recorded as built.
 
 ## High-Priority Review Targets (ONLY flag these)
 
@@ -27,7 +27,7 @@
 
 ## Review Method & Evidence
 
-- Read `ARCHITECTURE.md` for the code map and `CHANGELOG.md` for changes. Use `Exam-Section-Plan.md` for mixed grading, weighting, and report rules; it supersedes the older rubric calculations in `PLAN.md`.
+- Read `ARCHITECTURE.md` for the code map and `CHANGELOG.md` for changes. Use `doc/Exam-Section-Plan.md` for mixed grading, weighting, and report rules; it supersedes the older rubric calculations in `doc/archive/build-plan-v7.md`. `doc/SPEC.md` states the product's scope and `doc/PLAN.md` the planned phases.
 - Read `doc/repository-review-2026-10-31.md` before reusing earlier findings. Its four issues are recorded as fixed; only report them again if the current code demonstrates a regression.
 - Confirm the review's commit/range and working-tree changes. Follow affected behavior through browser state, routes, engine, persistence, and exports as relevant; a passing engine test alone does not prove browser save/navigation behavior.
 - Each finding needs a concrete supported teacher action, the resulting failure, an exact code location, and the smallest practical fix. Reproduce it with a focused test or provide a complete code-path explanation. Do not report hypothetical risks without evidence.

@@ -4,6 +4,20 @@ All notable changes to CAM2 are listed here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Dates are
 year-month-day.
 
+## Unreleased
+
+### Documents
+
+- **One specification and one plan, both in `doc/`** (2026-11-11).
+  [doc/SPEC.md](doc/SPEC.md) says what CAM2 is and what the first official release,
+  v1.0, must do: replace CAM's grading workspace completely. [doc/PLAN.md](doc/PLAN.md)
+  is the only plan, with what is still open, the phases to v1.0, and colleagues'
+  requests and the backlog.
+- `PLAN.md`, `Feedback-and-Upgrades.md` and `doc/next-release-plan.md` moved to
+  `doc/archive/`, and `Exam-Section-Plan.md` moved to `doc/`. Older entries below
+  name them where they were.
+- No application code changed.
+
 ## [0.3.2-dev] - 2026-11-06
 
 A test build with slide pages and limits on comment length. Sessions stay at
@@ -71,7 +85,7 @@ once saved here `v0.2.0-dev` can no longer open them.
   the Releases page.
 - **PLAN.md now describes the app as built:** the starting choice, the question card,
   the review table, the report, the gradebook and the calculations follow
-  [Exam-Section-Plan.md](Exam-Section-Plan.md), and rubric averages and suggested
+  [Exam-Section-Plan.md](doc/Exam-Section-Plan.md), and rubric averages and suggested
   levels are gone.
 - **The steps for making a release** in PLAN.md now include the sample exams.
 - **Step 2's hint and the quick guide** say to box each question and its answer, as the
@@ -103,7 +117,7 @@ once saved here `v0.2.0-dev` can no longer open them.
 
 ### Exam sections, Phase 7, part 1: sample exams (2026-11-03)
 
-Phase 7 of [Exam-Section-Plan.md](Exam-Section-Plan.md) is now in two parts: sample
+Phase 7 of [Exam-Section-Plan.md](doc/Exam-Section-Plan.md) is now in two parts: sample
 exams to test with first, then Windows and Mac test builds to share with colleagues.
 
 #### Added
@@ -117,7 +131,7 @@ exams to test with first, then Windows and Mac test builds to share with colleag
 
 ### Exam sections, Phase 6: the gradebook (2026-11-03)
 
-The Excel gradebook for [Exam-Section-Plan.md](Exam-Section-Plan.md). Only the
+The Excel gradebook for [Exam-Section-Plan.md](doc/Exam-Section-Plan.md). Only the
 plan's final run-through is left.
 
 #### Added
@@ -138,7 +152,7 @@ plan's final run-through is left.
 
 ### Exam sections, Phase 5: the report (2026-11-03)
 
-The student PDF for [Exam-Section-Plan.md](Exam-Section-Plan.md). Every report
+The student PDF for [Exam-Section-Plan.md](doc/Exam-Section-Plan.md). Every report
 option now takes effect. The gradebook's new columns come in Phase 6.
 
 #### Added
@@ -167,7 +181,7 @@ option now takes effect. The gradebook's new columns come in Phase 6.
 
 ### Exam sections, Phase 4: Step ⑤ review (2026-11-03)
 
-The review screen for [Exam-Section-Plan.md](Exam-Section-Plan.md). A mixed paper
+The review screen for [Exam-Section-Plan.md](doc/Exam-Section-Plan.md). A mixed paper
 can now be set up, graded and reviewed. The report options are saved, but most of
 them only take effect with the new report layout in Phase 5, and the gradebook's
 new columns come in Phase 6.
@@ -196,7 +210,7 @@ new columns come in Phase 6.
 
 ### Exam sections, Phase 3: Step ④ grading (2026-11-03)
 
-Grading for [Exam-Section-Plan.md](Exam-Section-Plan.md). A mixed paper can now be
+Grading for [Exam-Section-Plan.md](doc/Exam-Section-Plan.md). A mixed paper can now be
 graded, but Step ⑤ still shows it wrongly until Phase 4, so only marks-only or
 rubric-only exams can be reviewed properly for now.
 
@@ -220,7 +234,7 @@ rubric-only exams can be reviewed properly for now.
 
 ### Exam sections, Phase 2: Step ② screens (2026-11-03)
 
-The set-up screens for [Exam-Section-Plan.md](Exam-Section-Plan.md). A teacher can
+The set-up screens for [Exam-Section-Plan.md](doc/Exam-Section-Plan.md). A teacher can
 now set up a mixed paper with sections, but Steps ④ and ⑤ still follow the
 exam-wide choice until Phases 3 and 4, so only marks-only or rubric-only exams can
 be graded properly for now.
@@ -259,7 +273,7 @@ be graded properly for now.
 
 ### Exam sections, Phase 1: engine (2026-11-03)
 
-The engine for [Exam-Section-Plan.md](Exam-Section-Plan.md). The screens come in
+The engine for [Exam-Section-Plan.md](doc/Exam-Section-Plan.md). The screens come in
 later phases, so sections, weighting and report options can't be reached from
 the app yet.
 

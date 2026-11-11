@@ -1,4 +1,4 @@
-"""Session folders and the save-safety rules (PLAN.md §4).
+"""Session folders and the save-safety rules (doc/archive/build-plan-v7.md §4).
 
 Every test runs with CAM2_APP_DATA pointing at a temp folder, so nothing is
 written to the real app-data folder.

@@ -1,5 +1,7 @@
 # CAM2 next release — implementation handoff
 
+> **Archived 2026-11-11.** Kept for its reasoning and history. The current plan is [doc/PLAN.md](../PLAN.md) and the specification is [doc/SPEC.md](../SPEC.md); where this file disagrees with them, they are right.
+
 **Agreed scope:** 2026-11-10. **Status:** planned; application changes have not been implemented by this document.
 **Intended coding agent:** GPT 6.1 Sol, medium reasoning. Work in small, verified phases in the order below.
 **Proposed release:** `v0.4.0-dev`, with session format 3. Confirm the next unused version at release preparation; do not publish under an existing tag.

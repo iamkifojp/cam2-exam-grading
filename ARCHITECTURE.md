@@ -1,7 +1,8 @@
 # CAM2 Architecture
 
 This describes how CAM2 is built. For what it should do and why, see
-[PLAN.md](PLAN.md).
+[doc/SPEC.md](doc/SPEC.md). The original build plan is in
+[doc/archive/build-plan-v7.md](doc/archive/build-plan-v7.md).
 
 ## The big picture
 

@@ -1,10 +1,12 @@
 # CAM2 Feedback and Upgrades
 
-What colleagues have asked for, optional ideas from research, what each would take, and what was decided. Read this when planning a new version. Once something is agreed for a version, its design moves to [PLAN.md](PLAN.md), and what shipped goes in [CHANGELOG.md](CHANGELOG.md).
+> **Archived 2026-11-11.** Kept for its reasoning and history. The current plan is [doc/PLAN.md](../PLAN.md) and the specification is [doc/SPEC.md](../SPEC.md); where this file disagrees with them, they are right.
+
+What colleagues have asked for, optional ideas from research, what each would take, and what was decided. Read this when planning a new version. Once something is agreed for a version, its design moves to [PLAN.md](build-plan-v7.md), and what shipped goes in [CHANGELOG.md](../../CHANGELOG.md).
 
 **Suggesters stay anonymous: entries give a subject or role, never a name.**
 
-**Update, 2026-11-10:** F1, the remaining F2 annotation work and F11 are agreed for the next release. Their current implementation requirements and acceptance checks are in [doc/next-release-plan.md](doc/next-release-plan.md), which supersedes conflicting proposals below. Coding has not started under that plan. F2's question/overall comment limits already shipped in `v0.3.2-dev`. Other entries retain their status unless explicitly updated.
+**Update, 2026-11-10:** F1, the remaining F2 annotation work and F11 are agreed for the next release. Their current implementation requirements and acceptance checks are in [doc/next-release-plan.md](next-release-plan-2026-11-10.md), which supersedes conflicting proposals below. Coding has not started under that plan. F2's question/overall comment limits already shipped in `v0.3.2-dev`. Other entries retain their status unless explicitly updated.
 
 ## Requests
 
@@ -176,7 +178,7 @@ Highlights and comment stamps are two separate tools, because teachers will use 
 | The question's comment | 300 characters, about 50 words | Room for a few sentences, not an essay |
 | The overall comment | 600 characters, about 100 words | The one place for a longer message, and still reasonable to write for a whole class |
 
-**The question and overall comment limits are agreed and come first (2026-11-05).** They're built for the next CAM2 release, ahead of the rest of F2, and don't change the session's format (CAM's upgrade plan, Phase 1 and Q8). The design is in [PLAN.md](PLAN.md). The other limits come with notes.
+**The question and overall comment limits are agreed and come first (2026-11-05).** They're built for the next CAM2 release, ahead of the rest of F2, and don't change the session's format (CAM's upgrade plan, Phase 1 and Q8). The design is in [PLAN.md](build-plan-v7.md). The other limits come with notes.
 
 Three examples, with their length in characters:
 
@@ -659,7 +661,7 @@ Q3 · Criterion B    0: 1   1–2: 3   3–4: 12   5–6: 6   7–8: 2   Ungrade
 
 ## Done
 
-From colleagues trying the test builds. Details are in [PLAN.md](PLAN.md) §8.
+From colleagues trying the test builds. Details are in [PLAN.md](build-plan-v7.md) §8.
 
 | Request | Version |
 |---|---|

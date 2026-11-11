@@ -68,7 +68,7 @@ listing the questions, sections and rubrics.
 
 ## Status
 
-**Next upgrade:** the [implementation handoff](doc/next-release-plan.md) records the agreed data-integrity fixes, maintenance changes, rubric ceilings, annotations and class grid. These are planned, not features in the current download.
+**Next: the first official release, v1.0.** [doc/SPEC.md](doc/SPEC.md) says what it must do, and [doc/PLAN.md](doc/PLAN.md) is the plan: data-integrity fixes, tiered levels, annotations, a class grid, and grading assignments and drafts when opened from CAM. These are planned, not features in the current download.
 
 **The app is built, and colleagues are using the test builds.** Everything above works in English and
 Japanese, and is in the test build `v0.3.2-dev`, which colleagues are trying with
@@ -83,11 +83,11 @@ made-up sample exams on their own computers.
 | Phase 4b | Scanning guide, booklets, page fixes, late papers | ✅ done |
 | Phase 4c | Questions assessed on several criteria | ✅ done |
 | Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ✅ Built, tested on the computers that made them, and used by colleagues on their own computers |
-| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](Exam-Section-Plan.md)) | ✅ Done. Phase 7: sample exams tried on Windows, and test builds used by colleagues (now `v0.3.2-dev`) |
+| Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](doc/Exam-Section-Plan.md)) | ✅ Done. Phase 7: sample exams tried on Windows, and test builds used by colleagues (now `v0.3.2-dev`) |
 
 All 354 automated tests pass, and every finished stage was also tried out in a
 browser with sample papers. CAM2 can also be run from the source code (see
-[For developers](#for-developers)). [PLAN.md](PLAN.md) has the full plan and
+[For developers](#for-developers)). [doc/PLAN.md](doc/PLAN.md) has the plan for what comes next and
 [CHANGELOG.md](CHANGELOG.md) the details of each stage.
 
 ## For teachers
@@ -210,17 +210,21 @@ These make `dist/CAM2-exam-grading-Windows-v<version>.zip` and
 from `VERSION` in `app.py`. Each installs what it needs into its own
 `build/venv`, and starts the packaged app once to check that it works. `build/`
 and `dist/` are not committed: the zips go on the Releases page, built from one
-tagged commit. The notes on the Mac package and the release steps are under Phase 5
-in [PLAN.md](PLAN.md).
+tagged commit. The release steps are in [doc/PLAN.md](doc/PLAN.md) §12, and the notes
+on the Mac package are under Phase 5 in the
+[original build plan](doc/archive/build-plan-v7.md).
 
 ### More documents
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) explains how the code and the session
   folder are organised.
-- [PLAN.md](PLAN.md) is the implementation plan.
+- [doc/SPEC.md](doc/SPEC.md) says what CAM2 is and what the first official release must do.
+- [doc/PLAN.md](doc/PLAN.md) is the one plan: what is open, the phases to v1.0, and
+  colleagues' requests and the backlog.
+- [doc/Exam-Section-Plan.md](doc/Exam-Section-Plan.md) has the rules for sections, mixed
+  grading and the report.
 - [CHANGELOG.md](CHANGELOG.md) lists changes by phase.
-- [Feedback-and-Upgrades.md](Feedback-and-Upgrades.md) collects colleagues' requests
-  for future versions.
+- [doc/archive/](doc/archive/) keeps earlier plans for their reasoning.
 
 ### Keeping student data out of the repository
 
