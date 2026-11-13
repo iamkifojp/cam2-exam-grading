@@ -6,6 +6,22 @@ year-month-day.
 
 ## Unreleased
 
+### Phase B — maintenance and small fixes (1.0.0-dev)
+
+- Report total overrides show the calculated value as a hint and select the
+  existing override on focus. Totals must be between zero and the exam maximum;
+  weighted percentages between zero and 100. Clearing restores the calculation,
+  and invalid edits leave the saved result intact.
+- Hosted sessions offer Save & close after sending results and show return-to-CAM
+  guidance in English and Japanese. Closing still flushes pending edits first.
+- Grading keeps the level buttons in place in short windows: focusing Next paper
+  does not scroll, and the grading panel retains its scroll position after redraw.
+- Slide 16:10 decks are detected at any physical size, with a 51 × 32 landscape
+  grid and JPEG answer crops. Name crops remain PNG; photo-only PDFs are not slides.
+  Existing 16:9 and 4:3 layouts are unchanged. Session files remain version 2;
+  older builds do not support opening the new 16:10 layout.
+
+
 ### Fixed (Phase A — Data Integrity)
 
 - **Debounced rubric and question saves flush before navigation and close (`A1`).**
@@ -41,7 +57,6 @@ year-month-day.
   `doc/archive/`, and `Exam-Section-Plan.md` moved to `doc/`. Older entries below
   name them where they were.
 - No application code changed.
-
 
 ## [0.3.2-dev] - 2026-11-06
 

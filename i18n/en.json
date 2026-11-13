@@ -130,6 +130,7 @@
   "step1.paper": "Paper size",
   "step1.paper_hint": "The size the exam was printed on. For slides saved as PDFs, choose a Slide size. CAM2 has guessed it from the scans where it could.",
   "paper.slide_16_9": "Slide 16:9",
+  "paper.slide_16_10": "Slide 16:10",
   "paper.slide_4_3": "Slide 4:3",
   "step1.detected": "found",
   "step1.landscape": "The pages are landscape (sideways)",

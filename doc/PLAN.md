@@ -372,8 +372,8 @@ Keep source commits apart from packaging results. On another computer, check for
 
 | Phase | State | Evidence / next action |
 |---|---|---|
-| A: integrity fixes | Done (PR #4) | Branch `phase-a-integrity`, commit `a46a859` ([PR #4](https://github.com/iamkifojp/cam2-exam-grading/pull/4)). Verified with `build/venv/bin/python -m unittest discover -s tests -t .` (353 pass, 1 skipped `test_ui_syntax.py` because `node` is absent; 4 `RunningInstanceTests` pass separately outside sandbox via `tests.test_launcher` 8/8 OK) plus live browser check on `127.0.0.1:5199` covering `A1`–`A3` and Step 4 close/reopen flush. Limits: `test_ui_syntax.py` skipped (`node` unavailable), `A4` save-failure UI banner after unplug not simulated interactively in browser (verified at Flask route/AppState level), frozen `.app`/`.exe` builds not rebuilt. Next: merge PR #4, then cherry-pick `e39afdc` & `920fea1` in Phase B. |
-| B: maintenance, buttons, 16:10 | Not started | Cherry-pick `e39afdc`, `920fea1` |
+| A: integrity fixes | Done (PR #4) | Branch `phase-a-integrity`, commit `a46a859` ([PR #4](https://github.com/iamkifojp/cam2-exam-grading/pull/4)). Verified with `build/venv/bin/python -m unittest discover -s tests -t .` (353 pass, 1 skipped `test_ui_syntax.py` because `node` is absent; 4 `RunningInstanceTests` pass separately outside sandbox via `tests.test_launcher` 8/8 OK) plus live browser check on `127.0.0.1:5199` covering `A1`–`A3` and Step 4 close/reopen flush. Limits: `test_ui_syntax.py` skipped (`node` unavailable), `A4` save-failure UI banner after unplug not simulated interactively in browser (verified at Flask route/AppState level), frozen `.app`/`.exe` builds not rebuilt. PR #4 merged as `cea7f98`; local and live remote main matched on 2026-11-13 before Phase B. Regression suite rerun; 12 browser modules separately parsed successfully. |
+| B: maintenance, buttons, 16:10 | Implemented; awaiting PR merge | Branch `codex/phase-b-maintenance`, based on `cea7f98`. Maintenance integrations `20daefd`, `4dffecf`; B2/B3 and verification details below. |
 | C: format 3, tiered levels | Not started | Settle every new stored shape first |
 | D: annotations, long-answer reports | Not started | Geometry contract first |
 | E: class grid | Not started | |
@@ -385,3 +385,46 @@ Keep source commits apart from packaging results. On another computer, check for
 **2026-11-11:** plans consolidated into this document and SPEC.md written. Read the source documents, both reviews, CAM's workspace README, CSV export and CAM2 notes; ran the test suite (354 pass, 1 skipped). No application code changed.
 
 **2026-11-13:** Phase A (`A1`–`A4`) implemented on branch `phase-a-integrity` ([PR #4](https://github.com/iamkifojp/cam2-exam-grading/pull/4), implementation commit `a46a859`), with regression tests, browser verification, and updates to `ARCHITECTURE.md`, `CHANGELOG.md`, `README.md`, and the progress table above.
+
+
+### Phase B verification — 2026-11-13
+
+- Started from a clean `main` at `cea7f98`. `git fetch origin --prune` and
+  `git rev-list --left-right --count HEAD...origin/main` confirmed `0 0`.
+  GitHub confirmed PR #4 merged and no open PRs. Its deleted branch was pruned.
+- Applied `e39afdc` then `920fea1`, preserving main's documents and Phase A's
+  `flushPending()` on close. The app version is `1.0.0-dev`, not the CAM
+  maintenance build version. Session format stays 2 until Phase C.
+- B3 tests first failed with the unsupported 16:10 layout/detection, then passed.
+  Tests cover two physical slide sizes, paper/portrait/photo exclusions,
+  existing slide ratios, grid snapping, JPEG answer/PNG name crops, and the
+  full 12-slide import → grading → report path for both 16:9 and 16:10.
+- `build/venv/bin/python -m unittest discover -s tests -t .` with localhost
+  sockets enabled: **361 run, 360 passed, 1 skipped** (`test_ui_syntax`, Node
+  not on PATH). All **12 JavaScript modules parsed** separately using Node's
+  `vm.SourceTextModule`, including after the final JavaScript change.
+- In-app browser against isolated source server `127.0.0.1:5201`, synthetic
+  exams only: marks and weighted percentage hints, replacement on focus, clear,
+  and out-of-range rejection preserving the saved value; standalone close;
+  hosted send/resend and panel Save & close in English/Japanese; standalone
+  sessions have no host header or stale host-close banner.
+- Short-window grading at 1000 × 600 and 1280 × 600: grade 6, change to 7,
+  both save; Enter advances from Alice to Bob. The two-column check revealed
+  that `preventScroll` alone still reset the replaced panel's scroll position.
+  Keeping that position fixed it: scrollTop 461 and level-7 top 367.71 px stayed
+  identical across the next click.
+- Browser-drawn rectangle over a known red cell on a 16:10 page saved as
+  `page1!K9:K9`; slicing completed with eight pictures. Both name PNG and answer
+  JPEG were 39 × 40 pixels with red centres, matching the preview cell.
+- Separate HTTP/export checks on those synthetic marks and weighted mixed exams:
+  English/Japanese previews, two exports each, PDF text and Excel values,
+  close/reopen overrides and lock release all passed. Alice's override was
+  18/20 or 85%, while calculated totals remained 14/20 or 70%.
+- Packaging source reviewed together: launcher, both builders, spec and pinned
+  requirements. New functionality uses already bundled modules/assets, with no
+  dependency additions. **No frozen Mac or Windows build was rebuilt or run**;
+  native pickers, Finder double-click, Windows file locks and real CAM sync
+  remain platform/integration verification limits. Phase A's physical USB
+  removal UI check was not repeated; its save-failure regression tests pass.
+
+Stop after the Phase B PR; Phase C is not started.
