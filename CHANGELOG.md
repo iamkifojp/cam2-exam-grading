@@ -42,6 +42,7 @@ year-month-day.
   name them where they were.
 - No application code changed.
 
+
 ## [0.3.2-dev] - 2026-11-06
 
 A test build with slide pages and limits on comment length. Sessions stay at
