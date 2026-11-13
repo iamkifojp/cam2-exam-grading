@@ -85,7 +85,7 @@ made-up sample exams on their own computers.
 | Phase 5 | No-install Windows and Mac downloads, tested end to end on real computers | ✅ Built, tested on the computers that made them, and used by colleagues on their own computers |
 | Exam sections | Sections, mixed marks and rubric questions, and report options ([plan](doc/Exam-Section-Plan.md)) | ✅ Done. Phase 7: sample exams tried on Windows, and test builds used by colleagues (now `v0.3.2-dev`) |
 
-All 354 automated tests pass, and every finished stage was also tried out in a
+Automated tests cover the engine, server routes, and saved files (358 tests in the suite, with `test_ui_syntax.py` skipped when Node.js isn't installed), and every finished stage was also tried out in a
 browser with sample papers. CAM2 can also be run from the source code (see
 [For developers](#for-developers)). [doc/PLAN.md](doc/PLAN.md) has the plan for what comes next and
 [CHANGELOG.md](CHANGELOG.md) the details of each stage.

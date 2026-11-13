@@ -372,7 +372,7 @@ Keep source commits apart from packaging results. On another computer, check for
 
 | Phase | State | Evidence / next action |
 |---|---|---|
-| A: integrity fixes | Done (in PR) | Branch `phase-a-integrity`, commit `a46a859`. Verified with `build/venv/bin/python -m unittest discover -s tests -t .` (353 pass, 1 skipped `test_ui_syntax.py` because `node` is absent; 4 `RunningInstanceTests` pass separately outside sandbox via `tests.test_launcher` 8/8 OK) plus live browser check on `127.0.0.1:5199` covering `A1`–`A3` and Step 4 close/reopen flush. Limits: `test_ui_syntax.py` skipped (`node` unavailable), `A4` save-failure UI banner after unplug not simulated interactively in browser (verified at Flask route/AppState level), frozen `.app`/`.exe` builds not rebuilt. Next: merge PR, then cherry-pick `e39afdc` & `920fea1` in Phase B. |
+| A: integrity fixes | Done (PR #4) | Branch `phase-a-integrity`, commit `a46a859` ([PR #4](https://github.com/iamkifojp/cam2-exam-grading/pull/4)). Verified with `build/venv/bin/python -m unittest discover -s tests -t .` (353 pass, 1 skipped `test_ui_syntax.py` because `node` is absent; 4 `RunningInstanceTests` pass separately outside sandbox via `tests.test_launcher` 8/8 OK) plus live browser check on `127.0.0.1:5199` covering `A1`–`A3` and Step 4 close/reopen flush. Limits: `test_ui_syntax.py` skipped (`node` unavailable), `A4` save-failure UI banner after unplug not simulated interactively in browser (verified at Flask route/AppState level), frozen `.app`/`.exe` builds not rebuilt. Next: merge PR #4, then cherry-pick `e39afdc` & `920fea1` in Phase B. |
 | B: maintenance, buttons, 16:10 | Not started | Cherry-pick `e39afdc`, `920fea1` |
 | C: format 3, tiered levels | Not started | Settle every new stored shape first |
 | D: annotations, long-answer reports | Not started | Geometry contract first |
@@ -383,3 +383,5 @@ Keep source commits apart from packaging results. On another computer, check for
 | J: verification and release | Not started | Includes the rename to CAM2 Grading |
 
 **2026-11-11:** plans consolidated into this document and SPEC.md written. Read the source documents, both reviews, CAM's workspace README, CSV export and CAM2 notes; ran the test suite (354 pass, 1 skipped). No application code changed.
+
+**2026-11-13:** Phase A (`A1`–`A4`) implemented on branch `phase-a-integrity` ([PR #4](https://github.com/iamkifojp/cam2-exam-grading/pull/4), implementation commit `a46a859`), with regression tests, browser verification, and updates to `ARCHITECTURE.md`, `CHANGELOG.md`, `README.md`, and the progress table above.
