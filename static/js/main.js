@@ -6,11 +6,11 @@ import { act, app, config, handleError, onRender, render } from "./store.js";
 import { button, commentRefused, confirmBox, formatTime, h } from "./ui.js";
 import { renderStart, openHostExam, openSession } from "./start.js";
 import { renderNewSession, renderScanCheck } from "./step1.js";
-import { saveQuestions } from "./boxes.js";
-import { renderStep2 } from "./step2.js";
+import { flushQuestions } from "./boxes.js";
+import { flushRubrics, renderStep2 } from "./step2.js";
 import { renderStep3 } from "./step3.js";
-import { renderStep4 } from "./step4.js";
-import { renderStep5 } from "./step5.js";
+import { renderStep4, saveComment as saveQuestionComment } from "./step4.js";
+import { renderStep5, saveComment as saveOverallComment } from "./step5.js";
 
 const STEPS = [1, 2, 3, 4, 5];
 const HEARTBEAT_MS = 60 * 1000;
@@ -32,9 +32,19 @@ export function canGoTo(step) {
   return step <= Math.max(furthestStep(), 3);
 }
 
+async function flushPending() {
+  if (!(await flushRubrics())) return false;
+  const checks = await Promise.all([
+    flushQuestions(),
+    saveQuestionComment.flush(),
+    saveOverallComment.flush(),
+  ]);
+  return checks.every(Boolean);
+}
+
 export async function goTo(step, { next = false, draft = null } = {}) {
   if (commentRefused() || (!next && !canGoTo(step))) return;
-  await saveQuestions.flush();          // leaving the step drops the draft a waiting save needs
+  if (!(await flushPending())) return;
   const data = await act(post("/api/step", { step }), { rerender: false });
   if (data) {
     app.step = step;
@@ -106,18 +116,24 @@ function banners() {
 }
 
 async function saveNow() {
-  const data = await act(post("/api/save"));
-  if (data) app.saveError = null;
+  if (!(await flushPending())) return;
+  const data = await act(post("/api/save"), { rerender: false });
+  if (data && !data.session?.save_failed) app.saveError = null;
   render();
 }
 
 async function reopenSession() {
   const data = await act(post("/api/session/reopen"), { rerender: false });
-  if (data) { app.saveError = null; app.draft = {}; render(); }
+  if (data) {
+    if (!data.session?.save_failed) app.saveError = null;
+    app.draft = {};
+    render();
+  }
 }
 
 async function closeSession() {
   if (commentRefused()) return;
+  if (!(await flushPending())) return;
   try {
     const data = await post("/api/session/close");
     app.session = null;
@@ -185,7 +201,12 @@ async function boot() {
     app.version = state.version;
     app.prefs = state.prefs || {};
     app.host = state.host || null;
-    if (app.session) enterWizard();
+    if (app.session) {
+      app.saveError = app.session.save_failed
+        ? { message: t("save.not_saved"), code: "save_failed" }
+        : null;
+      enterWizard();
+    }
   } catch (err) {
     document.getElementById("app").textContent = err.message;
     return;

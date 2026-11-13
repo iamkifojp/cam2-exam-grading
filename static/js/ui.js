@@ -126,16 +126,38 @@ export function formatTime(iso) {
   return `${d.toLocaleDateString(locale, { month: "short", day: "numeric" })} ${time}`;
 }
 
-// Run fn after `ms` without further calls. `.flush()` runs a waiting call now
-// (and does nothing if none is waiting); `.now(...args)` cancels any wait and
-// runs straight away.
+// Run fn after `ms` without further calls. `.flush()` runs any in-flight or
+// waiting call and resolves to its boolean result (`true` when idle).
 export function debounce(fn, ms) {
   let timer = null;
   let pending = null;
-  const run = () => { const args = pending; pending = null; return fn(...args); };
+  let inflight = null;
+  const exec = (args) => {
+    const p = Promise.resolve(fn(...args)).finally(() => {
+      if (inflight === p) inflight = null;
+    });
+    inflight = p;
+    return p;
+  };
+  const run = () => { const args = pending; pending = null; return exec(args); };
   const wrapped = (...args) => { pending = args; clearTimeout(timer); timer = setTimeout(run, ms); };
-  wrapped.flush = () => { clearTimeout(timer); return pending ? run() : Promise.resolve(); };
-  wrapped.now = (...args) => { clearTimeout(timer); pending = null; return fn(...args); };
+  wrapped.flush = async () => {
+    clearTimeout(timer);
+    if (inflight) {
+      const prev = await inflight;
+      if (!pending) return prev;
+    }
+    return pending ? run() : true;
+  };
+  wrapped.now = async (...args) => {
+    clearTimeout(timer);
+    pending = null;
+    if (inflight) await inflight;
+    clearTimeout(timer);
+    pending = null;
+    return exec(args);
+  };
+  wrapped.cancel = () => { clearTimeout(timer); pending = null; };
   return wrapped;
 }
 

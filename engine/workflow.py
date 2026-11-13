@@ -582,12 +582,13 @@ def set_rubrics(config: dict, raw_rubrics: List[dict]) -> dict:
         q.pop("rubric_id", None)
     cleaned = []
     used = set()
-    for i, raw in enumerate(raw_rubrics or [], 1):
+    for raw in raw_rubrics or []:
         rubric = rubrics.normalize_rubric(raw)
-        rid = rubric["id"] or f"r{i}"
-        while rid in used:
-            i += 1
-            rid = f"r{i}"
+        rid = rubric["id"]
+        if not rid or rid in used:
+            rid = f"r{model.new_session_id()}"
+            while rid in used:
+                rid = f"r{model.new_session_id()}"
         rubric["id"] = rid
         rubric["name"] = rubric["name"] or f"Rubric {len(cleaned) + 1}"
         used.add(rid)
@@ -917,13 +918,14 @@ def _finish_slicing(config: dict, summary: dict) -> dict:
 
 # --- Step 3: names -------------------------------------------------------------------
 
-def set_roster(config: dict, roster_entries: List[dict], auto: bool = True) -> dict:
-    """Replace the class list, keep matches that still exist, auto-match the rest."""
+def set_roster(config: dict, roster_entries: List[dict], auto: bool = True,
+               keep_existing: bool = False) -> dict:
+    """Replace the class list, keep matches only when asked, auto-match the rest."""
     from . import roster as roster_mod
     config["roster"] = roster_entries
     valid = {r["id"] for r in roster_entries}
     for s in config.get("students") or []:
-        if s.get("roster_id") not in valid:
+        if not keep_existing or s.get("roster_id") not in valid:
             s["roster_id"] = None
     if auto:
         taken = {s["roster_id"] for s in config["students"] if s.get("roster_id")}

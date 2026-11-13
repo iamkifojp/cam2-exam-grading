@@ -162,10 +162,13 @@ class MarksReportTests(ReportTestCase):
 class RubricReportTests(ReportTestCase):
     mode = "rubric"
 
+    def r1(self):
+        return self.config["rubrics"][0]["id"]
+
     def test_descriptor_final_level_and_japanese_gradebook(self):
         gs.set_grade(self.config, self.grades, "s001", "q1", 3, "Nice example.")
         gs.set_grade(self.config, self.grades, "s001", "q2", 4)
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 3)
+        gs.set_final_level(self.config, self.grades, "s001", self.r1(), 3)
         workflow.set_report_options(self.config, {"overall_criteria": True})
         path = os.path.join(self.root, "r.pdf")
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
@@ -188,7 +191,7 @@ class RubricReportTests(ReportTestCase):
     def test_a_final_level_prints_only_with_overall_criterion_results_on(self):
         gs.set_grade(self.config, self.grades, "s001", "q1", 3)
         gs.set_grade(self.config, self.grades, "s001", "q2", 3)
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 2)
+        gs.set_final_level(self.config, self.grades, "s001", self.r1(), 2)
         path = os.path.join(self.root, "r.pdf")
         reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
         self.assertNotIn("2 / 4", self.text_of(path))
@@ -212,9 +215,10 @@ class MixedPaperReportTests(ReportTestCase):
         super().setUp()
         workflow.set_rubrics(self.config, [{"name": "Criterion A", "bands": [
             {"levels": "0"}, {"levels": "1-4", "descriptor": "Explains with examples."}]}])
-        self.config["questions"][1]["rubric_ids"] = ["r1"]
+        r1 = self.config["rubrics"][0]["id"]
+        self.config["questions"][1]["rubric_ids"] = [r1]
         self.config["questions"][1]["max"] = None
-        self.config["questions"][2]["rubric_ids"] = ["r1"]
+        self.config["questions"][2]["rubric_ids"] = [r1]
         self.config["choice_groups"] = []
         gs.set_grade(self.config, self.grades, "s001", "q1", 4)
         gs.set_grade(self.config, self.grades, "s001", "q2", 3)
@@ -257,12 +261,13 @@ class MultiCriterionReportTests(ReportTestCase):
         super().setUp()
         workflow.set_rubrics(self.config, self.config["rubrics"] + [{"name": "Criterion B", "bands": [
             {"levels": "0"}, {"levels": "1-8", "descriptor": "Designs a method."}]}])
+        r1, r2 = [r["id"] for r in self.config["rubrics"]]
         for q in self.config["questions"]:
-            q["rubric_ids"] = ["r1", "r2"] if q["id"] == "q2" else ["r1"]
+            q["rubric_ids"] = [r1, r2] if q["id"] == "q2" else [r1]
         g = lambda qid, v, rid=None: gs.set_grade(self.config, self.grades, "s001", qid, v, rubric_id=rid)  # noqa: E731
         g("q1", 2)
-        g("q2", 4, "r1")
-        g("q2", 7, "r2")
+        g("q2", 4, r1)
+        g("q2", 7, r2)
         gs.set_grade(self.config, self.grades, "s002", "q2", model.NOT_ANSWERED)
 
     def test_report_shows_each_criterion(self):
@@ -305,21 +310,22 @@ class SectionPaperTestCase(ReportTestCase):
         workflow.set_rubrics(self.config, [
             {"name": f"Criterion {name}", "bands": [{"levels": lv, "descriptor": d} for lv, d in bands]}
             for name, bands in self.BANDS.items()])
+        self.r1, self.r2, self.r3 = [r["id"] for r in self.config["rubrics"]]
         workflow.set_questions(self.config, {
             "name_box": ["page1!A1:B2"],
             "sections": [{"id": "sec1", "name": "Knowledge"}, {"id": "sec2", "name": ""}],
             "questions": [
-                {"id": "q1", "label": "Q1", "boxes": ["page1!C4"], "max": 5, "rubric_ids": ["r1"], "section_id": "sec1"},
+                {"id": "q1", "label": "Q1", "boxes": ["page1!C4"], "max": 5, "rubric_ids": [self.r1], "section_id": "sec1"},
                 {"id": "q3", "label": "Q3", "boxes": ["page2!C3"], "max": 3, "section_id": "sec1"},
-                {"id": "q2", "label": "Q2", "boxes": ["page2!A1:B2"], "rubric_ids": ["r1", "r2"], "section_id": "sec2"}]})
+                {"id": "q2", "label": "Q2", "boxes": ["page2!A1:B2"], "rubric_ids": [self.r1, self.r2], "section_id": "sec2"}]})
         self.give("s001", 4, 2, 6, 3)
         self.give("s002", 1, 3, 2, 7)
 
     def give(self, sid, q1, q3, q2a, q2b):
         gs.set_grade(self.config, self.grades, sid, "q1", q1)
         gs.set_grade(self.config, self.grades, sid, "q3", q3)
-        gs.set_grade(self.config, self.grades, sid, "q2", q2a, rubric_id="r1")
-        gs.set_grade(self.config, self.grades, sid, "q2", q2b, rubric_id="r2")
+        gs.set_grade(self.config, self.grades, sid, "q2", q2a, rubric_id=self.r1)
+        gs.set_grade(self.config, self.grades, sid, "q2", q2b, rubric_id=self.r2)
 
     def options(self, **change):
         workflow.set_report_options(self.config, change)
@@ -352,8 +358,8 @@ class ReportLayoutTests(SectionPaperTestCase):
 
     def test_each_grade_reaches_the_right_students_report(self):
         self.options(section_results=True, overall_criteria=True)
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
-        gs.set_final_level(self.config, self.grades, "s002", "r1", 2)
+        gs.set_final_level(self.config, self.grades, "s001", self.r1, 7)
+        gs.set_final_level(self.config, self.grades, "s002", self.r1, 2)
         gs.set_overall_comment(self.grades, "s002", "Comment for the second paper.")
         first, second = self.text(0), self.text(1)
         self.assertIn("A6 B3", first)
@@ -415,8 +421,8 @@ class ReportLayoutTests(SectionPaperTestCase):
 
     def test_the_right_band_is_shaded(self):
         self.options(overall_criteria=True)
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 3)
-        gs.set_final_level(self.config, self.grades, "s001", "r2", 8)
+        gs.set_final_level(self.config, self.grades, "s001", self.r1, 3)
+        gs.set_final_level(self.config, self.grades, "s001", self.r2, 8)
         shaded = self.shaded(self.report())
         self.assertEqual(len(shaded), 4)                 # the levels cell and the words cell of each band
         self.assertTrue(any("A some." in text for text in shaded))
@@ -424,13 +430,13 @@ class ReportLayoutTests(SectionPaperTestCase):
         self.assertFalse(any("A strong." in text for text in shaded))
 
     def test_a_final_level_needs_overall_criterion_results_on(self):
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 3)
+        gs.set_final_level(self.config, self.grades, "s001", self.r1, 3)
         self.assertNotIn("Final level", self.text())
         self.assertEqual(self.shaded(self.report()), [])
 
     def test_the_criterion_box_gathers_marks_and_grades(self):
         self.options(overall_criteria=True)
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        gs.set_final_level(self.config, self.grades, "s001", self.r1, 7)
         text = self.text()
         self.assertIn("Final level", text)
         self.assertIn("Marks: 4 / 5 · 80.0%", text)
@@ -440,7 +446,7 @@ class ReportLayoutTests(SectionPaperTestCase):
 
     def test_the_boxes_print_on_their_own_with_the_table_off(self):
         self.options(overall_criteria=True, rubric_table=False)
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        gs.set_final_level(self.config, self.grades, "s001", self.r1, 7)
         text = self.text()
         self.assertIn("Final level", text)
         self.assertIn("Grades: A6", text)
@@ -491,7 +497,7 @@ class ReportLayoutTests(SectionPaperTestCase):
 
     def test_japanese(self):
         self.options(section_results=True, overall_criteria=True)
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        gs.set_final_level(self.config, self.grades, "s001", self.r1, 7)
         text = self.text(language="ja")
         for expected in ("結果", "セクション2", "全体（Knowledge）", "最終レベル", "設問"):
             self.assertIn(expected, text)
@@ -507,7 +513,7 @@ class ReportLayoutTests(SectionPaperTestCase):
         workflow.set_rubrics(self.config, [{"name": "Criterion A", "bands": [
             {"levels": str(n), "descriptor": f"Band {n}. {long_words}"} for n in range(9)]}])
         self.options(overall_criteria=True)
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        gs.set_final_level(self.config, self.grades, "s001", self.config["rubrics"][0]["id"], 7)
         path = self.report()
         with fitz.open(path) as doc:
             self.assertGreater(doc.page_count, 1)
@@ -576,7 +582,7 @@ class SectionGradebookTests(SectionPaperTestCase):
         self.assertNotEqual(ws.cell(2, header.index("%") + 1).fill.fgColor.rgb[-6:], "FFF2C2")
 
     def test_final_levels_only_with_overall_criterion_results_on(self):
-        gs.set_final_level(self.config, self.grades, "s001", "r1", 7)
+        gs.set_final_level(self.config, self.grades, "s001", self.r1, 7)
         self.assertNotIn("Criterion A final level", self.rows(self.sheets()[0])["Ken Sato"])
         self.options(overall_criteria=True)
         rows = self.rows(self.sheets()[0])

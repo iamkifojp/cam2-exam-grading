@@ -20,6 +20,7 @@ from PIL import Image
 from app import create_app
 from appstate import AppState
 from engine import model, storage
+from engine.errors import SaveError
 from engine.slicer import Layout
 from tests.helpers import make_pdf
 
@@ -807,6 +808,63 @@ class CommentLimitRouteTests(AppTestCase):
         self.assertEqual(saved["grades"]["s001"]["q1"]["comment"], "長" * 500)
         self.assertEqual(saved["overall"]["s001"]["comment"], "y" * 900)
         self.assertEqual(saved["version"], model.VERSION)
+
+
+class PhaseASaveSafetyTests(AppTestCase):
+    def test_save_failed_stays_true_until_both_files_save_and_close_stays_open(self):
+        self.create()
+        self.set_up_questions()
+        self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "value": 4})
+
+        orig_save = storage.SafeJsonFile.save
+
+        def fail_grades(sf, *args, **kwargs):
+            if os.path.basename(sf.path) == "grades.json":
+                raise SaveError("save_write_failed", file="grades.json", reason="locked")
+            return orig_save(sf, *args, **kwargs)
+
+        # Simulate grades save failing while config save still succeeds.
+        with mock.patch("engine.storage.SafeJsonFile.save", new=fail_grades):
+            self.post("/api/grade", {"student_id": "s001", "question_id": "q2", "value": 3}, status=409)
+
+        # A subsequent config save must not clear save_failed while grades remain unsaved.
+        state = self.post("/api/setup/mode", {"mode": "rubric"})["session"]
+        self.assertTrue(state["save_failed"])
+
+        # Closing while save_all fails must return 409 and keep the session open in memory.
+        with mock.patch("engine.storage.SafeJsonFile.save", new=fail_grades):
+            self.post("/api/session/close", status=409)
+        after = self.client.get("/api/state").get_json()["session"]
+        self.assertIsNotNone(after)
+        self.assertTrue(after["save_failed"])
+        self.assertEqual(after["grades"]["grades"]["s001"]["q2"]["value"], 3)
+
+        # Once the disk issue clears, saving clears save_failed and closing succeeds.
+        saved = self.post("/api/save")["session"]
+        self.assertFalse(saved["save_failed"])
+        self.post("/api/session/close")
+        self.assertIsNone(self.client.get("/api/state").get_json()["session"])
+
+    def test_rubrics_route_requires_rubrics_key_before_wiping_and_never_reuses_deleted_id(self):
+        self.create()
+        self.post("/api/setup/mode", {"mode": "rubric"})
+        created = self.post("/api/setup/rubrics", {"rubrics": [
+            {"id": "", "name": "Criterion A", "bands": [{"levels": "0-8"}]},
+            {"id": "", "name": "Criterion B", "bands": [{"levels": "0-8"}]},
+        ]})["session"]["config"]["rubrics"]
+        id_a, id_b = created[0]["id"], created[1]["id"]
+
+        # A request without the "rubrics" key preserves existing rubrics.
+        still = self.post("/api/setup/rubrics", {})["session"]["config"]["rubrics"]
+        self.assertEqual([r["id"] for r in still], [id_a, id_b])
+
+        # Deleting Criterion A and adding Criterion C must allocate a fresh id.
+        replaced = self.post("/api/setup/rubrics", {"rubrics": [
+            still[1],
+            {"id": "", "name": "Criterion C", "bands": [{"levels": "0-8"}]},
+        ]})["session"]["config"]["rubrics"]
+        self.assertEqual(replaced[0]["id"], id_b)
+        self.assertNotIn(replaced[1]["id"], (id_a, id_b))
 
 if __name__ == "__main__":
     unittest.main()

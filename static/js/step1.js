@@ -361,6 +361,7 @@ async function runImport(jobId, title = t("step1.importing")) {
   try {
     const job = await waitForJob(jobId, overlay.update);
     app.session = job.session;
+    if (!job.session?.save_failed) app.saveError = null;
     return job;
   } catch (err) {
     if (err.job?.session) app.session = err.job.session;

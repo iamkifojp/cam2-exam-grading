@@ -257,7 +257,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
                 state.save_config()
             newer = session.grades_file.newer_emergency_copy()
             if newer:
-                state.grades = session.grades_file.save(newer, allow_shrink=True)
+                state.grades = newer
+                state.save_grades(allow_shrink=True)
         return ok()
 
     @app.post("/api/session/reopen")
@@ -358,10 +359,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     @app.post("/api/session/close")
     def session_close():
         if state.session is not None:
-            try:
-                state.save_all()
-            finally:
-                state.close_session()
+            state.save_all()
+            state.close_session()
         return jsonify({"ok": True, "recent": storage.list_recent()})
 
     @app.post("/api/session/forget")
@@ -488,7 +487,9 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     @app.post("/api/setup/rubrics")
     def setup_rubrics():
         state.require_session()
-        workflow.set_rubrics(state.config, body().get("rubrics") or [])
+        data = body()
+        if "rubrics" in data:
+            workflow.set_rubrics(state.config, data.get("rubrics") or [])
         state.save_config()
         return ok()
 
