@@ -90,7 +90,7 @@ def apply_roster(config: dict, handoff: dict) -> dict:
             rid = f"n{n:03d}"
             used.add(rid)
         entries.append({"id": rid, "name": person["name"], "external_id": person["external_id"]})
-    workflow.set_roster(config, entries)
+    workflow.set_roster(config, entries, keep_existing=True)
     config["host"] = {"name": handoff["host"], "class_name": handoff["class_name"]}
     return config
 

@@ -57,7 +57,7 @@ export async function act(promise, { rerender = true, quiet = false } = {}) {
   try {
     const data = await promise;
     if (data && "session" in data) app.session = data.session;
-    if (data && data.session !== undefined) app.saveError = null;
+    if (data && data.session !== undefined && !data.session?.save_failed) app.saveError = null;
     if (rerender) render();
     return data;
   } catch (err) {

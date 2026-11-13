@@ -5,7 +5,7 @@ import { t, language } from "./i18n.js";
 import { goTo } from "./main.js";
 import { openAddPapers } from "./step1.js";
 import { act, app, config, criteriaOf, gradeOf, gradedWith, handleError, render, usedCriteria } from "./store.js";
-import { button, coach, commentField, confirmBox, debounce, formatTime, h, modal, progressOverlay, toast } from "./ui.js";
+import { button, coach, commentField, commentRefused, confirmBox, debounce, formatTime, h, modal, progressOverlay, toast } from "./ui.js";
 
 const NA = "not_answered";
 
@@ -29,18 +29,22 @@ function columns(c) {
   });
 }
 
-const saveComment = debounce(async (sid, text) => {
+export const saveComment = debounce(async (sid, text) => {
+  const sessionId = app.session?.id;
   try {
     const data = await post("/api/overall", { student_id: sid, comment: text });
+    if (app.session?.id !== sessionId) return false;
     app.session = data.session;
-    app.saveError = null;
+    if (!data.session?.save_failed) app.saveError = null;
     const status = document.querySelector(".save-status");
-    if (status && data.session.saved_at) {
+    if (status && data.session.saved_at && !data.session?.save_failed) {
       status.className = "save-status ok";
       status.textContent = t("save.saved_at", { time: formatTime(data.session.saved_at) });
     }
+    return true;
   } catch (err) {
     await handleError(err);
+    return false;
   }
 }, 700);
 
@@ -380,6 +384,7 @@ function missingFinals(c) {
 }
 
 async function runExport(what, incomplete) {
+  if (commentRefused() || !(await saveComment.flush())) return;
   const d = exportDraft();
   if (incomplete && !(await confirmBox(t("step5.incomplete_title"), t("step5.incomplete_confirm", { n: incomplete }),
     t("step5.make_anyway")))) return;
@@ -398,6 +403,7 @@ async function runExport(what, incomplete) {
     const job = await waitForJob(data.job, overlay.update);
     d.result = job.result;
     app.session = job.session;
+    if (!job.session?.save_failed) app.saveError = null;
   } catch (err) {
     await handleError(err);
   } finally {

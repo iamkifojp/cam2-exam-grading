@@ -170,18 +170,22 @@ async function setGrade(sid, qid, value, rid = null) {
   if (data) setTimeout(() => document.getElementById("next-paper")?.focus(), 0);
 }
 
-const saveComment = debounce(async (sid, qid, text) => {
+export const saveComment = debounce(async (sid, qid, text) => {
+  const sessionId = app.session?.id;
   try {
     const data = await post("/api/grade", { student_id: sid, question_id: qid, comment: text });
+    if (app.session?.id !== sessionId) return false;
     app.session = data.session;
-    app.saveError = null;
+    if (!data.session?.save_failed) app.saveError = null;
     const status = document.querySelector(".save-status");
-    if (status && data.session.saved_at) {
+    if (status && data.session.saved_at && !data.session?.save_failed) {
       status.className = "save-status ok";
       status.textContent = t("save.saved_at", { time: formatTime(data.session.saved_at) });
     }
+    return true;
   } catch (err) {
     await handleError(err);
+    return false;
   }
 }, 700);
 

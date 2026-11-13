@@ -127,18 +127,44 @@ class SetupTests(WorkflowTestCase):
         workflow.set_mode(self.config, "rubric")
         workflow.set_rubrics(self.config, [{"name": n, "bands": [{"levels": "0-8"}]}
                                            for n in ("Criterion A", "Criterion B", "Criterion C")])
+        r1, r2, r3 = [r["id"] for r in self.config["rubrics"]]
         workflow.set_questions(self.config, {"questions": [
-            {"id": "q1", "label": "Q1", "boxes": ["page1!B2"], "rubric_ids": ["r3", "r9", "r2"]},
-            {"id": "q2", "label": "Q2", "boxes": ["page1!B3"], "rubric_id": "r1"}]})   # older browser
-        self.assertEqual([q["rubric_ids"] for q in self.config["questions"]], [["r2", "r3"], ["r1"]])
+            {"id": "q1", "label": "Q1", "boxes": ["page1!B2"], "rubric_ids": [r3, "r9", r2]},
+            {"id": "q2", "label": "Q2", "boxes": ["page1!B3"], "rubric_id": r1}]})   # older browser
+        self.assertEqual([q["rubric_ids"] for q in self.config["questions"]], [[r2, r3], [r1]])
         workflow.check_ready(self.config)
         workflow.set_rubrics(self.config, self.config["rubrics"][:2])     # Criterion C deleted
-        self.assertEqual(self.config["questions"][0]["rubric_ids"], ["r2"])
+        self.assertEqual(self.config["questions"][0]["rubric_ids"], [r2])
         workflow.set_rubrics(self.config, self.config["rubrics"][1:] + [{"name": "Criterion D", "bands": [{"levels": "0-8"}]}])
         self.assertEqual(self.config["questions"][1]["rubric_ids"], [])      # Criterion A deleted
         with self.assertRaises(UserError) as ctx:
             workflow.check_ready(self.config)
         self.assertEqual(ctx.exception.code, "question_needs_marks_or_criterion")
+
+    def test_deleted_criterion_id_is_not_reused_for_new_criterion(self):
+        workflow.set_mode(self.config, "rubric")
+        workflow.set_rubrics(self.config, [
+            {"name": "Criterion A", "bands": [{"levels": "0-8"}]},
+            {"name": "Criterion B", "bands": [{"levels": "0-8"}]},
+        ])
+        r1, r2 = [r["id"] for r in self.config["rubrics"]]
+        self.assertNotEqual(r1, r2)
+        workflow.set_questions(self.config, {"questions": [
+            {"id": "q1", "label": "Q1", "boxes": ["B2"], "rubric_ids": [r1, r2]}]})
+        grades = model.new_grades("x")
+        grading_summary.set_grade(self.config, grades, "s001", "q1", 6, rubric_id=r1)
+        grading_summary.set_grade(self.config, grades, "s001", "q1", 3, rubric_id=r2)
+        # Delete Criterion A, keep Criterion B (keeping its id across rename), and add Criterion C.
+        b = dict(self.config["rubrics"][1], name="Criterion B renamed")
+        workflow.set_rubrics(self.config, [b, {"name": "Criterion C", "bands": [{"levels": "0-8"}]}])
+        new_ids = [r["id"] for r in self.config["rubrics"]]
+        self.assertEqual(new_ids[0], r2)
+        self.assertNotIn(r1, new_ids)
+        self.assertNotEqual(new_ids[1], r1)
+        # Historical grades stored under the deleted id are never inherited by Criterion C.
+        levels = grades["grades"]["s001"]["q1"]["levels"]
+        self.assertNotIn(new_ids[1], levels)
+        self.assertEqual(levels[r2], 3)
 
     def test_check_ready_messages(self):
         cases = [
@@ -277,10 +303,11 @@ class SetupTests(WorkflowTestCase):
     def test_a_graded_question_cannot_gain_or_lose_marks(self):
         rubric = {"name": "Criterion A", "bands": [{"levels": "0-8"}]}
         workflow.set_rubrics(self.config, [rubric, dict(rubric, name="Criterion B")])
+        r1, r2 = [r["id"] for r in self.config["rubrics"]]
         q1 = {"id": "q1", "label": "Q1", "boxes": ["B2"], "max": 4}
-        q2 = {"id": "q2", "label": "Q2", "boxes": ["B3"], "rubric_ids": ["r1"]}
+        q2 = {"id": "q2", "label": "Q2", "boxes": ["B3"], "rubric_ids": [r1]}
         q3 = {"id": "q3", "label": "Q3", "boxes": ["B4"], "max": 4}
-        q4 = {"id": "q4", "label": "Q4", "boxes": ["B5"], "rubric_ids": ["r1"]}
+        q4 = {"id": "q4", "label": "Q4", "boxes": ["B5"], "rubric_ids": [r1]}
         payload = {"questions": [q1, q2, q3, q4]}
         workflow.set_questions(self.config, payload)
         grades = model.new_grades("x")
@@ -295,8 +322,8 @@ class SetupTests(WorkflowTestCase):
         # Nothing changed, and every other question stays open: a comment is not a grade.
         self.assertEqual(self.config["questions"][1]["max"], None)
         workflow.set_questions(self.config, {"questions": [
-            dict(q1, max=10, rubric_ids=["r1"]), dict(q2, rubric_ids=["r1", "r2"]),
-            dict(q3, max=None, rubric_ids=["r2"]), dict(q4, max=8)]}, grades)
+            dict(q1, max=10, rubric_ids=[r1]), dict(q2, rubric_ids=[r1, r2]),
+            dict(q3, max=None, rubric_ids=[r2]), dict(q4, max=8)]}, grades)
         self.assertEqual([grading_summary.question_mode(self.config, q) for q in self.config["questions"]],
                          ["marks", "rubric", "rubric", "marks"])
 
@@ -309,21 +336,22 @@ class SetupTests(WorkflowTestCase):
         grading_summary.set_grade(self.config, grades, "s001", "q1", 3)
         # Marks first, criteria later, even during grading
         workflow.set_rubrics(self.config, [{"name": "Criterion A", "bands": [{"levels": "0-8"}]}])
-        workflow.set_questions(self.config, {"questions": [dict(q1, rubric_ids=["r1"]), dict(q2, rubric_ids=["r1"])]}, grades)
+        r1 = self.config["rubrics"][0]["id"]
+        workflow.set_questions(self.config, {"questions": [dict(q1, rubric_ids=[r1]), dict(q2, rubric_ids=[r1])]}, grades)
         self.assertTrue(self.config["sliced"])
         self.assertEqual([q["boxes"] for q in self.config["questions"]], [["page1!B2:B2"], ["page1!B5:B5"]])
         self.assertEqual(grades["grades"]["s001"]["q1"]["value"], 3)
         # Rubric first, marks later: Q2 had no grade, loses its marks, then gains them back
-        workflow.set_questions(self.config, {"questions": [dict(q1, rubric_ids=["r1"]), dict(q2, max=None, rubric_ids=["r1"])]}, grades)
+        workflow.set_questions(self.config, {"questions": [dict(q1, rubric_ids=[r1]), dict(q2, max=None, rubric_ids=[r1])]}, grades)
         self.assertEqual(grading_summary.question_mode(self.config, self.config["questions"][1]), "rubric")
-        workflow.set_questions(self.config, {"questions": [dict(q1, rubric_ids=["r1"]), dict(q2, max=6, rubric_ids=["r1"])]}, grades)
-        self.assertEqual(self.config["questions"][1]["rubric_ids"], ["r1"])
+        workflow.set_questions(self.config, {"questions": [dict(q1, rubric_ids=[r1]), dict(q2, max=6, rubric_ids=[r1])]}, grades)
+        self.assertEqual(self.config["questions"][1]["rubric_ids"], [r1])
         self.assertTrue(self.config["sliced"])
 
     def test_rubric_mode(self):
         workflow.set_mode(self.config, "rubric")
         workflow.set_rubrics(self.config, [{"name": "", "bands": [{"levels": "0"}, {"levels": "1-8"}]}])
-        self.assertEqual(self.config["rubrics"][0]["id"], "r1")
+        self.assertTrue(self.config["rubrics"][0]["id"].startswith("r"))
         self.assertEqual(self.config["rubrics"][0]["name"], "Rubric 1")
         workflow.set_questions(self.config, {"questions": [{"id": "q1", "label": "Q1", "boxes": ["B2"]}]})
         workflow.check_ready(self.config)          # the only rubric is used automatically
@@ -482,6 +510,22 @@ class NameTests(WorkflowTestCase):
         self.assertEqual(workflow.display_name(self.config, self.config["students"][2]), "Typed Name")
         workflow.clear_roster(self.config)
         self.assertEqual(self.config["roster"], [])
+
+    def test_replacing_roster_clears_old_matches_and_preserves_grades(self):
+        workflow.set_questions(self.config, {"questions": [{"id": "q1", "label": "Q1", "boxes": ["B2"], "max": 5}]})
+        grades = model.new_grades("x")
+        grading_summary.set_grade(self.config, grades, "s002", "q1", 4, "Clear working.")
+        workflow.set_roster(self.config, [{"id": "n001", "name": "Hana Tanaka"}], auto=False)
+        workflow.match_student(self.config, "s002", "n001")
+        # Replacing the class list with another file that also uses positional id n001
+        # must clear old roster_id matches instead of silently reattaching s002.
+        workflow.set_roster(self.config, [
+            {"id": "n001", "name": "Ken Sato"},
+            {"id": "n002", "name": "Mei Ito"},
+        ])
+        matched = {s["id"]: s["roster_id"] for s in self.config["students"]}
+        self.assertEqual(matched, {"s001": "n001", "s002": None, "s003": None})
+        self.assertEqual(grades["grades"]["s002"]["q1"], {"value": 4, "comment": "Clear working."})
 
 
 if __name__ == "__main__":

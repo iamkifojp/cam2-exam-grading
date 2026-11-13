@@ -4,7 +4,7 @@
 import { post, waitForJob } from "./api.js";
 import { t } from "./i18n.js";
 import { goTo } from "./main.js";
-import { nextSub, openRubrics } from "./step2.js";
+import { flushRubrics, nextSub, openRubrics } from "./step2.js";
 import { app, config, criteriaOf, gradedWith, handleError, render } from "./store.js";
 import { NAME_COLOR, QUESTION_COLORS, button, coach, confirmBox, debounce, formatTime, h, modal, progressOverlay, toast, isSlide, paperLabel, PAPERS } from "./ui.js";
 
@@ -121,21 +121,43 @@ function autoNumber(q) {
   return /^Q\d+$/.test(q.label) ? Number(q.label.slice(1)) : 0;
 }
 
+let questionsInFlight = null;
+
+export function waitQuestionsInFlight() {
+  return questionsInFlight || Promise.resolve();
+}
+
+export async function flushQuestions() {
+  return saveQuestions.flush();
+}
+
 export const saveQuestions = debounce(async () => {
-  const d = app.draft.questions;
-  if (!d) return;
+  const draft = app.draft;
+  const d = draft?.questions;
+  const sessionId = app.session?.id;
+  if (!d) return true;
+  if (!(await flushRubrics())) return false;
+  if (app.session?.id !== sessionId) return false;
+  const req = post("/api/setup/questions", d);
+  const tracked = req.then(() => {}, () => {}).finally(() => {
+    if (questionsInFlight === tracked) questionsInFlight = null;
+  });
+  questionsInFlight = tracked;
   try {
-    const data = await post("/api/setup/questions", d);
+    const data = await req;
+    if (app.session?.id !== sessionId) return false;
     app.session = data.session;
-    app.saveError = null;
+    if (!data.session?.save_failed) app.saveError = null;
     const status = document.querySelector(".save-status");
-    if (status && data.session.saved_at) {
+    if (status && data.session.saved_at && !data.session?.save_failed) {
       status.className = "save-status ok";
       status.textContent = t("save.saved_at", { time: formatTime(data.session.saved_at) });
     }
+    return true;
   } catch (err) {
     if (err.saveError) await handleError(err);
     else toast(err.message, "error");
+    return false;
   }
 }, 500);
 
@@ -278,7 +300,7 @@ function adjustActions(d, item) {
   const adjust = app.draft.adjust;
   const save = async () => {
     if (!item.boxes.length) { toast(t("step2.boxes.draw_first"), "error"); return; }
-    await saveQuestions.now();
+    if (!(await saveQuestions.now())) return;
     let data;
     try {
       data = await post("/api/slice-question", { question_id: item.id });
@@ -290,6 +312,7 @@ function adjustActions(d, item) {
     try {
       const job = await waitForJob(data.job, overlay.update);
       app.session = job.session;
+      if (!job.session?.save_failed) app.saveError = null;
     } catch (err) {
       await handleError(err);
       return;
@@ -303,7 +326,7 @@ function adjustActions(d, item) {
   };
   const cancel = async () => {
     item.boxes = [...adjust.original];
-    await saveQuestions.now();
+    if (!(await saveQuestions.now())) return;
     if (config().sliced) backToGrading(adjust);
   };
   return h("div", { class: "stack" },
@@ -616,7 +639,7 @@ function sidePanel(d, c, drawingOn) {
         // Drop a trailing empty question the teacher never drew.
         d.questions = d.questions.filter((q, i) => q.boxes.length || i < d.questions.length - 1);
         tidySections(d);
-        await saveQuestions.now();
+        if (!(await saveQuestions.now())) return;
         nextSub("boxes");
       }));
   }
@@ -719,10 +742,11 @@ async function changeLayout(change) {
   if (next.paper === c.layout.paper && next.density === c.layout.density) return;
   const anyBoxes = d.name_box.length || d.questions.some((q) => q.boxes.length);
   if (anyBoxes && !(await confirmBox(t("step2.boxes.change_grid"), t("step2.boxes.change_grid_confirm"), t("common.continue")))) return;
-  await saveQuestions.flush();
+  if (!(await flushQuestions())) return;
   try {
     const data = await post("/api/setup/layout", next);
     app.session = data.session;
+    if (!data.session?.save_failed) app.saveError = null;
     app.draft.questions = null;
     questionDraft();
     render();

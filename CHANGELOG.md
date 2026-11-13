@@ -6,6 +6,30 @@ year-month-day.
 
 ## Unreleased
 
+### Fixed (Phase A — Data Integrity)
+
+- **Debounced rubric and question saves flush before navigation and close (`A1`).**
+  `saveRubrics`, `saveQuestions`, and question/overall comment saves now flush and
+  settle before leaving Step 2, changing steps, exporting, slicing, or closing the
+  session; navigation keeps the current draft and screen if saving fails, rubric
+  and question saves coordinate so a stale question payload cannot restore deleted
+  criterion assignments, and server-assigned IDs update the captured draft safely.
+- **Replacing a class list clears old manual/auto matches (`A2`).**
+  Uploading or pasting a new non-host class list clears previous positional
+  `roster_id` links before auto-matching by name/number and preserves all grades,
+  comments, and crops on their papers; host handoffs still match by stable
+  `external_id`.
+- **Deleted criterion IDs are never reused (`A3`).**
+  `workflow.set_rubrics` allocates fresh `r<uuid>` IDs for new criteria while
+  preserving existing criterion IDs across renames and reorders, preventing new
+  criteria from inheriting grades or final levels saved for deleted criteria.
+- **Separate save-failure tracking for config and grades (`A4`).**
+  `AppState` tracks config and grades save errors independently so a succeeding
+  config save no longer clears an active `grades.json` save warning; browser state
+  clears `app.saveError` only when `session.save_failed` is false; and
+  `/api/session/close` stays open on save failure, keeping in-memory changes and
+  emergency copies intact.
+
 ### Documents
 
 - **One specification and one plan, both in `doc/`** (2026-11-11).

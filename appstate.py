@@ -40,8 +40,13 @@ class AppState:
         self.jobs: dict = {}
         self.last_heartbeat = time.monotonic()
         self.roster_rows: Optional[list] = None      # uploaded class list awaiting a column choice
-        self.save_failed = False
+        self.config_failed = False
+        self.grades_failed = False
         self.host: Optional[dict] = None             # set when another app (CAM) opened CAM2
+
+    @property
+    def save_failed(self) -> bool:
+        return self.config_failed or self.grades_failed
 
     # Session ---------------------------------------------------------------------
 
@@ -56,7 +61,8 @@ class AppState:
                 storage.release_lock(self.session.folder)
             self.session, self.config, self.grades = session, config, grades
             self.roster_rows = None
-            self.save_failed = False
+            self.config_failed = False
+            self.grades_failed = False
 
     def close_session(self) -> None:
         with self.lock:
@@ -64,7 +70,8 @@ class AppState:
                 storage.release_lock(self.session.folder)
             self.session = self.config = self.grades = None
             self.roster_rows = None
-            self.save_failed = False
+            self.config_failed = False
+            self.grades_failed = False
 
     def save_config(self) -> dict:
         """Save the in-memory exam set-up. On failure the change stays in memory
@@ -73,21 +80,21 @@ class AppState:
             session = self.require_session()
             try:
                 self.config = session.config_file.save(self.config)
-                self.save_failed = False
+                self.config_failed = False
             except UserError:
-                self.save_failed = True
+                self.config_failed = True
                 raise
             self.remember()
             return self.config
 
-    def save_grades(self) -> dict:
+    def save_grades(self, allow_shrink: bool = False) -> dict:
         with self.lock:
             session = self.require_session()
             try:
-                self.grades = session.grades_file.save(self.grades)
-                self.save_failed = False
+                self.grades = session.grades_file.save(self.grades, allow_shrink=allow_shrink)
+                self.grades_failed = False
             except UserError:
-                self.save_failed = True
+                self.grades_failed = True
                 raise
             return self.grades
 

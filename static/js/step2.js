@@ -3,8 +3,8 @@
 import { post, upload, waitForJob } from "./api.js";
 import { t, language } from "./i18n.js";
 import { goTo } from "./main.js";
-import { firstInSection, gradedText, isLocked, lockNote, marksInput, questionDraft, renderBoxes, saveQuestions,
-  sectionHeading, setTick, startSection } from "./boxes.js";
+import { firstInSection, flushQuestions, gradedText, isLocked, lockNote, marksInput, questionDraft, renderBoxes,
+  sectionHeading, setTick, startSection, waitQuestionsInFlight } from "./boxes.js";
 import { act, app, config, criteriaOf, gradedWith, handleError, render } from "./store.js";
 import { button, coach, debounce, h, progressOverlay, toast } from "./ui.js";
 
@@ -25,7 +25,14 @@ export function renderStep2() {
   const tabs = h("nav", { class: "subtabs", "aria-label": t("step2.parts") }, SUBSTEPS.map((s, i) => h("button", {
     type: "button", class: s === app.draft.sub ? "on" : "",
     disabled: s !== "mode" && !c.mode,
-    onclick: () => { app.draft.sub = s; app.draft.rubricFrom = null; render(); },
+    onclick: async () => {
+      if (s === app.draft.sub) return;
+      if (app.draft.sub === "rubric") {
+        if (!(await flushRubrics())) return;
+        app.draft.rubrics = null;
+      }
+      app.draft.sub = s; app.draft.rubricFrom = null; render();
+    },
   }, `${String.fromCharCode(65 + i)}. ${tabName(s)}`)));
   const screen = { mode: modeScreen, rubric: rubricScreen, boxes: renderBoxes,
     choice: choiceScreen, slice: sliceScreen }[app.draft.sub]();
@@ -85,24 +92,58 @@ function newRubric(n) {
     bands: DEFAULT_LEVELS.map((levels) => ({ levels, descriptor: "" })) };
 }
 
-const saveRubrics = debounce(async () => {
+function syncRubricIds(draft, sentRubrics, cfg) {
+  const serverRubrics = cfg?.rubrics || [];
+  serverRubrics.forEach((r, i) => { if (sentRubrics[i]) sentRubrics[i].id = r.id; });
+  const validIds = new Set(serverRubrics.map((r) => r.id));
+  const saved = new Map((cfg?.questions || []).map((q) => [q.id, q.rubric_ids || []]));
+  draft?.questions?.questions?.forEach((q) => {
+    const kept = (q.rubric_ids || []).filter((id) => validIds.has(id));
+    if (kept.length) {
+      q.rubric_ids = kept;
+    } else if (!q.marks && saved.get(q.id)?.length) {
+      q.rubric_ids = [...saved.get(q.id)];
+    } else {
+      q.rubric_ids = [];
+    }
+  });
+}
+
+export const saveRubrics = debounce(async () => {
+  const draft = app.draft;
+  const rubrics = draft?.rubrics;
+  const sessionId = app.session?.id;
+  if (!rubrics) return true;
+  await waitQuestionsInFlight();
+  if (app.session?.id !== sessionId) return false;
   const msg = document.getElementById("rubric-error");
   try {
-    const data = await post("/api/setup/rubrics", { rubrics: app.draft.rubrics });
+    const data = await post("/api/setup/rubrics", { rubrics });
+    if (app.session?.id !== sessionId) return false;
     app.session = data.session;
-    app.saveError = null;
-    // Keep the ids the server assigned so later saves match.
-    data.session.config.rubrics.forEach((r, i) => { if (app.draft.rubrics[i]) app.draft.rubrics[i].id = r.id; });
-    const saved = new Map(data.session.config.questions.map((q) => [q.id, q.rubric_ids]));
-    app.draft.questions?.questions.forEach((q) => { if (saved.has(q.id)) q.rubric_ids = saved.get(q.id); });
+    if (!data.session?.save_failed) app.saveError = null;
+    syncRubricIds(draft, rubrics, data.session.config);
+    draft.rubricError = "";
     if (msg) { msg.textContent = ""; msg.hidden = true; }
     const status = document.querySelector(".save-status");
-    if (status) status.classList.add("ok");
+    if (status && !data.session?.save_failed) status.classList.add("ok");
+    return true;
   } catch (err) {
-    if (err.saveError) { await handleError(err); return; }
+    if (err.saveError) {
+      await handleError(err);
+      if (app.session?.id === sessionId && app.session?.config) syncRubricIds(draft, rubrics, app.session.config);
+      return false;
+    }
+    draft.rubricError = err.message;
     if (msg) { msg.textContent = err.message; msg.hidden = false; }
+    else toast(err.message, "error");
+    return false;
   }
 }, 600);
+
+export async function flushRubrics() {
+  return saveRubrics.flush();
+}
 
 function rubricScreen() {
   const list = rubricDraft();
@@ -124,9 +165,8 @@ function rubricScreen() {
       const imported = data.rubrics.map((r) => ({ id: "", name: r.name,
         bands: r.bands.map((b) => ({ levels: b.levels, descriptor: b.descriptor })) }));
       app.draft.rubrics = empty ? imported : list.concat(imported);
-      saveRubrics.now();
-      toast(t("step2.rubric.imported", { count: imported.length }), "ok");
       render();
+      if (await saveRubrics.now()) toast(t("step2.rubric.imported", { count: imported.length }), "ok");
     } catch (err) { toast(err.message, "error"); }
     e.target.value = "";
   } });
@@ -156,15 +196,19 @@ function rubricScreen() {
     h("div", { class: "row toolbar" },
       h("a", { class: "btn", href: `/api/setup/rubrics/template?lang=${language}`, download: "" }, "📥 ", t("step2.rubric.template")),
       button(["📤 ", t("step2.rubric.upload")], () => fileInput.click()), fileInput),
-    h("p", { id: "rubric-error", class: "banner warn", hidden: true }),
+    h("p", { id: "rubric-error", class: "banner warn", hidden: !app.draft.rubricError }, app.draft.rubricError || ""),
     cards,
     button(t("step2.rubric.add"), () => { list.push(newRubric(list.length + 1)); saveRubrics(); render(); }),
     h("div", { class: "actions" },
-      !(c.rubrics || []).length ? button(t("step2.rubric.skip"), () => { app.draft.rubrics = null; back(); }, "ghost") : null,
+      !(c.rubrics || []).length ? button(t("step2.rubric.skip"), () => {
+        saveRubrics.cancel();
+        app.draft.rubrics = null;
+        app.draft.rubricError = "";
+        back();
+      }, "ghost") : null,
       button(t("step2.rubric.done"), async () => {
-        await saveRubrics.now();
-        const msg = document.getElementById("rubric-error");
-        if (msg && !msg.hidden) return;
+        if (!(await saveRubrics.now())) return;
+        app.draft.rubrics = null;
         back();
       }, "primary big")));
 }
@@ -224,7 +268,8 @@ function choiceScreen() {
     app.draft.choiceOn ? [groupsView, button(t("step2.choice.add"), () => {
       draft.choice_groups.push({ id: `g${draft.choice_groups.length + 1}`, questions: [], answer: 1 }); render(); })] : null,
     h("div", { class: "actions" }, button(t("common.continue"), async () => {
-      await saveQuestions.flush();
+      if (!(await flushRubrics())) return;
+      if (!(await flushQuestions())) return;
       nextSub("choice");
     }, "primary big")));
 }
@@ -314,7 +359,8 @@ function sliceScreen() {
 }
 
 async function slice() {
-  await saveQuestions.flush();
+  if (!(await flushRubrics())) return;
+  if (!(await flushQuestions())) return;
   let data;
   try {
     data = await post("/api/slice");
@@ -323,10 +369,12 @@ async function slice() {
     return;
   }
   app.session = data.session;
+  if (!data.session?.save_failed) app.saveError = null;
   const overlay = progressOverlay(t("step2.slice.working"), t("step2.slice.working_note"));
   try {
     const job = await waitForJob(data.job, overlay.update);
     app.session = job.session;
+    if (!job.session?.save_failed) app.saveError = null;
     app.draft.sliceResult = job.result;
   } catch (err) {
     if (err.job?.session) app.session = err.job.session;
