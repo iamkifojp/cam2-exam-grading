@@ -167,10 +167,11 @@ export const NAME_COLOR = "#2563eb";
 
 // --- Paper sizes -----------------------------------------------------------------------------
 
-export const PAPERS = ["A4", "B5", "A3", "Slide 16:9", "Slide 4:3"];
-export const isSlide = (paper) => paper === "Slide 16:9" || paper === "Slide 4:3";
+export const PAPERS = ["A4", "B5", "A3", "Slide 16:9", "Slide 4:3", "Slide 16:10"];
+export const isSlide = (paper) => paper === "Slide 16:9" || paper === "Slide 4:3" || paper === "Slide 16:10";
 export const paperLabel = (paper) => (paper === "Slide 16:9" ? t("paper.slide_16_9")
-  : paper === "Slide 4:3" ? t("paper.slide_4_3") : paper);
+  : paper === "Slide 4:3" ? t("paper.slide_4_3")
+  : paper === "Slide 16:10" ? t("paper.slide_16_10") : paper);
 
 // --- Comment boxes ---------------------------------------------------------------------------
 
