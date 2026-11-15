@@ -128,7 +128,8 @@ through `storage.resolve_path()`.
   - Every click saves. A comment saves 0.7 s after typing stops and when
     the box loses focus, without redrawing the screen, so typing is never
     interrupted.
-  - After a grade, keyboard focus moves to **Next paper**. There is no
+  - After a grade, keyboard focus moves to **Next paper** without scrolling,
+    and the scrollable grading panel keeps its position through redraw. There is no
     automatic advance, so a comment can still be added.
   - **Show ungraded only** is on when resuming a session that already has
     grades. The paper on screen stays visible after it is graded.
@@ -138,6 +139,13 @@ through `storage.resolve_path()`.
   other. Every other question stays open, and choosing Marks or Rubric on the
   first screen is only a starting point. The session view lists these questions
   in `locked_questions`. A marks question's number can still be corrected. Nothing on screen reads that choice after Step 2.
+- **Report overrides** show the calculated value as an empty field's hint and
+  select an existing override on focus. Totals are bounded by `marks_maximum`,
+  weighted percentages by 100. `/api/overall` validates a copy before applying
+  any fields, so an invalid override cannot partially change a comment or level.
+- **Hosted Save & close** uses the same pending-edit flush as the header. After
+  closing a sent session, `finishedHost` supplies bilingual return-to-CAM guidance.
+  Closing a standalone session clears that guidance.
 - **Going on to Steps 3 to 5 runs `check_ready` again** (`POST /api/step`), because
   marks and criteria can change after slicing without slicing again.
 - **A question's maximum can't go below a grade already given**
@@ -235,7 +243,7 @@ instead of one big database.
 ## Grid geometry
 
 - **Grid sizes.** New sessions use one grid of ~5 mm cells (density
-  `"5mm"`: A4 42 × 60, B5 36 × 51, A3 60 × 84, slides 51 × 29 and 51 × 38 turned). Teachers drag boxes rather
+  `"5mm"`: A4 42 × 60, B5 36 × 51, A3 60 × 84, slides 51 × 29 (16:9), 51 × 38 (4:3) and 51 × 32 (16:10) turned). Teachers drag boxes rather
   than type cell names, so the grid only sets how finely a box can follow the
   paper. Older sessions keep CAM's `"normal"` (compact, ~1.4 cm) or `"fine"`
   (~1 cm) grid, because their saved ranges name those cells; any layout

@@ -166,8 +166,14 @@ function badgeText(c, q, sid) {
 // --- Saving ------------------------------------------------------------------------------
 
 async function setGrade(sid, qid, value, rid = null) {
+  // Rendering replaces the scrollable card; keep the level buttons under the pointer.
+  const scrollTop = document.querySelector(".grade-card-col")?.scrollTop || 0;
   const data = await act(post("/api/grade", { student_id: sid, question_id: qid, value, rubric_id: rid }));
-  if (data) setTimeout(() => document.getElementById("next-paper")?.focus(), 0);
+  if (data) {
+    const panel = document.querySelector(".grade-card-col");
+    if (panel) panel.scrollTop = scrollTop;
+    setTimeout(() => document.getElementById("next-paper")?.focus({ preventScroll: true }), 0);
+  }
 }
 
 export const saveComment = debounce(async (sid, qid, text) => {

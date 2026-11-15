@@ -34,7 +34,7 @@ ENGLISH = """
 <h2>Before you start</h2>
 <ul>
 <li>Your scanned papers. Scan the whole class into one PDF at the photocopier, or a few batches.</li>
-<li>The paper size: A4, B5, A3 or a slide size.</li>
+<li>The paper size: A4, B5, A3 or Slide 16:9, 4:3 or 16:10.</li>
 <li>If you have one, your class list in Excel or CSV.</li>
 </ul>
 
@@ -69,7 +69,7 @@ JAPANESE = """
 <h2>用意するもの</h2>
 <ul>
 <li>スキャンした答案。コピー機でクラス全員分を1つのPDFに（または数回に分けて）スキャンします。</li>
-<li>用紙サイズ：A4、B5、A3、スライドのいずれか。</li>
+<li>用紙サイズ：A4、B5、A3、スライド16:9・4:3・16:10のいずれか。</li>
 <li>クラス名簿（ExcelまたはCSV、あれば）。</li>
 </ul>
 

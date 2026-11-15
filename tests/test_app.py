@@ -509,6 +509,12 @@ class ReviewTests(AppTestCase):
         marks = session["summary"]["students"][0]["marks"]
         self.assertEqual((marks["total"], marks["report_total"], marks["adjusted"]), (7, 8, True))
         self.assertEqual(session["summary"]["students"][0]["comment"], "Well done")
+        err = self.post("/api/overall", {"student_id": "s001", "report_total": 78,
+                                         "comment": "Should not save"}, status=400)
+        self.assertEqual(err["error"], "report_value_out_of_range")
+        session = self.client.get("/api/state").get_json()["session"]
+        student = session["summary"]["students"][0]
+        self.assertEqual((student["marks"]["report_total"], student["comment"]), (8, "Well done"))
         session = self.post("/api/overall", {"student_id": "s001", "report_total": ""})["session"]
         self.assertFalse(session["summary"]["students"][0]["marks"]["adjusted"])
         err = self.post("/api/overall", {"student_id": "s001", "report_total": "lots"}, status=400)
@@ -551,6 +557,8 @@ class ReviewTests(AppTestCase):
         self.post("/api/weighting", {"on": True})
         marks = self.post("/api/overall", {"student_id": "s001", "report_percent": "85"})["session"]["summary"]["students"][0]["marks"]
         self.assertEqual((marks["percent"], marks["report_percent"], marks["adjusted"]), (90.0, 85, True))
+        err = self.post("/api/overall", {"student_id": "s001", "report_percent": 101}, status=400)
+        self.assertEqual(err["error"], "report_value_out_of_range")
         marks = self.post("/api/overall", {"student_id": "s001", "report_percent": ""})["session"]["summary"]["students"][0]["marks"]
         self.assertEqual((marks["report_percent"], marks["adjusted"]), (90.0, False))
 
@@ -704,30 +712,34 @@ class SlideDeckTests(AppTestCase):
     """From choosing a 12-screen deck to a report."""
 
     SCREENS = 12
+    PAPER = "Slide 16:9"
+    SIZE = (13.333 * 72, 7.5 * 72)
+    ROWS = 29
+    PIXELS = (2667, 1500)
 
     def setUp(self):
         super().setUp()
         self.decks = os.path.join(self.root, "decks")
         os.makedirs(self.decks)
-        layout = Layout("Slide 16:9", landscape=True)
+        layout = Layout(self.PAPER, landscape=True)
         for name in ("Tanaka Hana.pdf", "Sato Ken.pdf"):
-            make_pdf(os.path.join(self.decks, name), pages=self.SCREENS, size=(13.333 * 72, 7.5 * 72),
+            make_pdf(os.path.join(self.decks, name), pages=self.SCREENS, size=self.SIZE,
                      fills={p: [(layout, 25, 14, RED)] for p in range(1, self.SCREENS + 1)})
 
     def test_a_deck_goes_from_choosing_the_file_to_a_report(self):
         info = self.post("/api/inspect", {"kind": "folder", "path": self.decks})
-        self.assertEqual((info["paper"], info["landscape"]), ("Slide 16:9", True))
+        self.assertEqual((info["paper"], info["landscape"]), (self.PAPER, True))
         data = self.post("/api/session/create", {
             "exam_name": "Final report", "paper": info["paper"], "landscape": info["landscape"],
             "save_folder": os.path.join(self.root, "sessions"),
             "source": {"type": "folder", "path": self.decks}})
         job = self.wait(data["job"])
         self.assertEqual(job["status"], "done", job.get("error"))
-        self.assertEqual(job["session"]["grid"], {"cols": 51, "rows": 29})
+        self.assertEqual(job["session"]["grid"], {"cols": 51, "rows": self.ROWS})
         self.assertEqual(job["session"]["config"]["version"], model.VERSION)
 
         self.post("/api/setup/mode", {"mode": "marks"})
-        questions = [{"id": f"q{n}", "label": f"Screen {n:02d}", "boxes": [f"page{n}!A1:AY29"], "max": 8}
+        questions = [{"id": f"q{n}", "label": f"Screen {n:02d}", "boxes": [f"page{n}!A1:AY{self.ROWS}"], "max": 8}
                      for n in range(1, self.SCREENS + 1)]
         self.post("/api/setup/questions", {"name_box": ["page1!A1:J3"], "questions": questions})
         job = self.wait(self.post("/api/slice")["job"])
@@ -737,7 +749,7 @@ class SlideDeckTests(AppTestCase):
         res = self.client.get("/api/crop/q12/s001")
         self.assertEqual(res.mimetype, "image/jpeg")
         with Image.open(io.BytesIO(res.data)) as im:
-            self.assertEqual(im.size, (2667, 1500))
+            self.assertEqual(im.size, self.PIXELS)
         res.close()
         res = self.client.get(f"/api/crop/{model.NAME_BOX_ID}/s001")
         self.assertEqual(res.mimetype, "image/png")
@@ -764,6 +776,13 @@ class SlideDeckTests(AppTestCase):
         res.close()
         config = self.client.get("/api/state").get_json()["session"]["config"]
         self.assertEqual(config["layout"], {"paper": "A4", "density": "5mm", "landscape": False})
+
+
+class Slide16By10DeckTests(SlideDeckTests):
+    PAPER = "Slide 16:10"
+    SIZE = (720, 450)
+    ROWS = 32
+    PIXELS = (2000, 1250)
 
 
 class CommentLimitRouteTests(AppTestCase):

@@ -36,6 +36,7 @@ from .model import NAME_BOX_ID
 # --- Paper and grid ------------------------------------------------------------
 
 SLIDE_16_9 = "Slide 16:9"
+SLIDE_16_10 = "Slide 16:10"
 SLIDE_4_3 = "Slide 4:3"
 
 # Portrait (width, height) in millimetres. B5 here is ISO B5; the Japanese JIS
@@ -47,6 +48,7 @@ PAPER_SIZES_MM = {
     "A3": (297.0, 420.0),
     SLIDE_16_9: (142.875, 254.0),   # 10 in wide, as Google Slides makes them
     SLIDE_4_3: (190.5, 254.0),
+    SLIDE_16_10: (158.75, 254.0),
 }
 _DETECT_SIZES_MM = (
     ("A4", 210.0, 297.0),
@@ -58,7 +60,7 @@ DETECT_TOLERANCE_MM = 4.0
 
 # Decks come in many sizes but few shapes: PowerPoint's 16:9 is 13.333 x 7.5 in and
 # Google's is 10 x 5.625 in. Close enough to tell 4:3 from US Letter (1.29).
-_SLIDE_SHAPES = ((SLIDE_16_9, 16 / 9), (SLIDE_4_3, 4 / 3))
+_SLIDE_SHAPES = ((SLIDE_16_9, 16 / 9), (SLIDE_4_3, 4 / 3), (SLIDE_16_10, 16 / 10))
 SLIDE_SHAPE_TOLERANCE = 0.01
 
 # Portrait (cols, rows) per paper and density. "5mm" is the grid for new
@@ -69,6 +71,7 @@ GRIDS = {
     "B5": {"5mm": (36, 51), "normal": (13, 18), "fine": (18, 25)},
     "A3": {"5mm": (60, 84), "normal": (21, 30), "fine": (30, 42)},
     SLIDE_16_9: {"5mm": (29, 51), "normal": (10, 18), "fine": (14, 25)},
+    SLIDE_16_10: {"5mm": (32, 51), "normal": (11, 18), "fine": (16, 25)},
     SLIDE_4_3: {"5mm": (38, 51), "normal": (14, 18), "fine": (19, 25)},
 }
 PAPERS = tuple(GRIDS)
@@ -542,7 +545,7 @@ def parse_boxes(ranges: Iterable[str], layout: Layout) -> List[Box]:
 def crop_file(region_id: str, student_id: str, layout: Layout) -> str:
     """Where a crop goes inside ``crops/``. The paper size decides the format,
     except that CAM reads name crops as PNG files, so those stay PNG."""
-    jpeg = layout.paper in (SLIDE_16_9, SLIDE_4_3) and region_id != NAME_BOX_ID
+    jpeg = layout.paper in (SLIDE_16_9, SLIDE_4_3, SLIDE_16_10) and region_id != NAME_BOX_ID
     return f"{region_id}/{student_id}.{'jpg' if jpeg else 'png'}"
 
 
