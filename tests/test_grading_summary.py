@@ -722,5 +722,55 @@ class CommentLimitTests(unittest.TestCase):
         self.question(f"{line}\n{'x' * 300}")
         self.refused(lambda: self.question(f"{line}\n{'x' * 301}"), 300)
 
+
+class LevelCapTests(unittest.TestCase):
+    def exam(self):
+        config, grades = paper(([("q1", None, ["r1", "r2"]), ("q2", None, ["r1"]), ("q3", 5, ["r1"])], None))
+        config["questions"][0]["level_caps"] = {"r1": 4, "r2": 6}
+        config["questions"][2]["level_caps"] = {"r1": 2}  # marks question: must be ignored
+        return config, grades
+
+    def test_question_level_cap_and_set_grade_limits(self):
+        config, grades = self.exam()
+        q1, q2, q3 = config["questions"]
+        self.assertEqual(gs.question_level_cap(config, q1, "r1"), 4)
+        self.assertEqual(gs.question_level_cap(config, q1, "r2"), 6)
+        self.assertIsNone(gs.question_level_cap(config, q2, "r1"))
+        self.assertIsNone(gs.question_level_cap(config, q3, "r1"))
+
+        # Allowed up to each criterion's cap, plus Not answered and None
+        gs.set_grade(config, grades, "s1", "q1", 4, rubric_id="r1")
+        gs.set_grade(config, grades, "s1", "q1", 6, rubric_id="r2")
+        gs.set_grade(config, grades, "s1", "q2", 8, rubric_id="r1")
+        gs.set_grade(config, grades, "s1", "q3", 5)
+
+        # Above cap is refused per criterion without altering stored grade
+        with self.assertRaises(UserError) as ctx:
+            gs.set_grade(config, grades, "s1", "q1", 5, rubric_id="r1")
+        self.assertEqual(ctx.exception.code, "level_above_cap")
+        with self.assertRaises(UserError) as ctx:
+            gs.set_grade(config, grades, "s1", "q1", 7, rubric_id="r2")
+        self.assertEqual(ctx.exception.code, "level_above_cap")
+        self.assertEqual(grades["grades"]["s1"]["q1"]["levels"], {"r1": 4, "r2": 6})
+
+        gs.set_grade(config, grades, "s1", "q1", gs.NOT_ANSWERED, rubric_id="r1")
+        self.assertEqual(grades["grades"]["s1"]["q1"]["levels"]["r1"], gs.NOT_ANSWERED)
+
+    def test_final_levels_stay_uncapped_and_choice_groups_count_unchanged(self):
+        config, grades = paper(([("q1", None, ["r1"]), ("q2", None, ["r1"]), ("q3", 10, [])], None))
+        config["questions"][0]["level_caps"] = {"r1": 4}
+        config["questions"][1]["level_caps"] = {"r1": 6}
+        config["choice_groups"] = [{"id": "g1", "questions": ["q1", "q2"], "answer": 1, "pick": "best"}]
+        gs.set_grade(config, grades, "s1", "q1", 4, rubric_id="r1")
+        gs.set_grade(config, grades, "s1", "q2", 5, rubric_id="r1")
+        gs.set_grade(config, grades, "s1", "q3", 8)
+        gs.set_final_level(config, grades, "s1", "r1", 8)  # final level is never capped
+        summary = gs.student_summary(config, grades, "s1")
+        self.assertEqual(summary["rubrics"]["r1"]["final"], 8)
+        self.assertEqual(summary["counted"]["q2"], {"r1": 5})
+        self.assertNotIn("q1", summary["counted"])
+        self.assertEqual((summary["marks"]["total"], summary["marks"]["max"], summary["marks"]["percent"]),
+                         (8, 10, 80.0))
+
 if __name__ == "__main__":
     unittest.main()

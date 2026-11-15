@@ -528,5 +528,106 @@ class NameTests(WorkflowTestCase):
         self.assertEqual(grades["grades"]["s002"]["q1"], {"value": 4, "comment": "Clear working."})
 
 
+class LevelCapWorkflowTests(WorkflowTestCase):
+    def setUp(self):
+        super().setUp()
+        self.session, self.config, self.grades = storage.create_session(os.path.join(self.root, "exam"), "Caps")
+        self.config["students"] = [{"id": "s001"}, {"id": "s002"}]
+        workflow.set_rubrics(self.config, [
+            {"id": "r1", "name": "Criterion A",
+             "bands": [{"levels": "0"}, {"levels": "1"}, {"levels": "2–3"}, {"levels": "4–5"}]},
+            {"id": "r2", "name": "Criterion B",
+             "bands": [{"levels": "0"}, {"levels": "1–2"}, {"levels": "3–4"}, {"levels": "5–6"}, {"levels": "7–8"}]},
+        ])
+
+    def test_custom_band_caps_marks_removal_and_reorder(self):
+        workflow.set_questions(self.config, {
+            "sections": [{"id": "sec1", "name": "Sec 1"}],
+            "questions": [
+                {"id": "q1", "label": "Q1", "boxes": ["A1:B2"], "max": None,
+                 "rubric_ids": ["r1", "r2"], "level_caps": {"r1": 3, "r2": 8}, "section_id": "sec1"},
+                {"id": "q2", "label": "Q2", "boxes": ["A3:B4"], "max": 5,
+                 "rubric_ids": ["r1"], "level_caps": {"r1": 3}, "section_id": "sec1"},
+            ],
+        }, self.grades)
+        # r1 capped at 3 (band 2–3); r2 at 8 (overall max -> omitted); marks question drops caps.
+        self.assertEqual(self.config["questions"][0]["level_caps"], {"r1": 3})
+        self.assertNotIn("level_caps", self.config["questions"][1])
+
+        # Non-band-top ceiling (2 inside 2–3) is refused cleanly.
+        with self.assertRaises(UserError) as ctx:
+            workflow.set_questions(self.config, {
+                "sections": [{"id": "sec1", "name": "Sec 1"}],
+                "questions": [
+                    {"id": "q1", "label": "Q1", "boxes": ["A1:B2"], "max": None,
+                     "rubric_ids": ["r1", "r2"], "level_caps": {"r1": 2}, "section_id": "sec1"},
+                ],
+            }, self.grades)
+        self.assertEqual(ctx.exception.code, "cap_not_band_top")
+        self.assertEqual(self.config["questions"][0]["level_caps"], {"r1": 3})
+
+        # Rename & reorder keeps id and level_caps; unticking criterion removes its cap.
+        workflow.set_questions(self.config, {
+            "sections": [{"id": "sec1", "name": "Sec 1"}],
+            "questions": [
+                {"id": "q2", "label": "Q2", "boxes": ["A3:B4"], "max": 5, "rubric_ids": ["r1"], "section_id": "sec1"},
+                {"id": "q1", "label": "Q1a", "boxes": ["A1:B2"], "max": None,
+                 "rubric_ids": ["r2"], "level_caps": {"r1": 3, "r2": 6}, "section_id": "sec1"},
+            ],
+        }, self.grades)
+        q1 = self.config["questions"][1]
+        self.assertEqual((q1["id"], q1["label"], q1["level_caps"]), ("q1", "Q1a", {"r2": 6}))
+
+    def test_lowering_cap_below_existing_grade_rejects_whole_batch(self):
+        workflow.set_questions(self.config, {
+            "sections": [{"id": "sec1", "name": "Sec 1"}],
+            "questions": [
+                {"id": "q1", "label": "Q1", "boxes": ["A1:B2"], "rubric_ids": ["r2"],
+                 "level_caps": {"r2": 6}, "section_id": "sec1"},
+                {"id": "q2", "label": "Q2", "boxes": ["A3:B4"], "rubric_ids": ["r2"],
+                 "level_caps": {"r2": 6}, "section_id": "sec1"},
+            ],
+        }, self.grades)
+        grading_summary.set_grade(self.config, self.grades, "s001", "q2", 5, rubric_id="r2")
+
+        # Trying to lower both q1 and q2 to cap 4 must fail cleanly without changing q1 either.
+        with self.assertRaises(UserError) as ctx:
+            workflow.set_questions(self.config, {
+                "sections": [{"id": "sec1", "name": "Sec 1"}],
+                "questions": [
+                    {"id": "q1", "label": "Q1", "boxes": ["A1:B2"], "rubric_ids": ["r2"],
+                     "level_caps": {"r2": 4}, "section_id": "sec1"},
+                    {"id": "q2", "label": "Q2", "boxes": ["A3:B4"], "rubric_ids": ["r2"],
+                     "level_caps": {"r2": 4}, "section_id": "sec1"},
+                ],
+            }, self.grades)
+        self.assertEqual(ctx.exception.code, "cap_below_grade")
+        self.assertEqual([q["level_caps"] for q in self.config["questions"]], [{"r2": 6}, {"r2": 6}])
+
+    def test_rubric_edit_leaving_cap_orphaned_refuses_until_fixed(self):
+        workflow.set_questions(self.config, {
+            "questions": [
+                {"id": "q1", "label": "Q1", "boxes": ["A1:B2"], "rubric_ids": ["r2"], "level_caps": {"r2": 6}},
+            ],
+        }, self.grades)
+        # Change 5–6 and 7–8 to 5–7 and 8 (cap 6 is no longer any band top).
+        with self.assertRaises(UserError) as ctx:
+            workflow.set_rubrics(self.config, [
+                self.config["rubrics"][0],
+                {"id": "r2", "name": "Criterion B",
+                 "bands": [{"levels": "0"}, {"levels": "1–2"}, {"levels": "3–4"}, {"levels": "5–7"}, {"levels": "8"}]},
+            ])
+        self.assertEqual(ctx.exception.code, "rubric_cap_orphaned")
+        self.assertEqual(self.config["rubrics"][1]["bands"][-1]["levels"], "7–8")
+
+        # Removing top band 7–8 leaves max=6, so cap=6 becomes "All levels" (omitted).
+        workflow.set_rubrics(self.config, [
+            self.config["rubrics"][0],
+            {"id": "r2", "name": "Criterion B",
+             "bands": [{"levels": "0"}, {"levels": "1–2"}, {"levels": "3–4"}, {"levels": "5–6"}]},
+        ])
+        self.assertNotIn("level_caps", self.config["questions"][0])
+
+
 if __name__ == "__main__":
     unittest.main()

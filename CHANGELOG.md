@@ -6,6 +6,33 @@ year-month-day.
 
 ## Unreleased
 
+### Phase C — format 3 and tiered levels (`C1`–`C2`)
+
+- **Session format version 3 (`C1`).**
+  `engine/model.py` raises `VERSION` to `3` and documents the stored shapes
+  for Phases C–H (`level_caps`, `task_kind`, `partner_groups`, `files`,
+  `annotations`, `highlights`, `late`). Version 1 and 2 sessions upgrade on
+  open while keeping every ID, grade, final level, comment, generated quick
+  comment, report override, choice pick, box, section, and report option
+  intact; new fields start absent or empty. Opening an older session stores an
+  unrotated pre-upgrade backup in `backups/*.pre-v3`, interrupted one-file
+  upgrades reopen cleanly, older builds refuse version 3 files cleanly, and
+  restoring older emergency copies upgrades them to version 3.
+- **Highest level per question and criterion (`C2`).**
+  Rubric questions now support optional per-criterion level ceilings
+  (`level_caps: {"<rubric_id>": <band max>}`) derived dynamically from each
+  rubric's bands (so custom non-MYP bands work automatically). Step 2 question
+  cards, Step 2 question table rows, and section headings let teachers pick *All
+  levels* or any band top; marks questions stay untouched, unticking a
+  criterion removes its ceiling, and Step 4 grading displays only permitted
+  levels with an *Up to …* line while keeping badges on the full rubric scale.
+  The server refuses levels above a ceiling, refuses lowering a ceiling (or
+  batch-changing a section) below an already-graded level without partial
+  edits, and refuses rubric edits that leave an active ceiling off any band's
+  top. The Excel gradebook's *Questions & Rubrics* reference sheet lists
+  ceilings; student PDF reports remain unchanged and final levels stay
+  uncapped.
+
 ### Phase B — maintenance and small fixes (1.0.0-dev)
 
 - Report total overrides show the calculated value as a hint and select the

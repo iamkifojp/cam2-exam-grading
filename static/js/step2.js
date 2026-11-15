@@ -3,7 +3,7 @@
 import { post, upload, waitForJob } from "./api.js";
 import { t, language } from "./i18n.js";
 import { goTo } from "./main.js";
-import { firstInSection, flushQuestions, gradedText, isLocked, lockNote, marksInput, questionDraft, renderBoxes,
+import { capSelect, firstInSection, flushQuestions, gradedText, isLocked, lockNote, marksInput, questionDraft, renderBoxes,
   sectionHeading, setTick, startSection, waitQuestionsInFlight } from "./boxes.js";
 import { act, app, config, criteriaOf, gradedWith, handleError, render } from "./store.js";
 import { button, coach, debounce, h, progressOverlay, toast } from "./ui.js";
@@ -97,14 +97,24 @@ function syncRubricIds(draft, sentRubrics, cfg) {
   serverRubrics.forEach((r, i) => { if (sentRubrics[i]) sentRubrics[i].id = r.id; });
   const validIds = new Set(serverRubrics.map((r) => r.id));
   const saved = new Map((cfg?.questions || []).map((q) => [q.id, q.rubric_ids || []]));
+  const savedCaps = new Map((cfg?.questions || []).map((q) => [q.id, q.level_caps]));
   draft?.questions?.questions?.forEach((q) => {
     const kept = (q.rubric_ids || []).filter((id) => validIds.has(id));
     if (kept.length) {
       q.rubric_ids = kept;
-    } else if (!q.marks && saved.get(q.id)?.length) {
+    } else if (!q.max && saved.get(q.id)?.length) {
       q.rubric_ids = [...saved.get(q.id)];
     } else {
       q.rubric_ids = [];
+    }
+    if (savedCaps.has(q.id)) {
+      const caps = savedCaps.get(q.id);
+      if (caps) q.level_caps = structuredClone(caps);
+      else delete q.level_caps;
+    } else if (q.level_caps) {
+      const caps = Object.fromEntries(Object.entries(q.level_caps).filter(([id]) => validIds.has(id)));
+      if (Object.keys(caps).length) q.level_caps = caps;
+      else delete q.level_caps;
     }
   });
 }
@@ -282,7 +292,18 @@ function refreshTable(c, d) {
   d.questions.forEach((q) => {
     document.getElementById(`graded-${q.id}`).textContent = gradedText(c, q);
     const chosen = new Set(criteriaOf(c, q).map((r) => r.id));
-    (c.rubrics || []).forEach((r) => { document.getElementById(`tick-${q.id}-${r.id}`).checked = chosen.has(r.id); });
+    (c.rubrics || []).forEach((r) => {
+      document.getElementById(`tick-${q.id}-${r.id}`).checked = chosen.has(r.id);
+      const sel = document.querySelector(`[data-cap-qid="${q.id}"][data-cap-rid="${r.id}"]`);
+      if (sel) {
+        sel.hidden = !!q.max || !chosen.has(r.id);
+        sel.value = String(q.level_caps?.[r.id] ?? "");
+      }
+    });
+  });
+  (d.sections || []).forEach((s) => {
+    const cell = document.querySelector(`[data-section-row="${s.id}"]`);
+    if (cell) cell.replaceChildren(sectionHeading(d, s, () => refreshTable(c, d)));
   });
   document.getElementById("setup-checks").replaceChildren(...setupChecks(c, d));
 }
@@ -294,9 +315,11 @@ function questionTable(c, d) {
     h("td", {}, q.boxes.length || "—"),
     h("td", {}, marksInput(q, `marks-${q.id}`, { "aria-label": t("step2.boxes.how_many_marks", { label: q.label || "?" }) },
       () => refreshTable(c, d))),
-    rubrics.map((r) => h("td", { class: "tick" }, h("input", { type: "checkbox", id: `tick-${q.id}-${r.id}`,
-      "aria-label": `${q.label} · ${r.name}`, checked: criteriaOf(c, q).some((x) => x.id === r.id),
-      onchange: (e) => { setTick(c, q, r.id, e.target.checked); refreshTable(c, d); } }))),
+    rubrics.map((r) => h("td", { class: "tick" }, h("div", { class: "table-criterion" },
+      h("input", { type: "checkbox", id: `tick-${q.id}-${r.id}`,
+        "aria-label": `${q.label} · ${r.name}`, checked: criteriaOf(c, q).some((x) => x.id === r.id),
+        onchange: (e) => { setTick(c, q, r.id, e.target.checked); refreshTable(c, d); } }),
+      capSelect(c, q, r, () => refreshTable(c, d))))),
     h("td", {}, h("span", { id: `graded-${q.id}` }, gradedText(c, q)),
       isLocked(q) ? h("div", { class: "warn-text small" }, lockNote(q)) : null),
     h("td", { class: "tick" }, !firstInSection(d, q)
@@ -306,8 +329,9 @@ function questionTable(c, d) {
       h("th", {}, t("step2.slice.marks")), rubrics.map((r) => h("th", { class: "tick" }, r.name)),
       h("th", {}, t("step2.slice.graded_with")), h("th", {}, ""))),
     h("tbody", {}, d.questions.map((q) => [
-      d.sections.length && firstInSection(d, q) ? h("tr", { class: "section-row" }, h("td", { colspan: 5 + rubrics.length },
-        sectionHeading(d, d.sections.find((s) => s.id === q.section_id)))) : null,
+      d.sections.length && firstInSection(d, q) ? h("tr", { class: "section-row" },
+        h("td", { colspan: 5 + rubrics.length, "data-section-row": q.section_id },
+          sectionHeading(d, d.sections.find((s) => s.id === q.section_id), () => refreshTable(c, d)))) : null,
       row(q)]))));
 }
 

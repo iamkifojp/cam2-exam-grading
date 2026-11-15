@@ -387,12 +387,18 @@ function gradeCard(c, d, item, student) {
   let grading;
   if (r) {
     const crit = criteriaOf(c, q);
+    const cap = q.level_caps?.[r.id] ?? null;
+    const capBand = cap !== null ? r.bands.find((b) => Number(b.max) === Number(cap)) : null;
+    const capNote = cap !== null ? h("p", { class: "muted small cap-hint" },
+      t("step4.up_to", { levels: capBand ? capBand.levels : cap })) : null;
     grading = h("div", { class: "bands-grade" },
       crit.length > 1 ? criterionTabs(crit, q, student, r) : h("p", { class: "muted small" }, r.name),
-      r.bands.map((band) => {
-        const inBand = typeof value === "number" && band.min <= value && value <= band.max;
+      capNote,
+      r.bands.filter((band) => cap === null || band.min <= cap).map((band) => {
+        const hi = cap === null ? band.max : Math.min(band.max, cap);
+        const inBand = typeof value === "number" && band.min <= value && value <= hi;
         const levels = [];
-        for (let l = band.min; l <= band.max; l++) levels.push(l);
+        for (let l = band.min; l <= hi; l++) levels.push(l);
         return h("div", { class: `band-card ${inBand ? "on" : ""}` },
           h("div", { class: "band-head" }, h("strong", {}, band.levels),
             h("div", { class: "row" }, levels.map((l) => h("button", {

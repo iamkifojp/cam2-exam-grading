@@ -174,9 +174,120 @@ class OldSessionTests(StorageTestCase):
             self.assertEqual(json.load(fh)["version"], model.VERSION)
 
     def test_new_files_are_the_new_version(self):
-        self.assertEqual(model.VERSION, 2)
-        self.assertEqual(model.new_session("Exam", "x")["version"], 2)
-        self.assertEqual(model.new_grades("x")["version"], 2)
+        self.assertEqual(model.VERSION, 3)
+        self.assertEqual(model.new_session("Exam", "x")["version"], 3)
+        self.assertEqual(model.new_grades("x")["version"], 3)
+
+
+class FormatV3UpgradeTests(StorageTestCase):
+    """C1: upgrading v1 and v2 sessions to version 3."""
+
+    RUBRIC = {"id": "r1", "name": "Criterion A",
+              "bands": [{"levels": "0", "min": 0, "max": 0, "descriptor": ""},
+                        {"levels": "1–8", "min": 1, "max": 8, "descriptor": ""}]}
+
+    def write_v2(self, config_version=2, grades_version=2):
+        session, config, stored = storage.create_session(self.folder, "V2 Exam")
+        config.update(
+            version=config_version,
+            mode="rubric",
+            rubrics=[self.RUBRIC],
+            sections=[{"id": "sec1", "name": "Part 1", "weight": 60, "weight_typed": True},
+                      {"id": "sec2", "name": "Part 2", "weight": 40, "weight_typed": False}],
+            weighted=True,
+            report_options={"section_results": True, "overall_criteria": True,
+                            "rubric_table": False, "overall_marks": True, "no_images_for": ["sec2"]},
+            questions=[
+                {"id": "q1", "label": "Q1", "boxes": ["page1!A1:B2"], "max": 10,
+                 "rubric_ids": ["r1"], "section_id": "sec1"},
+                {"id": "q2", "label": "Q2", "boxes": ["page1!C1:D2"], "max": None,
+                 "rubric_ids": ["r1"], "section_id": "sec2"},
+                {"id": "q3", "label": "Q3", "boxes": ["page2!A1:B2"], "max": None,
+                 "rubric_ids": ["r1"], "section_id": "sec2"},
+            ],
+            choice_groups=[{"id": "g1", "questions": ["q2", "q3"], "answer": 1, "pick": "teacher"}],
+            students=[{"id": "s001", "scan": "scans/s1.pdf", "source": "s1.pdf", "pages": 2, "roster_id": None}],
+        )
+        grades = dict(stored, version=grades_version,
+                      grades={"s001": {
+                          "q1": {"value": 8, "comment": "Areas to develop: check units.\nTighten rounding.",
+                                 "keywords": ["check units"], "keyword_text": "Areas to develop: check units."},
+                          "q2": {"value": None, "comment": "Good method", "levels": {"r1": 6}},
+                          "q3": {"value": None, "comment": "", "levels": {"r1": 4}},
+                      }},
+                      overall={"s001": {
+                          "comment": "Strong effort",
+                          "report_total": None,
+                          "report_percent": 90.0,
+                          "final_levels": {"r1": 6},
+                          "chosen": {"g1": ["q2"]},
+                      }})
+        session.config_file.save(config)
+        session.grades_file.save(grades)
+        return session, config, grades
+
+    def test_v2_upgrade_preserves_all_work_and_keeps_pre_upgrade_backup(self):
+        self.write_v2()
+        session, config, grades = storage.open_session(self.folder)
+        self.assertEqual((config["version"], grades["version"]), (3, 3))
+        self.assertEqual([q["id"] for q in config["questions"]], ["q1", "q2", "q3"])
+        self.assertEqual([s["weight"] for s in config["sections"]], [60, 40])
+        self.assertTrue(config["report_options"]["section_results"])
+        self.assertEqual(config["report_options"]["no_images_for"], ["sec2"])
+        self.assertEqual(grades["grades"]["s001"]["q1"]["keyword_text"], "Areas to develop: check units.")
+        self.assertEqual(grades["grades"]["s001"]["q2"]["levels"], {"r1": 6})
+        self.assertEqual(grades["overall"]["s001"]["final_levels"], {"r1": 6})
+        self.assertEqual(grades["overall"]["s001"]["report_percent"], 90.0)
+        self.assertEqual(grades["overall"]["s001"]["chosen"], {"g1": ["q2"]})
+        self.assertNotIn("task_kind", config)
+        self.assertNotIn("level_caps", config["questions"][1])
+
+        # Pre-upgrade backups kept in backups/ with original v2 content, not flagged as conflict copies.
+        bak_cfg = os.path.join(self.folder, storage.BACKUP_DIR, f"{storage.SESSION_FILE}.pre-v3")
+        bak_grd = os.path.join(self.folder, storage.BACKUP_DIR, f"{storage.GRADES_FILE}.pre-v3")
+        self.assertTrue(os.path.isfile(bak_cfg))
+        self.assertTrue(os.path.isfile(bak_grd))
+        with open(bak_cfg, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["version"], 2)
+        with open(bak_grd, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["version"], 2)
+        self.assertEqual(storage.find_conflict_copies(session.config_file.path), ())
+        self.assertEqual(storage.find_conflict_copies(session.grades_file.path), ())
+
+        # Saving upgraded v3 files leaves the .pre-v3 backups untouched.
+        session.config_file.save(config)
+        session.grades_file.save(grades)
+        with open(bak_cfg, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["version"], 2)
+
+    def test_interrupted_one_file_upgrade_still_reopens_cleanly(self):
+        # Only cam2_session.json was written at v3; grades.json is still v2.
+        self.write_v2(config_version=3, grades_version=2)
+        session, config, grades = storage.open_session(self.folder)
+        self.assertEqual((config["version"], grades["version"]), (3, 3))
+        self.assertEqual(grades["grades"]["s001"]["q2"]["levels"], {"r1": 6})
+        self.assertEqual(config["questions"][0]["max"], 10)  # v1 cleanup must NOT rerun
+        self.assertTrue(os.path.isfile(
+            os.path.join(self.folder, storage.BACKUP_DIR, f"{storage.GRADES_FILE}.pre-v3")))
+
+    def test_interrupted_other_file_upgrade_and_v1_upgrade(self):
+        # Only grades.json was written at v3; cam2_session.json is still v1.
+        session, config, grades = self.write_v2(config_version=1, grades_version=3)
+        config["questions"][0]["max"] = 10  # stale v1 max in a rubric session
+        session.config_file.save(config)
+        _, reopened_cfg, reopened_grd = storage.open_session(self.folder)
+        self.assertEqual((reopened_cfg["version"], reopened_grd["version"]), (3, 3))
+        self.assertIsNone(reopened_cfg["questions"][0]["max"])
+        self.assertTrue(os.path.isfile(
+            os.path.join(self.folder, storage.BACKUP_DIR, f"{storage.SESSION_FILE}.pre-v3")))
+
+    def test_future_emergency_copy_is_ignored(self):
+        session, config, grades = self.new_session()
+        grades["version"] = 99
+        grades["generation"] = 50
+        storage.atomic_write(session.grades_file.emergency_path(),
+                             json.dumps(grades).encode("utf-8"))
+        self.assertIsNone(session.grades_file.newer_emergency_copy())
 
 
 class SafeSaveTests(StorageTestCase):

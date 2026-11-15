@@ -277,6 +277,7 @@ class SafeJsonFile:
         self.mass = mass
         self.session_id: Optional[str] = None
         self.generation = 0
+        self.loaded_version: Optional[int] = None
         self.content_hash: Optional[str] = None
         self.last_saved_at: Optional[str] = None
         self._lock = threading.Lock()
@@ -294,6 +295,7 @@ class SafeJsonFile:
         model.check_format(data, self.expected_format)
         self.session_id = str(data.get("session_id") or "")
         self.generation = int(data.get("generation") or 0)
+        self.loaded_version = data.get("version")
         self.content_hash = _sha256(raw)
         self.last_saved_at = data.get("saved_at")
         return data
@@ -370,6 +372,18 @@ class SafeJsonFile:
         except OSError:
             pass
 
+    def backup_before_upgrade(self, to_version: int) -> None:
+        """Keep one unrotated copy of the original file before a format upgrade."""
+        target = os.path.join(self.folder, BACKUP_DIR, f"{self.filename}.pre-v{to_version}")
+        if os.path.exists(target):
+            return
+        raw = _read_bytes(self.path)
+        if raw is not None:
+            try:
+                atomic_write(target, raw)
+            except (OSError, SaveError):
+                pass
+
     # Emergency copy on this computer --------------------------------------------
 
     def emergency_path(self) -> str:
@@ -388,7 +402,9 @@ class SafeJsonFile:
         if raw is None:
             return None
         data = _parse_or_empty(raw)
+        version = data.get("version")
         if (data.get("format") == self.expected_format
+                and isinstance(version, int) and version <= model.VERSION
                 and data.get("session_id") == self.session_id
                 and int(data.get("generation") or 0) > self.generation):
             return data
@@ -443,9 +459,14 @@ def open_session(folder: str):
         raise UserError("not_a_session_folder", folder=folder)
     session = Session(folder)
     grades = session.grades_file.load()
-    config = model.upgrade_session(session.config_file.load(), grades)
+    config = session.config_file.load()
     if config.get("session_id") != grades.get("session_id"):
         raise UserError("session_files_mismatch", folder=folder)
+    if (session.config_file.loaded_version < model.VERSION
+            or session.grades_file.loaded_version < model.VERSION):
+        session.config_file.backup_before_upgrade(model.VERSION)
+        session.grades_file.backup_before_upgrade(model.VERSION)
+    config = model.upgrade_session(config, grades)
     grades["version"] = model.VERSION
     return session, config, grades
 
