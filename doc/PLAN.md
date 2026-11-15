@@ -373,7 +373,7 @@ Keep source commits apart from packaging results. On another computer, check for
 | Phase | State | Evidence / next action |
 |---|---|---|
 | A: integrity fixes | Done (PR #4) | Branch `phase-a-integrity`, commit `a46a859` ([PR #4](https://github.com/iamkifojp/cam2-exam-grading/pull/4)). Verified with `build/venv/bin/python -m unittest discover -s tests -t .` (353 pass, 1 skipped `test_ui_syntax.py` because `node` is absent; 4 `RunningInstanceTests` pass separately outside sandbox via `tests.test_launcher` 8/8 OK) plus live browser check on `127.0.0.1:5199` covering `A1`–`A3` and Step 4 close/reopen flush. Limits: `test_ui_syntax.py` skipped (`node` unavailable), `A4` save-failure UI banner after unplug not simulated interactively in browser (verified at Flask route/AppState level), frozen `.app`/`.exe` builds not rebuilt. PR #4 merged as `cea7f98`; local and live remote main matched on 2026-11-13 before Phase B. Regression suite rerun; 12 browser modules separately parsed successfully. |
-| B: maintenance, buttons, 16:10 | Implemented; awaiting PR merge | Branch `codex/phase-b-maintenance`, based on `cea7f98`. Maintenance integrations `20daefd`, `4dffecf`; B2/B3 and verification details below. |
+| B: maintenance, buttons, 16:10 | Done (PR #5) | [PR #5](https://github.com/iamkifojp/cam2-exam-grading/pull/5), branch `codex/phase-b-maintenance`, implementation `5241526`, maintenance integrations `20daefd`, `4dffecf`. Verification and platform limits below. |
 | C: format 3, tiered levels | Not started | Settle every new stored shape first |
 | D: annotations, long-answer reports | Not started | Geometry contract first |
 | E: class grid | Not started | |
@@ -427,4 +427,13 @@ Keep source commits apart from packaging results. On another computer, check for
   remain platform/integration verification limits. Phase A's physical USB
   removal UI check was not repeated; its save-failure regression tests pass.
 
-Stop after the Phase B PR; Phase C is not started.
+**2026-11-16 completion check:** Phase B implementation and documentation at
+`5241526` matched the pushed PR #5 branch, with a clean working tree. Reviewed
+B1–B3 against the committed diff and the verification record above; no application
+changes since those checks. `CHANGELOG.md`, `ARCHITECTURE.md`, `README.md`, the
+bilingual quick guide source and this progress record are committed. The three
+stale remote branches (`codex/report-total-phase4`, `codex/cam-host-finish`, and
+`note-report-total-box`) were removed after their work was preserved in Phase B.
+The teacher authorized pushing and merging PR #5 to `main`.
+
+Phase C is not started.
