@@ -885,5 +885,73 @@ class PhaseASaveSafetyTests(AppTestCase):
         self.assertEqual(replaced[0]["id"], id_b)
         self.assertNotIn(replaced[1]["id"], (id_a, id_b))
 
+
+class LevelCapAppTests(AppTestCase):
+    def test_level_cap_routes_validation_and_reopen(self):
+        self.folder = self.create()["folder"]
+        self.post("/api/setup/mode", {"mode": "rubric"})
+        rubs = self.post("/api/setup/rubrics", {"rubrics": [
+            {"id": "", "name": "Criterion A", "bands": [
+                {"levels": "0"}, {"levels": "1–2"}, {"levels": "3–4"}, {"levels": "5–6"}, {"levels": "7–8"},
+            ]},
+            {"id": "", "name": "Criterion B", "bands": [
+                {"levels": "0"}, {"levels": "1–2"}, {"levels": "3–4"}, {"levels": "5–6"}, {"levels": "7–8"},
+            ]},
+        ]})["session"]["config"]["rubrics"]
+        r1, r2 = rubs[0]["id"], rubs[1]["id"]
+        session = self.post("/api/setup/questions", {
+            "name_box": ["page1!B2"],
+            "questions": [
+                {"id": "q1", "label": "Q1", "boxes": ["page1!B2:C3"],
+                 "rubric_ids": [r1, r2], "level_caps": {r1: 4, r2: 6}},
+            ],
+        })["session"]
+        self.assertEqual(session["config"]["questions"][0]["level_caps"], {r1: 4, r2: 6})
+
+        # Grade within cap succeeds; above cap fails with 400.
+        self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "value": 4, "rubric_id": r1})
+        err = self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "value": 5, "rubric_id": r1},
+                        status=400)
+        self.assertEqual(err["error"], "level_above_cap")
+
+        # Lowering cap below graded level fails with 400.
+        err = self.post("/api/setup/questions", {
+            "name_box": ["page1!B2"],
+            "questions": [
+                {"id": "q1", "label": "Q1", "boxes": ["page1!B2:C3"],
+                 "rubric_ids": [r1, r2], "level_caps": {r1: 2, r2: 6}},
+            ],
+        }, status=400)
+        self.assertEqual(err["error"], "cap_below_grade")
+
+        # Rubric edit that orphans cap 4 (changing 3–4 & 5–6 into 3–5 & 6) fails with 400.
+        err = self.post("/api/setup/rubrics", {"rubrics": [
+            {"id": r1, "name": "Criterion A", "bands": [
+                {"levels": "0"}, {"levels": "1–2"}, {"levels": "3–5"}, {"levels": "6"}, {"levels": "7–8"},
+            ]},
+            rubs[1],
+        ]}, status=400)
+        self.assertEqual(err["error"], "rubric_cap_orphaned")
+
+        # Reopen keeps caps and grades.
+        reopened = self.post("/api/session/reopen")["session"]
+        self.assertEqual(reopened["config"]["questions"][0]["level_caps"], {r1: 4, r2: 6})
+        self.assertEqual(reopened["grades"]["grades"]["s001"]["q1"]["levels"][r1], 4)
+
+    def test_restore_emergency_upgrades_v2_emergency_copy(self):
+        self.folder = self.create()["folder"]
+        self.set_up_questions()
+        session = self.state.session
+        v2_grades = dict(self.state.grades, version=2, generation=99,
+                         grades={"s001": {"q1": {"value": 4, "comment": ""}}})
+        storage.atomic_write(session.grades_file.emergency_path(),
+                             json.dumps(v2_grades).encode("utf-8"))
+        restored = self.post("/api/session/restore-emergency")["session"]
+        self.assertEqual(restored["config"]["version"], model.VERSION)
+        self.assertEqual(restored["grades"]["grades"]["s001"]["q1"]["value"], 4)
+        with open(session.grades_file.path, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["version"], model.VERSION)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -252,14 +252,15 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     def restore_emergency():
         session = state.require_session()
         with state.lock:
-            newer = session.config_file.newer_emergency_copy()
-            if newer:
-                state.config = model.upgrade_session(newer, state.grades)
-                state.save_config()
-            newer = session.grades_file.newer_emergency_copy()
-            if newer:
-                state.grades = newer
+            newer_grades = session.grades_file.newer_emergency_copy()
+            if newer_grades:
+                newer_grades["version"] = model.VERSION
+                state.grades = newer_grades
                 state.save_grades(allow_shrink=True)
+            newer_config = session.config_file.newer_emergency_copy()
+            if newer_config:
+                state.config = model.upgrade_session(newer_config, state.grades)
+                state.save_config()
         return ok()
 
     @app.post("/api/session/reopen")

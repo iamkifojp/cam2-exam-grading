@@ -234,14 +234,46 @@ function removeSection(d, section) {
   });
 }
 
-// The heading above a section's questions: its optional name, and a way to remove it.
-export function sectionHeading(d, section) {
+// The heading above a section's questions: its optional name, section-wide level
+// ceilings for its rubric questions, and a way to remove the divider.
+export function sectionHeading(d, section, onApplied = null) {
+  const c = config();
   const n = d.sections.indexOf(section) + 1;
+  const inSection = d.questions.filter((q) => q.section_id === section.id && !q.max);
+  const sectionRubrics = (c.rubrics || []).filter((r) =>
+    rubricCapOptions(r).length && inSection.some((q) => criteriaOf(c, q).some((x) => x.id === r.id)));
+  const capControls = sectionRubrics.map((r) => {
+    const targets = inSection.filter((q) => criteriaOf(c, q).some((x) => x.id === r.id));
+    const vals = new Set(targets.map((q) => q.level_caps?.[r.id] ?? ""));
+    const currentVal = vals.size === 1 ? String([...vals][0]) : "__mixed__";
+    return h("label", { class: "section-cap" },
+      h("span", { class: "muted small" }, r.name),
+      h("select", {
+        class: "cap-select",
+        "aria-label": t("step2.sections.cap_label", { name: r.name }),
+        value: currentVal,
+        onchange: (e) => {
+          if (!setSectionCap(d, c, section, r, e.target.value)) {
+            e.target.value = currentVal;
+            return;
+          }
+          if (onApplied) onApplied();
+          else render();
+        },
+      },
+      vals.size > 1 ? h("option", { value: "__mixed__", disabled: true, selected: "selected" }, "—") : null,
+      h("option", { value: "", selected: currentVal === "" ? "selected" : null }, t("step2.boxes.cap_all")),
+      rubricCapOptions(r).map((o) => h("option", {
+        value: String(o.max),
+        selected: currentVal === String(o.max) ? "selected" : null,
+      }, t("step2.boxes.cap_up_to", { levels: o.levels })))));
+  });
   return h("div", { class: "section-heading" },
     h("input", { type: "text", id: `section-name-${section.id}`, class: "section-name", value: section.name || "",
       maxlength: "60", placeholder: t("step2.sections.default_name", { n }),
       "aria-label": t("step2.sections.name_label", { n }),
       oninput: (e) => { section.name = e.target.value; saveQuestions(); } }),
+    capControls.length ? h("div", { class: "section-caps" }, capControls) : null,
     h("button", { type: "button", class: "icon-btn", title: t("step2.sections.remove"),
       "aria-label": t("step2.sections.remove"), onclick: () => removeSection(d, section) }, "✕"));
 }
@@ -277,9 +309,95 @@ export function marksInput(q, id, attrs, onChange) {
     onchange: (e) => { if (e.target.value === "") e.target.value = q.max ?? ""; } }, attrs));
 }
 
+export function rubricCapOptions(r) {
+  const tops = [...(r.bands || [])]
+    .map((b) => ({ max: Number(b.max), levels: b.levels }))
+    .sort((a, b) => a.max - b.max);
+  const overall = tops.length ? tops[tops.length - 1].max : null;
+  return tops.filter((b) => b.max < overall);
+}
+
+function highestGradedLevel(qid, rid) {
+  let hi = null;
+  for (const s of app.session?.summary?.students || []) {
+    const v = s.levels?.[qid]?.[rid];
+    if (typeof v === "number" && (hi === null || v > hi)) hi = v;
+  }
+  return hi;
+}
+
+function setQuestionCap(q, r, capVal) {
+  const cap = capVal === "" || capVal == null ? null : Number(capVal);
+  if (cap !== null) {
+    const hi = highestGradedLevel(q.id, r.id);
+    if (hi !== null && cap < hi) {
+      toast(t("error.cap_below_grade", { question: q.label || q.id, rubric: r.name, level: hi, cap }), "error");
+      return false;
+    }
+    q.level_caps = { ...(q.level_caps || {}), [r.id]: cap };
+  } else if (q.level_caps) {
+    delete q.level_caps[r.id];
+    if (!Object.keys(q.level_caps).length) delete q.level_caps;
+  }
+  return true;
+}
+
+export function setSectionCap(d, c, section, r, capVal) {
+  const cap = capVal === "" || capVal == null ? null : Number(capVal);
+  const targets = d.questions.filter((q) => q.section_id === section.id && !q.max
+    && criteriaOf(c, q).some((x) => x.id === r.id));
+  if (cap !== null) {
+    for (const q of targets) {
+      const hi = highestGradedLevel(q.id, r.id);
+      if (hi !== null && cap < hi) {
+        toast(t("error.cap_below_grade", { question: q.label || q.id, rubric: r.name, level: hi, cap }), "error");
+        return false;
+      }
+    }
+  }
+  targets.forEach((q) => setQuestionCap(q, r, cap));
+  saveQuestions();
+  return true;
+}
+
+export function capSelect(c, q, r, onDone, extraClass = "") {
+  const opts = rubricCapOptions(r);
+  if (!opts.length) return null;
+  const chosen = criteriaOf(c, q).some((x) => x.id === r.id);
+  const cap = q.level_caps?.[r.id] ?? "";
+  return h("select", {
+    class: `cap-select ${extraClass}`.trim(),
+    "data-cap-qid": q.id,
+    "data-cap-rid": r.id,
+    hidden: !!q.max || !chosen,
+    "aria-label": t("step2.boxes.cap_label", { label: q.label || "?", name: r.name }),
+    value: String(cap),
+    onchange: (e) => {
+      const prev = String(q.level_caps?.[r.id] ?? "");
+      if (!setQuestionCap(q, r, e.target.value)) {
+        e.target.value = prev;
+        return;
+      }
+      saveQuestions();
+      if (onDone) onDone();
+    },
+  },
+  h("option", { value: "", selected: cap === "" ? "selected" : null }, t("step2.boxes.cap_all")),
+  opts.map((o) => h("option", { value: String(o.max), selected: cap === o.max ? "selected" : null },
+    t("step2.boxes.cap_up_to", { levels: o.levels }))));
+}
+
 export function setTick(c, q, rid, on) {
   const chosen = new Set(criteriaOf(c, q).map((r) => r.id));
-  if (on) chosen.add(rid); else chosen.delete(rid);
+  if (on) {
+    chosen.add(rid);
+  } else {
+    chosen.delete(rid);
+    if (q.level_caps) {
+      delete q.level_caps[rid];
+      if (!Object.keys(q.level_caps).length) delete q.level_caps;
+    }
+  }
   q.rubric_ids = (c.rubrics || []).map((r) => r.id).filter((id) => chosen.has(id));
   delete q.rubric_id;
   saveQuestions();
@@ -540,9 +658,11 @@ function criteriaPicker(c, item) {
   const toggle = (id, on) => { setTick(c, item, id, on); render(); };
   return h("fieldset", { class: "criteria-pick" },
     h("legend", { class: "label" }, t("step2.boxes.which_rubric", { label: item.label || "?" })),
-    (c.rubrics || []).map((r) => h("label", { class: "check" },
-      h("input", { type: "checkbox", value: r.id, class: "q-tick", checked: chosen.has(r.id),
-        onchange: (e) => toggle(r.id, e.target.checked) }), r.name)),
+    (c.rubrics || []).map((r) => h("div", { class: "criterion-row" },
+      h("label", { class: "check" },
+        h("input", { type: "checkbox", value: r.id, class: "q-tick", checked: chosen.has(r.id),
+          onchange: (e) => toggle(r.id, e.target.checked) }), r.name),
+      capSelect(c, item, r, () => render(), "q-cap"))),
     (c.rubrics || []).length > 1 ? h("p", { class: "muted small" }, t("step2.boxes.which_rubric_hint")) : null);
 }
 
@@ -556,6 +676,9 @@ function gradingFields(c, item) {
       // In a one-rubric exam, marks can take away a tick that was only assumed.
       const chosen = new Set(criteriaOf(c, item).map((r) => r.id));
       document.querySelectorAll(".q-tick").forEach((box) => { box.checked = chosen.has(box.value); });
+      document.querySelectorAll(".q-cap").forEach((sel) => {
+        sel.hidden = !!item.max || !chosen.has(sel.dataset.capRid);
+      });
     }));
   const criteria = criteriaPicker(c, item);
   return [c.mode === "rubric" ? criteria : marks, c.mode === "rubric" ? marks : criteria, note,

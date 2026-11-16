@@ -99,6 +99,16 @@ def question_mode(config: dict, question: dict) -> Optional[str]:
     return "rubric" if question_rubric_ids(config, question) else None
 
 
+def question_level_cap(config: dict, question: dict, rubric_id: str) -> Optional[int]:
+    """Highest level permitted on ``question`` for ``rubric_id``, or None for whole scale."""
+    if question_mode(config, question) != "rubric":
+        return None
+    caps = question.get("level_caps") or {}
+    if rubric_id not in caps or rubric_id not in question_rubric_ids(config, question):
+        return None
+    return int(caps[rubric_id])
+
+
 def sections(config: dict) -> List[dict]:
     """The paper's sections in order, each with its ``questions``.
 
@@ -229,7 +239,13 @@ def set_grade(config: dict, grades_data: dict, student_id: str, question_id: str
         if isinstance(value, bool) or not isinstance(value, int):
             raise UserError("mark_out_of_range", value=value, max=question.get("max"))
         if rubric_mode:
-            rubrics.check_level(_rubric_by_id(config)[rubric_id or rids[0]], value)
+            rid = rubric_id or rids[0]
+            rubric = _rubric_by_id(config)[rid]
+            rubrics.check_level(rubric, value)
+            cap = question_level_cap(config, question, rid)
+            if cap is not None and value > cap:
+                raise UserError("level_above_cap", level=value, cap=cap,
+                                question=question["label"], rubric=rubric.get("name", ""))
         elif not 0 <= value <= int(question.get("max") or 0):
             raise UserError("mark_out_of_range", value=value, max=question.get("max"))
     if comment is not None:
@@ -630,6 +646,18 @@ def highest_mark(grades_data: dict, question_id: str) -> int:
     """The highest mark any paper has on this question (0 if none)."""
     entries = ((per or {}).get(question_id) or {} for per in (grades_data.get("grades") or {}).values())
     return max((e["value"] for e in entries if isinstance(e.get("value"), int)), default=0)
+
+
+def highest_level(config: dict, grades_data: dict, question: dict, rubric_id: str) -> Optional[int]:
+    """The highest level any paper has on (question, rubric_id), or None."""
+    qid = question["id"]
+    levels = []
+    for per in (grades_data.get("grades") or {}).values():
+        entry = (per or {}).get(qid)
+        val = level_of(config, entry, question, rubric_id)
+        if isinstance(val, int) and not isinstance(val, bool):
+            levels.append(val)
+    return max(levels) if levels else None
 
 
 def progress(config: dict, grades_data: dict) -> dict:

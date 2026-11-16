@@ -12,7 +12,7 @@ from unittest import mock
 import pymupdf as fitz
 from openpyxl import load_workbook
 
-from engine import gradebook_xlsx, grading_summary as gs, model, reports, storage, workflow
+from engine import gradebook_xlsx, grading_summary as gs, model, reports, rubrics, storage, workflow
 from engine.errors import UserError
 from engine.slicer import Layout
 from tests.helpers import make_pdf
@@ -295,6 +295,21 @@ class MultiCriterionReportTests(ReportTestCase):
         self.assertEqual(averages[header.index("Q2 · Criterion B")], 3.5)
         ref = wb["Questions & Rubrics"]
         self.assertEqual(ref.cell(3, 3).value, "Criterion A, Criterion B")
+
+    def test_gradebook_lists_level_caps_and_report_omits_them(self):
+        r1 = self.config["rubrics"][0]["id"]
+        # Band max 6 in Criterion A ("1–8" or default MYP bands): check what bands r1 has first.
+        top_r1 = rubrics.band_for_level(self.config["rubrics"][0], 4)["max"]
+        band_label = rubrics.band_for_level(self.config["rubrics"][0], top_r1)["levels"]
+        self.config["questions"][1]["level_caps"] = {r1: top_r1}
+        wb = load_workbook(gradebook_xlsx.export_gradebook(self.session, self.config, self.grades, "en"))
+        ref = wb["Questions & Rubrics"]
+        self.assertEqual(ref.cell(3, 3).value, f"Criterion A (up to {band_label}), Criterion B")
+        path = os.path.join(self.root, "r.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades, self.config["students"][0], "en", path)
+        text = self.text_of(path)
+        self.assertNotIn("up to", text.lower())
+        self.assertNotIn("ceiling", text.lower())
 
 
 class SectionPaperTestCase(ReportTestCase):

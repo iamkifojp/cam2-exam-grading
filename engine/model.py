@@ -1,11 +1,12 @@
 """Shapes of the two files inside a session folder.
 
-``cam2_session.json`` — the exam set-up (rarely changes once grading starts)::
+``cam2_session.json`` — the exam or task set-up (rarely changes once grading starts)::
 
     {
-      "format": "cam2-session", "version": 2,
+      "format": "cam2-session", "version": 3,
       "session_id": "<uuid>", "generation": 3, "saved_at": "...", "saved_by": "PC",
       "exam_name": "Y8 Science Midterm", "created_at": "...",
+      "task_kind": "exam" | "assignment" | "draft",      # optional; absent = "exam"
       "layout": {"paper": "A4", "density": "5mm", "landscape": false},
       "mode": "marks" | "rubric" | null,                 # the starting choice only
       "rubrics":  [{"id": "r1", "name": "Criterion A",
@@ -18,12 +19,15 @@
                          "rubric_table": true, "overall_marks": true,
                          "no_images_for": ["sec1"]},
       "questions": [{"id": "q1", "label": "Q1", "boxes": ["page1!A4:J10"],
-                     "max": 5, "rubric_ids": ["r1"], "section_id": "sec1"}],
+                     "max": 5, "rubric_ids": ["r1"], "level_caps": {"r1": 6},
+                     "section_id": "sec1"}],             # level_caps optional
       "keywords": [{"label": "check calculations", "type": "growth" | "strength"}],
       "choice_groups": [{"id": "g1", "questions": ["q4", "q5", "q6"], "answer": 2,
                          "pick": "best" | "teacher"}],
+      "partner_groups": [{"id": "pg1", "student_ids": ["s001", "s002"]}],   # optional
       "students": [{"id": "s001", "scan": "scans/Student_001.pdf",
-                    "source": "scan0001.pdf", "pages": 4, "roster_id": null}],
+                    "source": "scan0001.pdf", "pages": 4, "roster_id": null,
+                    "files": []}],                       # files optional (multi-file)
       "roster": [{"id": "n001", "name": "Tanaka Hana", "external_id": "8A-07"}],
       "host": {"name": "CAM", "class_name": "8A"},       # opened from CAM (engine/host.py)
       "host_ready_at": "..." | null,                     # results sent to the host
@@ -35,26 +39,38 @@
 ``grades.json`` — written on every click while grading::
 
     {
-      "format": "cam2-grades", "version": 2,
+      "format": "cam2-grades", "version": 3,
       "session_id": "<uuid>", "generation": 41, "saved_at": "...", "saved_by": "PC",
       "grades":  {"s001": {"q1": {"value": 4, "comment": "Good",
-                                  "keywords": [], "keyword_text": ""},
+                                  "keywords": [], "keyword_text": "",
+                                  "annotations": [{"id": "a1", "page": 1,
+                                                   "x": 0.25, "y": 0.40,
+                                                   "text": "...", "type": "growth"}],
+                                  "highlights": [{"id": "h1", "page": 1,
+                                                  "x": 0.18, "y": 0.38,
+                                                  "w": 0.40, "h": 0.03,
+                                                  "colour": "yellow"}]},
                            "q2": {"value": "not_answered", "comment": ""},
                            "q3": {"value": null, "comment": "",
                                   "levels": {"r2": 5, "r3": 4}}}},
       "overall": {"s001": {"comment": "", "report_total": null, "report_percent": null,
                            "final_levels": {"r1": 6},
-                           "chosen": {"g1": ["q4", "q6"]}}}
+                           "chosen": {"g1": ["q4", "q6"]},
+                           "late": false}}
     }
 
 A question grades with marks if it has a ``max``, and with rubric levels if
 not; there is no separate field for it (``grading_summary.question_mode``). A
-question with no entry (or ``value`` null) is *ungraded*. A question assessed
-on several criteria (``rubric_ids``) keeps one level per criterion in
-``levels``; older sessions have a single ``rubric_id``. Sections are optional:
-with none, the whole paper is one section. A final level is typed by the
-teacher, and blank means no level. Ids, not labels, key everything so a teacher
-can rename "Q1" without breaking crops or grades.
+rubric question's ``level_caps`` maps criterion IDs to a highest permitted level
+(a band's top); no entry means the whole rubric scale. A question with no entry
+(or ``value`` null) is *ungraded*. A question assessed on several criteria
+(``rubric_ids``) keeps one level per criterion in ``levels``; older sessions have
+a single ``rubric_id``. Sections are optional: with none, the whole paper is one
+section. A final level is typed by the teacher (never capped), and blank means
+no level. ``task_kind``, ``annotations``, ``highlights``, ``partner_groups``,
+``files``, and ``late`` are optional version 3 fields added across Phases C–H;
+older sessions omit them or keep them empty. Ids, not labels, key everything so a
+teacher can rename "Q1" without breaking crops or grades.
 """
 
 from __future__ import annotations
@@ -67,7 +83,7 @@ from .errors import UserError
 
 SESSION_FORMAT = "cam2-session"
 GRADES_FORMAT = "cam2-grades"
-VERSION = 2
+VERSION = 3
 
 NOT_ANSWERED = "not_answered"
 NAME_BOX_ID = "__name__"

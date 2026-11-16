@@ -374,7 +374,7 @@ Keep source commits apart from packaging results. On another computer, check for
 |---|---|---|
 | A: integrity fixes | Done (PR #4) | Branch `phase-a-integrity`, commit `a46a859` ([PR #4](https://github.com/iamkifojp/cam2-exam-grading/pull/4)). Verified with `build/venv/bin/python -m unittest discover -s tests -t .` (353 pass, 1 skipped `test_ui_syntax.py` because `node` is absent; 4 `RunningInstanceTests` pass separately outside sandbox via `tests.test_launcher` 8/8 OK) plus live browser check on `127.0.0.1:5199` covering `A1`–`A3` and Step 4 close/reopen flush. Limits: `test_ui_syntax.py` skipped (`node` unavailable), `A4` save-failure UI banner after unplug not simulated interactively in browser (verified at Flask route/AppState level), frozen `.app`/`.exe` builds not rebuilt. PR #4 merged as `cea7f98`; local and live remote main matched on 2026-11-13 before Phase B. Regression suite rerun; 12 browser modules separately parsed successfully. |
 | B: maintenance, buttons, 16:10 | Done (PR #5) | [PR #5](https://github.com/iamkifojp/cam2-exam-grading/pull/5), branch `codex/phase-b-maintenance`, implementation `5241526`, maintenance integrations `20daefd`, `4dffecf`. Verification and platform limits below. |
-| C: format 3, tiered levels | Not started | Settle every new stored shape first |
+| C: format 3, tiered levels | Done (PR #6) | [PR #6](https://github.com/iamkifojp/cam2-exam-grading/pull/6), branch `phase-c-format3-tiered-levels`, implementation `ee94e51`. Format version 3 (`C1`) + per-question/criterion level ceilings (`C2`). Verification and platform limits below. |
 | D: annotations, long-answer reports | Not started | Geometry contract first |
 | E: class grid | Not started | |
 | G: whole-submission tasks | Not started | |
@@ -436,4 +436,40 @@ stale remote branches (`codex/report-total-phase4`, `codex/cam-host-finish`, and
 `note-report-total-box`) were removed after their work was preserved in Phase B.
 The teacher authorized pushing and merging PR #5 to `main`.
 
-Phase C is not started.
+### Phase C verification — 2026-11-16
+
+- Started from clean `main` at `0bf961b`, matching `origin/main` (`0 0`) with no
+  open PRs; created branch `phase-c-format3-tiered-levels`.
+- Settled version 3 stored shapes (`level_caps`, `task_kind`, `partner_groups`,
+  `files`, `annotations`, `highlights`, `late`) in `engine/model.py` (`VERSION = 3`)
+  and `ARCHITECTURE.md`. `storage.open_session` keeps unrotated
+  `backups/*.pre-v3` pre-upgrade copies, handles interrupted one-file upgrades
+  across versions 1–3, and `restore_emergency` upgrades restored emergency
+  copies.
+- Implemented `C2` (`level_caps` per question and criterion): dynamic band-top
+  dropdowns in Step 2 question cards (`boxes.js`), Step 2 question table rows
+  (`step2.js`), and section headings (validating whole section before applying);
+  marks questions stay untouched and unticking clears a criterion's cap;
+  Step 4 (`step4.js`) shows only permitted levels with an *Up to …* line while
+  keeping badges on full scale; server rejects above-cap levels, lowering caps
+  below graded levels, and rubric edits leaving a cap off any band top;
+  Excel Sheet 2 ("Questions & Rubrics") lists ceilings while student PDFs omit
+  them and final levels remain uncapped.
+- Automated checks (`build/venv/bin/python -m unittest discover -s tests -t .`
+  with Node.js `v26.13.1` and localhost sockets enabled): **373 run, 373 passed,
+  0 skipped**, including all 12 browser modules parsed cleanly via
+  `tests/test_ui_syntax.py`, v1/v2→v3 upgrades, pre-upgrade backups, interrupted
+  one-file upgrades, emergency copy upgrades, cap bounds, custom non-MYP bands,
+  batch section rejection, orphaned rubric edits, routes, Excel Sheet 2, PDF
+  reports, and bilingual i18n parity (`test_i18n`).
+- Live browser verification against isolated Flask server `127.0.0.1:5211` on a
+  synthetic sliced exam (`Criterion A` MYP 0–8, `Criterion B` custom `0, 1,
+  2–3, 4–5`, two sections, mixed marks Q3): verified Q3 marks hides cap select;
+  per-criterion caps on Q1 in card & table; section shortcut updating Q1+Q2 and
+  single-question exception showing mixed state (`—`); Step 4 filtered levels +
+  *Up to …* + full-scale badges; lowering Q2 or Part 1 cap below graded level 5
+  rejected with toast & no mutation; Step 2 rubric edit leaving Q1 cap 4
+  orphaned blocked with `#rubric-error` until restored; reload & JSON file
+  persistence at version 3 with 0 uncaught console errors.
+- Limits: frozen Mac `.app` / Windows `.exe` builds, native OS pickers,
+  Windows file locks, and live CAM sync remain platform/integration limits.

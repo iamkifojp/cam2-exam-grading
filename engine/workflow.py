@@ -575,11 +575,6 @@ def set_mode(config: dict, mode: str) -> dict:
 
 
 def set_rubrics(config: dict, raw_rubrics: List[dict]) -> dict:
-    # A question with no marks and no ticks counts as ticked on an exam's only
-    # rubric. That stops being true once there is another, so tick it for real.
-    for q in config.get("questions") or []:
-        q["rubric_ids"] = grading_summary.question_rubric_ids(config, q)
-        q.pop("rubric_id", None)
     cleaned = []
     used = set()
     for raw in raw_rubrics or []:
@@ -593,9 +588,36 @@ def set_rubrics(config: dict, raw_rubrics: List[dict]) -> dict:
         rubric["name"] = rubric["name"] or f"Rubric {len(cleaned) + 1}"
         used.add(rid)
         cleaned.append(rubric)
-    config["rubrics"] = cleaned
+
+    by_id = {r["id"]: r for r in cleaned}
+    resolved_rids = [grading_summary.question_rubric_ids(config, q)
+                     for q in config.get("questions") or []]
+    new_caps = []
     for q in config.get("questions") or []:
-        q["rubric_ids"] = [rid for rid in q["rubric_ids"] if rid in used]
+        caps = {}
+        if not q.get("max"):
+            for rid, cap in (q.get("level_caps") or {}).items():
+                if rid not in by_id:
+                    continue
+                tops = {int(b["max"]) for b in by_id[rid]["bands"]}
+                if int(cap) not in tops:
+                    raise UserError("rubric_cap_orphaned", rubric=by_id[rid]["name"],
+                                    question=q.get("label") or q["id"], cap=cap)
+                if int(cap) != rubrics.rubric_max(by_id[rid]):
+                    caps[rid] = int(cap)
+        new_caps.append(caps)
+
+    # A question with no marks and no ticks counts as ticked on an exam's only
+    # rubric. That stops being true once there is another, so tick it for real.
+    config["rubrics"] = cleaned
+    for q, rids, caps in zip(config.get("questions") or [], resolved_rids, new_caps):
+        q["rubric_ids"] = [rid for rid in rids if rid in used]
+        q.pop("rubric_id", None)
+        cleaned_caps = {rid: cap for rid, cap in caps.items() if rid in q["rubric_ids"]}
+        if cleaned_caps:
+            q["level_caps"] = cleaned_caps
+        else:
+            q.pop("level_caps", None)
     return config
 
 
@@ -605,6 +627,35 @@ def _picked_rubrics(raw: dict) -> List[str]:
     if picked is None:
         picked = [raw["rubric_id"]] if raw.get("rubric_id") else []
     return [str(rid) for rid in picked if rid]
+
+
+def _clean_level_caps(raw_caps, config: dict, question: dict, old_question: Optional[dict],
+                      grades_data: dict, rubric_by_id: dict) -> dict:
+    if question.get("max"):
+        return {}
+    valid_rids = set(grading_summary.question_rubric_ids(config, question))
+    caps = {}
+    for rid, val in (raw_caps or {}).items():
+        rid = str(rid)
+        if rid not in valid_rids or val is None or val == "":
+            continue
+        rubric = rubric_by_id[rid]
+        if isinstance(val, bool):
+            raise UserError("cap_not_band_top", rubric=rubric["name"], cap=val)
+        try:
+            cap = int(val)
+        except (TypeError, ValueError):
+            raise UserError("cap_not_band_top", rubric=rubric["name"], cap=val)
+        if cap not in {int(b["max"]) for b in rubric["bands"]}:
+            raise UserError("cap_not_band_top", rubric=rubric["name"], cap=cap)
+        if cap == rubrics.rubric_max(rubric):
+            continue
+        highest = grading_summary.highest_level(config, grades_data, old_question or question, rid)
+        if highest is not None and cap < highest:
+            raise UserError("cap_below_grade", question=question["label"] or question["id"],
+                            rubric=rubric["name"], level=highest, cap=cap)
+        caps[rid] = cap
+    return caps
 
 
 def _clean_boxes(ranges, layout: Layout) -> List[str]:
@@ -659,7 +710,8 @@ def set_questions(config: dict, payload: dict, grades_data: Optional[dict] = Non
     be converted.
     """
     layout = Layout.from_config(config.get("layout"))
-    rubric_ids = [r["id"] for r in config.get("rubrics") or []]
+    rubric_by_id = {r["id"]: r for r in config.get("rubrics") or []}
+    rubric_ids = list(rubric_by_id)
     old = {q["id"]: q for q in config.get("questions") or []}
     sections = _clean_sections(config, payload)
     crops_known(config)
@@ -692,6 +744,11 @@ def set_questions(config: dict, payload: dict, grades_data: Optional[dict] = Non
                     "boxes": _clean_boxes(raw.get("boxes"), layout),
                     "max": max_marks,
                     "rubric_ids": [rid for rid in rubric_ids if rid in picked]}
+        raw_caps = raw["level_caps"] if "level_caps" in raw else old.get(qid, {}).get("level_caps")
+        caps = _clean_level_caps(raw_caps, config, question, old.get(qid),
+                                 grades_data or {}, rubric_by_id)
+        if caps:
+            question["level_caps"] = caps
         section_id = raw.get("section_id", old.get(qid, {}).get("section_id"))
         if section_id:
             question["section_id"] = str(section_id)

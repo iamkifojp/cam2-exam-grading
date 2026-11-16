@@ -49,6 +49,7 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
     summary = grading_summary.class_summary(config, grades)
     questions = config.get("questions") or []
     rubric_list = config.get("rubrics") or []
+    rubric_by_id = {r["id"]: r for r in rubric_list}
     rubric_names = {r["id"]: r["name"] for r in rubric_list}
     na_text = t("grade.not_answered")
     # Per question: its grade columns (one per criterion it is assessed on), then its comment.
@@ -181,7 +182,16 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
         if q["id"] in marks_q:
             third = q.get("max")
         else:
-            third = ", ".join(rubric_names[rid] for rid in q_rids[q["id"]]) or None
+            parts = []
+            for rid in q_rids[q["id"]]:
+                cap = grading_summary.question_level_cap(config, q, rid)
+                if cap is None:
+                    parts.append(rubric_names[rid])
+                else:
+                    band = rubrics.band_for_level(rubric_by_id[rid], cap)
+                    parts.append(t("xlsx.rubric_capped", name=rubric_names[rid],
+                                   levels=band["levels"] if band else cap))
+            third = ", ".join(parts) or None
         ref.append([q["label"], ", ".join(q.get("boxes") or []), third, choice])
     for cell in ref[1]:
         cell.font = BOLD
