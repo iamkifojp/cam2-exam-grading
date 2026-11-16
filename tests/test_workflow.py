@@ -629,5 +629,31 @@ class LevelCapWorkflowTests(WorkflowTestCase):
         self.assertNotIn("level_caps", self.config["questions"][0])
 
 
+class AnnotationWorkGuardTests(WorkflowTestCase):
+    def test_annotations_and_highlights_count_as_work(self):
+        self.imported()
+        grades = model.new_grades(self.config["session_id"])
+        workflow.set_questions(self.config, {"questions": [{"id": "q1", "label": "Q1", "boxes": ["A1:B2"], "max": 5}]})
+        # Note-only work locks page fixes and scan replacement and adds to grades_mass
+        grading_summary.add_annotation(self.config, grades, "s001", "q1", 1, 0.2, 0.3, "Check")
+        self.assertEqual(model.grades_mass(grades), 1)
+        self.assertTrue(workflow.class_has_work(grades))
+        with self.assertRaises(UserError) as ctx:
+            workflow.edit_pages(self.session, self.config, grades, "s001", 1, "turn")
+        self.assertEqual(ctx.exception.code, "pages_locked_graded")
+
+        # Deleting the note unlocks; adding a highlight-only entry locks again
+        nid = grades["grades"]["s001"]["q1"]["annotations"][0]["id"]
+        grading_summary.delete_annotation(self.config, grades, "s001", "q1", nid)
+        self.assertEqual(model.grades_mass(grades), 0)
+        self.assertFalse(workflow.class_has_work(grades))
+        grading_summary.add_highlight(self.config, grades, "s002", "q1", 1, 0.1, 0.1, 0.2, 0.05, "blue")
+        self.assertEqual(model.grades_mass(grades), 1)
+        self.assertTrue(workflow.class_has_work(grades))
+        with self.assertRaises(UserError) as ctx2:
+            workflow.edit_pages(self.session, self.config, grades, "s002", 1, "turn")
+        self.assertEqual(ctx2.exception.code, "pages_locked_graded")
+
+
 if __name__ == "__main__":
     unittest.main()

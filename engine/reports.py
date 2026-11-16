@@ -70,6 +70,9 @@ h2 { font-size: 13pt; margin: 0; }
 .big { font-size: 15pt; font-weight: bold; }
 .muted { color: #6b7385; font-size: 9pt; }
 .label { color: #6b7385; font-size: 8.5pt; }
+.note-tag { font-size: 8.5pt; font-weight: bold; }
+.note-tag.strength { color: #14734a; }
+.note-tag.growth { color: #9a5200; }
 p { margin: 0 0 3pt 0; }
 """
 GRADE_CSS = CSS + """
@@ -136,16 +139,30 @@ class _Writer:
 
 # --- Images --------------------------------------------------------------------------
 
+def _encode_jpeg(im: Image.Image):
+    """(jpeg bytes, width px, height px) of a PIL image, resized for embedding."""
+    rgb = im.convert("RGB") if im.mode != "RGB" else im
+    resized = None
+    try:
+        target = rgb
+        if rgb.width > IMAGE_MAX_PX:
+            ratio = IMAGE_MAX_PX / rgb.width
+            resized = rgb.resize((IMAGE_MAX_PX, max(1, int(rgb.height * ratio))), Image.LANCZOS)
+            target = resized
+        with io.BytesIO() as buf:
+            target.save(buf, "JPEG", quality=JPEG_QUALITY, optimize=True)
+            return buf.getvalue(), target.width, target.height
+    finally:
+        if resized is not None:
+            resized.close()
+        if rgb is not im:
+            rgb.close()
+
+
 def _jpeg(path: str):
     """(jpeg bytes, width px, height px) of an image, resized for embedding."""
     with Image.open(path) as im:
-        im = im.convert("RGB")
-        if im.width > IMAGE_MAX_PX:
-            ratio = IMAGE_MAX_PX / im.width
-            im = im.resize((IMAGE_MAX_PX, max(1, int(im.height * ratio))), Image.LANCZOS)
-        buf = io.BytesIO()
-        im.save(buf, "JPEG", quality=JPEG_QUALITY, optimize=True)
-        return buf.getvalue(), im.width, im.height
+        return _encode_jpeg(im)
 
 
 def _fit(w_px: int, h_px: int, max_w: float, max_h: float):
@@ -401,40 +418,199 @@ def _criterion_block(w: _Writer, rubric: dict, side: str, show_table: bool, fina
 
 # --- Questions -------------------------------------------------------------------------
 
-def _question_notes(config: dict, question: dict, entry: dict, not_counted, group_of: dict, language: str) -> str:
-    """What is said under a grade: why it didn't count, and the teacher's comment."""
+_HIGHLIGHT_FILLS = {
+    "yellow": ((1.0, 0.92, 0.23), 0.35),
+    "blue": ((0.38, 0.72, 1.0), 0.32),
+    "pink": ((1.0, 0.48, 0.72), 0.32),
+}
+_STAMP_FILLS = {
+    "strength": (0.08, 0.45, 0.29),
+    "growth": (0.80, 0.45, 0.0),
+    None: (0.14, 0.35, 0.84),
+}
+
+
+def _question_note_items(config: dict, question: dict, entry: dict, not_counted, group_of: dict,
+                         language: str) -> List[str]:
+    """Paragraphs printed under a question: choice reason, comment, and numbered notes."""
     t = lambda key, **kw: i18n.t(key, language, **kw)     # noqa: E731
-    notes = []
+    items = []
     if not_counted(question["id"]):
         why = ("report.not_counted_teacher"
                if grading_summary.group_pick(group_of[question["id"]]) == grading_summary.PICK_TEACHER
                else "report.not_counted_long")
-        notes.append(f"<p class='muted'>{_e(t(why))}</p>")
+        items.append(f"<p class='muted'>{_e(t(why))}</p>")
     comment = str(entry.get("comment") or "").strip()
     if comment:
-        notes.append(f"<p><span class='label'>{_e(t('report.comment'))}{'：' if language == 'ja' else ':'}</span> {_e(comment)}</p>")
-    return "".join(notes)
+        items.append(f"<p><span class='label'>{_e(t('report.comment'))}{'：' if language == 'ja' else ':'}</span> {_e(comment)}</p>")
+    for i, ann in enumerate(entry.get("annotations") or [], 1):
+        text = str(ann.get("text") or "").strip()
+        if not text:
+            continue
+        kind = ann.get("type")
+        if kind in ("strength", "growth"):
+            tag_key = "report.note_strength" if kind == "strength" else "report.note_growth"
+            tag = f" <span class='note-tag {kind}'>[{_e(t(tag_key))}]</span>"
+        else:
+            tag = ""
+        items.append(f"<p><b>({i})</b>{tag} {_e(text)}</p>")
+    return items
+
+
+def _question_notes(config: dict, question: dict, entry: dict, not_counted, group_of: dict, language: str) -> str:
+    return "".join(_question_note_items(config, question, entry, not_counted, group_of, language))
+
+
+def _answer_geometry_for_report(session: storage.Session, layout: slicer.Layout,
+                                question: dict, student: dict, crop_w: int, crop_h: int) -> dict:
+    scan_rel = student.get("file")
+    if scan_rel and question.get("boxes"):
+        scan_path = session.path(f"{storage.SCANS_DIR}/{scan_rel}")
+        if os.path.isfile(scan_path):
+            boxes = slicer.parse_boxes(question["boxes"], layout)
+            geom = slicer.answer_geometry(scan_path, boxes, layout)
+            if (geom["width"], geom["height"]) == (crop_w, crop_h):
+                return geom
+    return slicer._build_geometry([(1, crop_w, crop_h, (0, 0, crop_w, crop_h), 1.0)], divider_px=0)
+
+
+def _draw_overlay(page, rect: fitz.Rect, win_x0: float, win_y0: float, win_w: float, win_h: float,
+                  part_index: Optional[int], proj_hls: List[dict], proj_notes: List[dict],
+                  include_bottom: bool = True) -> None:
+    if win_w <= 0 or win_h <= 0:
+        return
+    for hl in proj_hls:
+        rgb, alpha = _HIGHLIGHT_FILLS.get(hl.get("colour"), _HIGHLIGHT_FILLS["yellow"])
+        for piece in hl.get("pieces") or []:
+            if part_index is not None and piece["part_index"] != part_index:
+                continue
+            ix0 = max(piece["cx"], win_x0)
+            iy0 = max(piece["cy"], win_y0)
+            ix1 = min(piece["cx"] + piece["cw"], win_x0 + win_w)
+            iy1 = min(piece["cy"] + piece["ch"], win_y0 + win_h)
+            if ix1 <= ix0 or iy1 <= iy0:
+                continue
+            px0 = rect.x0 + ((ix0 - win_x0) / win_w) * rect.width
+            py0 = rect.y0 + ((iy0 - win_y0) / win_h) * rect.height
+            px1 = rect.x0 + ((ix1 - win_x0) / win_w) * rect.width
+            py1 = rect.y0 + ((iy1 - win_y0) / win_h) * rect.height
+            page.draw_rect(fitz.Rect(px0, py0, px1, py1), color=None, fill=rgb,
+                           fill_opacity=alpha, overlay=True)
+
+    for ann in proj_notes:
+        if part_index is not None and ann["part_index"] != part_index:
+            continue
+        cx, cy = ann["cx"], ann["cy"]
+        if not (win_x0 <= cx <= win_x0 + win_w):
+            continue
+        if include_bottom:
+            if not (win_y0 <= cy <= win_y0 + win_h):
+                continue
+        elif not (win_y0 <= cy < win_y0 + win_h):
+            continue
+        sx = rect.x0 + ((cx - win_x0) / win_w) * rect.width
+        sy = rect.y0 + ((cy - win_y0) / win_h) * rect.height
+        fill = _STAMP_FILLS.get(ann.get("type"), _STAMP_FILLS[None])
+        page.draw_circle((sx, sy), 7.5, color=(1, 1, 1), fill=fill, width=0.9, overlay=True)
+        label = str(ann["num"])
+        fs = 8.5 if len(label) == 1 else 7.2
+        tw = fitz.get_text_length(label, fontname="hebo", fontsize=fs)
+        page.insert_text((sx - tw / 2, sy + fs * 0.34), label, fontname="hebo",
+                         fontsize=fs, color=(1, 1, 1), overlay=True)
 
 
 def _question_with_image(w: _Writer, session: storage.Session, layout: slicer.Layout, question: dict,
-                         student: dict, parts: List[tuple], notes: str, language: str) -> None:
+                         student: dict, entry: dict, parts: List[tuple], note_items: List[str],
+                         language: str) -> None:
     crop = session.path(f"{storage.CROPS_DIR}/{slicer.crop_file(question['id'], student['id'], layout)}")
-    image = _jpeg(crop) if os.path.isfile(crop) else None
-    img_w, img_h = _fit(image[1], image[2], IMAGE_MAX_W, IMAGE_MAX_H) if image else (0, 0)
-    row_h = max(img_h, 28)
-    w.ensure(row_h)
-    top, x_img = w.y, MARGIN + LABEL_W
-    w.at(fitz.Rect(MARGIN, top, x_img - 6, top + row_h), f"<h2>{_e(question['label'])}</h2>", shrink=True)
-    if image:
-        rect = fitz.Rect(x_img, top, x_img + img_w, top + img_h)
-        w.page.insert_image(rect, stream=image[0])
-        w.page.draw_rect(rect, color=FRAME, width=0.8)
-    x_grade = x_img + img_w + 10
-    w.at(fitz.Rect(x_grade, top, x_grade + GRADE_W, top + row_h), _grade_html(parts, language),
-         css=GRADE_CSS, shrink=True)
-    w.y = top + row_h + 4
-    if notes:
-        w.html(notes, x=x_img, width=CONTENT_W - LABEL_W, gap=0)
+    x_img = MARGIN + LABEL_W
+    if os.path.isfile(crop):
+        with Image.open(crop) as crop_im:
+            crop_w, crop_h = crop_im.size
+            geom = _answer_geometry_for_report(session, layout, question, student, crop_w, crop_h)
+            proj_notes = slicer.project_annotations(geom, entry.get("annotations") or [])
+            proj_hls = slicer.project_highlights(geom, entry.get("highlights") or [])
+            natural_h = crop_h * (IMAGE_MAX_W / crop_w) if crop_w else 0
+
+            if natural_h <= IMAGE_MAX_H or not geom["parts"]:
+                jpg_bytes, enc_w, enc_h = _encode_jpeg(crop_im)
+                img_w, img_h = _fit(enc_w, enc_h, IMAGE_MAX_W, IMAGE_MAX_H)
+                row_h = max(img_h, 28)
+                w.ensure(row_h)
+                top = w.y
+                w.at(fitz.Rect(MARGIN, top, x_img - 6, top + row_h),
+                     f"<h2>{_e(question['label'])}</h2>", shrink=True)
+                rect = fitz.Rect(x_img, top, x_img + img_w, top + img_h)
+                w.page.insert_image(rect, stream=jpg_bytes)
+                w.page.draw_rect(rect, color=FRAME, width=0.8)
+                _draw_overlay(w.page, rect, 0, 0, crop_w, crop_h, None, proj_hls, proj_notes)
+                x_grade = x_img + img_w + 10
+                w.at(fitz.Rect(x_grade, top, x_grade + GRADE_W, top + row_h),
+                     _grade_html(parts, language), css=GRADE_CSS, shrink=True)
+                w.y = top + row_h + 4
+            else:
+                pt_per_px = IMAGE_MAX_W / crop_w
+                first_h = geom["parts"][0]["crop_h"] * pt_per_px
+                w.ensure(min(max(first_h, 28), 140))
+                header_drawn = False
+                for part in geom["parts"]:
+                    pw, ph = part["crop_w"], part["crop_h"]
+                    part_draw_w = pw * pt_per_px
+                    part_draw_h = ph * pt_per_px
+                    if part_draw_h > (w.bottom - w.y) and part_draw_h <= PAGE_ROOM - 8 and w.y > MARGIN + 1:
+                        w.new_page()
+                    part_im = crop_im.crop((part["crop_x"], part["crop_y"],
+                                            part["crop_x"] + pw, part["crop_y"] + ph))
+                    try:
+                        cur_px = 0
+                        while cur_px < ph:
+                            if w.bottom - w.y < 60:
+                                w.new_page()
+                            avail_h = w.bottom - w.y
+                            slice_px = ph - cur_px
+                            if slice_px * pt_per_px > avail_h:
+                                slice_px = max(1, min(ph - cur_px, int(avail_h / pt_per_px)))
+                            is_last = (cur_px + slice_px >= ph)
+                            strip_h_pt = slice_px * pt_per_px
+                            strip_im = (part_im if (cur_px == 0 and is_last)
+                                        else part_im.crop((0, cur_px, pw, cur_px + slice_px)))
+                            try:
+                                jpg_bytes, _, _ = _encode_jpeg(strip_im)
+                            finally:
+                                if strip_im is not part_im:
+                                    strip_im.close()
+                            top = w.y
+                            rect = fitz.Rect(x_img, top, x_img + part_draw_w, top + strip_h_pt)
+                            if not header_drawn:
+                                row_h = max(strip_h_pt, 28)
+                                w.at(fitz.Rect(MARGIN, top, x_img - 6, top + row_h),
+                                     f"<h2>{_e(question['label'])}</h2>", shrink=True)
+                                x_grade = x_img + IMAGE_MAX_W + 10
+                                w.at(fitz.Rect(x_grade, top, x_grade + GRADE_W, top + row_h),
+                                     _grade_html(parts, language), css=GRADE_CSS, shrink=True)
+                                header_drawn = True
+                            w.page.insert_image(rect, stream=jpg_bytes)
+                            w.page.draw_rect(rect, color=FRAME, width=0.8)
+                            _draw_overlay(w.page, rect, part["crop_x"], part["crop_y"] + cur_px,
+                                          pw, slice_px, part["index"], proj_hls, proj_notes,
+                                          include_bottom=is_last)
+                            w.y = top + strip_h_pt + 4
+                            cur_px += slice_px
+                    finally:
+                        part_im.close()
+    else:
+        row_h = 28
+        w.ensure(row_h)
+        top = w.y
+        w.at(fitz.Rect(MARGIN, top, x_img - 6, top + row_h),
+             f"<h2>{_e(question['label'])}</h2>", shrink=True)
+        x_grade = x_img + 10
+        w.at(fitz.Rect(x_grade, top, x_grade + GRADE_W, top + row_h),
+             _grade_html(parts, language), css=GRADE_CSS, shrink=True)
+        w.y = top + row_h + 4
+
+    for item in note_items:
+        w.html(item, x=x_img, width=CONTENT_W - LABEL_W, gap=2)
     w.y += GAP * 1.4
 
 
@@ -519,14 +695,14 @@ def build_student_pdf(session: storage.Session, config: dict, grades: dict, stud
                          if options["section_results"] and row["max"] else "")
                 _section_heading(w, _section_name(config, section, language), right, 140 if images else 40)
             rows = [(q, _grades(config, grades, student["id"], q),
-                     _question_notes(config, q, entries.get(q["id"]) or {}, not_counted, group_of, language))
+                     _question_note_items(config, q, entries.get(q["id"]) or {}, not_counted, group_of, language))
                     for q in section["questions"]]
             if images:
-                for q, parts, notes in rows:
+                for q, parts, note_items in rows:
                     _question_with_image(w, session, slicer.Layout.from_config(config.get("layout")), q, student,
-                                         parts, notes, language)
+                                         entries.get(q["id"]) or {}, parts, note_items, language)
             else:
-                _questions_as_grid(w, rows, language)
+                _questions_as_grid(w, [(q, parts, "".join(note_items)) for q, parts, note_items in rows], language)
 
         w.finish()
         doc.subset_fonts()

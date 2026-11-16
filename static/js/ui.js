@@ -190,6 +190,7 @@ function typedPart(text, line) {
 export function commentField({ key, limit, saved, line = "", save, flush, attrs = {} }) {
   const length = (text) => [...typedPart(text, line)].length;
   const note = h("p", { class: "comment-note small", "aria-live": "polite" });
+  let composing = false;
   const check = () => {
     const n = length(box.value);
     const over = n > limit && n > length(saved());
@@ -202,8 +203,13 @@ export function commentField({ key, limit, saved, line = "", save, flush, attrs 
     return over;
   };
   const box = h("textarea", { ...attrs,
-    oninput: () => { if (check()) flush(); else save(box.value); },
-    onblur: () => flush() },
+    oncompositionstart: () => { composing = true; },
+    oncompositionend: () => {
+      composing = false;
+      if (check()) flush(); else save(box.value);
+    },
+    oninput: () => { if (!composing) { if (check()) flush(); else save(box.value); } },
+    onblur: () => { if (!composing) flush(); } },
   refused.has(key) ? [line, refused.get(key)].filter(Boolean).join("\n") : saved());
   check();
   return [box, note];

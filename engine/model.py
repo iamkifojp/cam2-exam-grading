@@ -162,6 +162,8 @@ def grades_mass(data: dict) -> int:
             count += sum(1 for v in (entry.get("levels") or {}).values() if v is not None)
             if str(entry.get("comment") or "").strip():
                 count += 1
+            count += len(entry.get("annotations") or [])
+            count += len(entry.get("highlights") or [])
     for entry in (data.get("overall") or {}).values():
         if not isinstance(entry, dict):
             continue

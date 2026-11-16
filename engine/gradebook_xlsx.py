@@ -43,6 +43,19 @@ def gradebook_path(session: storage.Session, config: dict) -> str:
     return session.path(f"{storage.REPORTS_DIR}/{name}")
 
 
+def comment_with_notes(entry: dict) -> str | None:
+    """Question comment plus numbered note text for the gradebook cell."""
+    parts = []
+    comment = str((entry or {}).get("comment") or "").strip()
+    if comment:
+        parts.append(comment)
+    for i, ann in enumerate((entry or {}).get("annotations") or [], 1):
+        text = str(ann.get("text") or "").strip()
+        if text:
+            parts.append(f"({i}) {text}")
+    return "\n".join(parts) or None
+
+
 def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
     from .workflow import display_name, report_options     # avoid an import cycle
     t = lambda key, **kw: i18n.t(key, language, **kw)      # noqa: E731
@@ -107,7 +120,7 @@ def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
                 if value is None:
                     ungraded_cols.append(len(row) + 1)
                 row.append(na_text if value == model.NOT_ANSWERED else value)
-            row.append(entry.get("comment") or None)
+            row.append(comment_with_notes(entry))
         by_section = {s["id"]: s for s in res["sections"]}
         for section in section_cols:
             result = by_section[section["id"]]

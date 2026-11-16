@@ -311,6 +311,8 @@ def _has_work(grades_data: Optional[dict], student_id: str) -> bool:
     return any(isinstance(e, dict) and (
         e.get("value") is not None
         or str(e.get("comment") or "").strip()
+        or bool(e.get("annotations"))
+        or bool(e.get("highlights"))
         or any(v is not None for v in (e.get("levels") or {}).values()))
         for e in per.values())
 

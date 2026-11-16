@@ -299,14 +299,21 @@ class GradingTests(AppTestCase):
 
     def test_quick_comments(self):
         session = self.client.get("/api/state").get_json()["session"]
-        self.assertEqual(len(session["config"]["keywords"]), 5)          # defaults, in English
-        self.post("/api/setup/keywords", {"keywords": [{"label": "neat", "type": "strength"}]})
-        self.grade({"student_id": "s001", "question_id": "q1", "comment": "Typed."})
-        session = self.grade({"student_id": "s001", "question_id": "q1", "keywords": ["neat"]})["session"]
-        self.assertEqual(session["config"]["keywords"], [{"label": "neat", "type": "strength"}])
-        self.assertEqual(session["grades"]["grades"]["s001"]["q1"]["comment"], "Strengths: neat.\nTyped.")
-        err = self.grade({"student_id": "s001", "question_id": "q1", "keywords": ["gone"]}, status=400)
-        self.assertEqual(err["error"], "unknown_keyword")
+        self.assertEqual(len(session["config"]["keywords"]), 4)          # 4 defaults, in English
+        self.assertEqual(session["config"]["keywords"][0]["type"], "strength")
+        self.post("/api/setup/keywords", {"keywords": [{"label": "neat", "type": "strength"},
+                                                       {"label": "plain", "type": None}]})
+        # Legacy keywords/keyword_text stay untouched when saving grades/comments
+        self.state.grades["grades"]["s001"] = {
+            "q1": {"value": 3, "comment": "Areas to develop: neat.\nTyped.",
+                   "keywords": ["neat"], "keyword_text": "Areas to develop: neat."}}
+        session = self.grade({"student_id": "s001", "question_id": "q1", "value": 4})["session"]
+        self.assertEqual(session["config"]["keywords"], [
+            {"label": "neat", "type": "strength"}, {"label": "plain", "type": None}])
+        self.assertEqual(session["grades"]["grades"]["s001"]["q1"]["comment"], "Areas to develop: neat.\nTyped.")
+        self.assertEqual(session["grades"]["grades"]["s001"]["q1"]["keyword_text"], "Areas to develop: neat.")
+        err = self.post("/api/setup/keywords", {"keywords": [{"label": f"k{i}"} for i in range(9)]}, status=400)
+        self.assertEqual(err["error"], "too_many_keywords")
 
     def test_adjust_one_box_after_grading(self):
         self.grade({"student_id": "s001", "question_id": "q2", "value": 2})
@@ -793,7 +800,14 @@ class CommentLimitRouteTests(AppTestCase):
 
     def test_limits_are_told_to_the_page(self):
         session = self.client.get("/api/state").get_json()["session"]
-        self.assertEqual(session["comment_limits"], {"question": 300, "overall": 600})
+        self.assertEqual(session["comment_limits"], {
+            "question": 300,
+            "overall": 600,
+            "per_question": {"q1": 300, "q2": 300},
+            "note": 120,
+            "notes_per_page": 8,
+            "keywords_max": 8,
+        })
 
     def test_a_long_comment_is_refused_and_nothing_is_lost(self):
         self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "comment": "x" * 300})
@@ -951,6 +965,70 @@ class LevelCapAppTests(AppTestCase):
         self.assertEqual(restored["grades"]["grades"]["s001"]["q1"]["value"], 4)
         with open(session.grades_file.path, encoding="utf-8") as fh:
             self.assertEqual(json.load(fh)["version"], model.VERSION)
+
+
+class AnnotationAppTests(AppTestCase):
+    def test_geometry_and_annotation_routes_limits_and_reopen(self):
+        self.folder = self.create()["folder"]
+        self.set_up_questions()
+
+        geom_res = self.client.get("/api/geometry/q2/s001")
+        self.assertEqual(geom_res.status_code, 200)
+        geom = geom_res.get_json()
+        self.assertEqual(len(geom["parts"]), 1)
+        self.assertEqual(geom["parts"][0]["page"], 2)
+
+        # Add, edit, move, and delete a note + highlight through /api/annotations
+        s = self.post("/api/annotations", {
+            "action": "add_note", "student_id": "s001", "question_id": "q2",
+            "page": 2, "x": 0.2, "y": 0.3, "text": "Check units.", "type": "growth",
+        })["session"]
+        nid = s["grades"]["grades"]["s001"]["q2"]["annotations"][0]["id"]
+        self.post("/api/annotations", {
+            "action": "update_note", "student_id": "s001", "question_id": "q2",
+            "id": nid, "text": "Good diagram.", "type": "strength",
+        })
+        self.post("/api/annotations", {
+            "action": "move_note", "student_id": "s001", "question_id": "q2",
+            "id": nid, "page": 2, "x": 0.25, "y": 0.35,
+        })
+        s = self.post("/api/annotations", {
+            "action": "add_highlight", "student_id": "s001", "question_id": "q2",
+            "page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.05, "colour": "pink",
+        })["session"]
+        hid = s["grades"]["grades"]["s001"]["q2"]["highlights"][0]["id"]
+
+        # 8 notes per page limit enforced on route
+        for i in range(7):
+            self.post("/api/annotations", {
+                "action": "add_note", "student_id": "s001", "question_id": "q2",
+                "page": 2, "x": 0.1 * (i + 1), "y": 0.5, "text": f"Extra {i}",
+            })
+        err = self.post("/api/annotations", {
+            "action": "add_note", "student_id": "s001", "question_id": "q2",
+            "page": 2, "x": 0.5, "y": 0.5, "text": "Ninth",
+        }, status=400)
+        self.assertEqual(err["error"], "too_many_notes_on_page")
+
+        # 301-char comment refused on 1-page q1; per_question limit exposed in session
+        self.assertEqual(s["comment_limits"]["per_question"]["q1"], 300)
+        self.post("/api/grade", {"student_id": "s001", "question_id": "q1", "comment": "x" * 301}, status=400)
+
+        # Reopen keeps everything intact; delete removes cleanly
+        reopened = self.post("/api/session/reopen")["session"]
+        q2_entry = reopened["grades"]["grades"]["s001"]["q2"]
+        self.assertEqual(len(q2_entry["annotations"]), 8)
+        self.assertEqual(q2_entry["annotations"][0]["text"], "Good diagram.")
+        self.assertEqual(q2_entry["highlights"][0]["colour"], "pink")
+
+        self.post("/api/annotations", {
+            "action": "delete_highlight", "student_id": "s001", "question_id": "q2", "id": hid,
+        })
+        s = self.post("/api/annotations", {
+            "action": "delete_note", "student_id": "s001", "question_id": "q2", "id": nid,
+        })["session"]
+        self.assertEqual(len(s["grades"]["grades"]["s001"]["q2"]["annotations"]), 7)
+        self.assertNotIn("highlights", s["grades"]["grades"]["s001"]["q2"])
 
 
 if __name__ == "__main__":

@@ -6,6 +6,47 @@ year-month-day.
 
 ## Unreleased
 
+### Phase D — annotations and long-answer reports (`D1`–`D4`)
+
+- **Unified answer and whole-page geometry (`D1`).**
+  `engine/slicer.py` computes an answer's parts (`answer_geometry`,
+  `whole_page_geometry`) directly on `range_to_bbox`, `crop_boxes`, and
+  `stitch_vertical`, handling multiple boxes per page, unequal widths, overlaps,
+  multi-page answers, and padding/divider exclusions. Notes (`annotations`) and
+  5 mm grid-snapped highlights (`highlights`) are stored in `grades.json` as
+  scanned-page fractions independent of zoom, screen scaling, or crop size,
+  shared across a question's criteria, and saved via guarded `/api/annotations`
+  calls with pending-edit flushing and stale-response protection.
+- **Step 4 annotation tools, quick comments, and page-scaled limits (`D2`).**
+  Step 4's viewer adds **Pan**, **Add note**, and **Highlight** (yellow, blue,
+  pink) tools using pointer events throughout. Teachers can click to type a
+  note or pointer-drag quick comments onto the answer, drag stamps to move
+  them, and drag highlights snapped to the 5 mm grid (even on older coarse-grid
+  sessions). Quick comments become a placeable list starting with four defaults
+  (*Well explained.* as Strength, plus *More explanation needed.*, *Incomplete
+  answer.*, *Hard to read.* as Areas to develop), capped at 8 items and 120
+  characters per note while keeping existing longer lists and legacy
+  tick-generated text untouched. Per-page limits allow up to 8 notes and
+  300 characters of question comment per distinct scanned page covered by a
+  question's boxes (e.g., 24 notes and 900 characters on a 3-page essay), with
+  Japanese IME composition respected in comment and note fields.
+- **Box adjustment & teacher-work protection (`D3`).**
+  Adjusting a question's boxes keeps stored page positions intact: highlights
+  clip to overlapping parts (and fully excluded highlights remain listed for
+  inspection/removal), while notes outside the new crop appear at the nearest
+  in-box point on the same page (or start of the answer) marked *Check
+  position* until dragged or confirmed. Notes and highlights count as teacher
+  work in `grades_mass`, `_has_work`, page-fix/scan-replacement locks, and
+  Step 4/5 indicators.
+- **Long-answer PDF reports and Excel gradebook (`D4`).**
+  `engine/reports.py` prints short answers as before and flows tall/multi-page
+  answers across pages at readable width, part by part (splitting oversized
+  single parts cleanly without gaps or repetition), with PyMuPDF-drawn
+  highlights, numbered stamps, and numbered note text printed once below the
+  question's comment (including when section images are off). The Excel
+  gradebook appends numbered note text to question comment cells without
+  mutating stored comments.
+
 ### Phase C — format 3 and tiered levels (`C1`–`C2`)
 
 - **Session format version 3 (`C1`).**

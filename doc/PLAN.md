@@ -375,7 +375,7 @@ Keep source commits apart from packaging results. On another computer, check for
 | A: integrity fixes | Done (PR #4) | Branch `phase-a-integrity`, commit `a46a859` ([PR #4](https://github.com/iamkifojp/cam2-exam-grading/pull/4)). Verified with `build/venv/bin/python -m unittest discover -s tests -t .` (353 pass, 1 skipped `test_ui_syntax.py` because `node` is absent; 4 `RunningInstanceTests` pass separately outside sandbox via `tests.test_launcher` 8/8 OK) plus live browser check on `127.0.0.1:5199` covering `A1`–`A3` and Step 4 close/reopen flush. Limits: `test_ui_syntax.py` skipped (`node` unavailable), `A4` save-failure UI banner after unplug not simulated interactively in browser (verified at Flask route/AppState level), frozen `.app`/`.exe` builds not rebuilt. PR #4 merged as `cea7f98`; local and live remote main matched on 2026-11-13 before Phase B. Regression suite rerun; 12 browser modules separately parsed successfully. |
 | B: maintenance, buttons, 16:10 | Done (PR #5) | [PR #5](https://github.com/iamkifojp/cam2-exam-grading/pull/5), branch `codex/phase-b-maintenance`, implementation `5241526`, maintenance integrations `20daefd`, `4dffecf`. Verification and platform limits below. |
 | C: format 3, tiered levels | Done (PR #6) | [PR #6](https://github.com/iamkifojp/cam2-exam-grading/pull/6), branch `phase-c-format3-tiered-levels`, implementation `ee94e51`. Format version 3 (`C1`) + per-question/criterion level ceilings (`C2`). Verification and platform limits below. |
-| D: annotations, long-answer reports | Not started | Geometry contract first |
+| D: annotations, long-answer reports | Done | Branch `phase-d-annotations`. Unified geometry (`D1`), Step 4 pointer tools, quick comments, per-page limits (`D2`), box-adjustment projection and work guards (`D3`), and long-answer reports + gradebook notes (`D4`). Verification and platform limits below. |
 | E: class grid | Not started | |
 | G: whole-submission tasks | Not started | |
 | H: assignments, drafts, Late, partners | Not started | Write the session contract for CAM first |
@@ -473,3 +473,48 @@ The teacher authorized pushing and merging PR #5 to `main`.
   persistence at version 3 with 0 uncaught console errors.
 - Limits: frozen Mac `.app` / Windows `.exe` builds, native OS pickers,
   Windows file locks, and live CAM sync remain platform/integration limits.
+
+### Phase D verification — 2026-11-16
+
+- Pre-Phase D check: started from clean `main` at `c6eb790` matching
+  `origin/main` (`0 0`), with no open PRs; deleted merged Phase B branch
+  `codex/phase-b-maintenance` locally and on `origin`, and created branch
+  `phase-d-annotations`.
+- Implemented `D1`–`D4`:
+  - `engine/slicer.py`: `page_image_size(s)`, `answer_geometry`,
+    `whole_page_geometry`, `crop_point_to_page`, `snap_highlight_from_crop`,
+    `project_annotations`, and `project_highlights`.
+  - `engine/keywords.py`, `engine/grading_summary.py`, `engine/model.py`,
+    `engine/workflow.py`: 4 defaults, optional `strength`/`growth` types,
+    8-item and 120-char quick-comment/note limits, 8 notes per scanned page,
+    300 chars per distinct scanned answer page, legacy `keywords`/`keyword_text`
+    preserved untouched, and annotations/highlights counted in `grades_mass` and
+    `_has_work`.
+  - `engine/reports.py` & `engine/gradebook_xlsx.py`: multi-page / oversized
+    part splitting with vector highlights/stamps, printed note text (including
+    images-off sections), and numbered notes in Excel comment cells without
+    mutating stored comments.
+  - `app.py`, `static/js/step4.js`, `static/js/boxes.js`, `static/js/ui.js`,
+    `static/js/store.js`, `static/js/main.js`, `static/js/step1.js`,
+    `static/js/step5.js`, `static/app.css`, `i18n/{en,ja}.json`: `/api/geometry`
+    and `/api/annotations`, Pan / Add note / Highlight tools, pointer-dragged
+    stamps and quick comments, 5 mm snapped highlights, *Check position* +
+    excluded highlights list, Japanese IME composition handling, flush &
+    sequence-guarded saves.
+- Automated checks (`build/venv/bin/python -m unittest discover -s tests -t .`
+  in sandbox: 375 pass + 4 `RunningInstanceTests` failing on sandbox sockets;
+  `build/venv/bin/python -m unittest tests.test_launcher` outside sandbox: 8/8
+  pass = **379 run, 379 passed, 0 skipped**, including Node.js syntax check
+  `test_ui_syntax.py` and EN/JA parity `test_i18n.py`).
+- Live browser verification against isolated Flask server `127.0.0.1:5219` on a
+  3-page synthetic exam: verified Pan / Add note / Highlight (blue add & click
+  remove, yellow add), quick-comment placement, stamp dragging & reload
+  persistence, 3-page essay 900-char limit (400 chars accepted) and shared
+  notes/highlights across Criterion A/B, shrinking boxes via *Adjust this box*
+  producing *Check position* and *Confirm here* clearing it, 301-char refusal
+  blocking *Next paper* on 1-page Q1, Step 5 `has-comment` markers, Japanese UI
+  rendering with 0 console errors, and `grades.json` persistence on disk.
+- Limits: frozen Mac `.app` / Windows `.exe` builds, native OS pickers,
+  Windows file locks, live CAM sync, physical USB unplug UI banner, and
+  native-speaker review of new Japanese wording remain platform/integration
+  limits.

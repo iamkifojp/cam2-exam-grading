@@ -22,6 +22,17 @@ let renderFn = () => {};
 export function onRender(fn) { renderFn = fn; }
 export function render() { renderFn(); }
 
+let mutationSeq = 0;
+let latestApplied = 0;
+export function nextMutationSeq() { return ++mutationSeq; }
+export function applySession(session, seq = null) {
+  if (seq !== null && seq < latestApplied) return false;
+  if (seq !== null) latestApplied = seq;
+  app.session = session;
+  if (!session?.save_failed) app.saveError = null;
+  return true;
+}
+
 export function config() { return app.session?.config; }
 
 // The criteria (rubrics) a question is assessed on, in rubric order. Without
@@ -55,10 +66,15 @@ export function gradeOf(sid, qid, rid = null) {
 }
 
 export async function act(promise, { rerender = true, quiet = false } = {}) {
+  const seq = nextMutationSeq();
+  const sessionId = app.session?.config?.session_id;
   try {
     const data = await promise;
-    if (data && "session" in data) app.session = data.session;
-    if (data && data.session !== undefined && !data.session?.save_failed) app.saveError = null;
+    if (data && "session" in data) {
+      if (!sessionId || data.session?.config?.session_id === sessionId || !app.session) {
+        applySession(data.session, seq);
+      }
+    }
     if (rerender) render();
     return data;
   } catch (err) {
