@@ -376,7 +376,7 @@ Keep source commits apart from packaging results. On another computer, check for
 | B: maintenance, buttons, 16:10 | Done (PR #5) | [PR #5](https://github.com/iamkifojp/cam2-exam-grading/pull/5), branch `codex/phase-b-maintenance`, implementation `5241526`, maintenance integrations `20daefd`, `4dffecf`. Verification and platform limits below. |
 | C: format 3, tiered levels | Done (PR #6) | [PR #6](https://github.com/iamkifojp/cam2-exam-grading/pull/6), branch `phase-c-format3-tiered-levels`, implementation `ee94e51`. Format version 3 (`C1`) + per-question/criterion level ceilings (`C2`). Verification and platform limits below. |
 | D: annotations, long-answer reports | Done (PR #7) | [PR #7](https://github.com/iamkifojp/cam2-exam-grading/pull/7), branch `phase-d-annotations`, implementation `9956809`. Unified geometry (`D1`), Step 4 pointer tools, quick comments, per-page limits (`D2`), box-adjustment projection and work guards (`D3`), and long-answer reports + gradebook notes (`D4`). Verification and platform limits below. |
-| E: class grid | Not started | |
+| E: class grid | Done (PR #8) | [PR #8](https://github.com/iamkifojp/cam2-exam-grading/pull/8), branch `phase-e-class-grid`, implementation `8355cc7`. Step 4 **Class grid** (**This question** and **Whole papers** views, 2–5 columns in `grid_columns`, grade sort with NA/Ungraded apart, filters showing *n of class*, `IntersectionObserver` lazy load & off-screen release, bounded server thumbnail cache). Verification and limits below. |
 | G: whole-submission tasks | Not started | |
 | H: assignments, drafts, Late, partners | Not started | Write the session contract for CAM first |
 | I: CAM, workspace removed | Not started | In CAM's repo |
@@ -518,3 +518,55 @@ The teacher authorized pushing and merging PR #5 to `main`.
   Windows file locks, live CAM sync, physical USB unplug UI banner, and
   native-speaker review of new Japanese wording remain platform/integration
   limits.
+
+### Phase E verification — 2026-11-16
+
+- Pre-Phase E check: reviewed Phase D (`c6eb790..3f23598`, PR #7) with 0
+  substantiated findings in the review targets, merged PR #7 into `main`
+  (`3bc65e6`), pruned `phase-d-annotations`, confirmed clean `main` (`0 0`) and
+  379/379 tests passing, then created branch `phase-e-class-grid`.
+- Implemented Class grid (`F11`):
+  - `engine/slicer.py` & `app.py`: `crop_thumbnail`, bounded `?w=` support on
+    `/api/crop/<region>/<student>`, faster bounded `page_preview`, a 128-entry /
+    16 MB LRU thumbnail cache keyed by session, revision, and file mtime
+    (cleared on open/close), and `grid_columns` (2–5, default 3) persisted via
+    `/api/prefs` and `/api/state`.
+  - `static/js/step4.js`, `static/app.css`, `i18n/{en,ja}.json`: **Class grid**
+    entry/exit with refused-comment guard and `flushStep4()`, **This question**
+    and **Whole papers** views, 2–5 column selector with narrow-window CSS
+    breakpoints that preserve the saved choice, grade sort in **This question**
+    keeping *Not answered* and *Ungraded* apart, status filters showing *n of
+    class*, **Hide student names** across labels/alt/ARIA, **Shuffle papers**,
+    on-demand card page arrows (`‹`/`›`), whole-page active-question indicator,
+    `IntersectionObserver` lazy loading and off-screen `img.src` release, and
+    scroll/view restoration.
+- Automated checks (`build/venv/bin/python -m unittest discover -s tests -t .`
+  with localhost sockets enabled and Node.js `v26.13.1` on `PATH`): **381 run,
+  381 passed, 0 skipped** (including `test_ui_syntax.py` and `test_i18n.py`).
+- Live browser verification against isolated Flask server `127.0.0.1:5221` on a
+  32-student synthetic exam (3-page essays, Criterion A & B, annotations,
+  highlights, NA/ungraded papers, and 2 late papers): verified 905-char refused
+  comment blocking grid entry; 32 cards in `This question` with `3 parts` and
+  annotation badges; off-screen image release and reload on scroll; Hide names
+  and Shuffle papers; grade sorting (high/low with NA and Ungraded apart);
+  filters (`8 of 32`, `4 of 32`, `3 of 32`); card click & scroll restoration;
+  `Whole papers` with `#grid-sort` hidden, card page arrows (`Page 2 / 3`),
+  whole-page grading indicator, and `Esc` close; Japanese UI; and after fixing
+  a live-caught `ReferenceError` on column clicks, verified columns `2`, `4`,
+  `5`, `3`, reload persistence of `cols-5`, and 700px narrow-viewport column
+  wrapping with `0` console errors.
+- Limits: trial build after Phase E, frozen Mac `.app` / Windows `.exe` builds,
+  native OS pickers, Windows file locks, live CAM sync, and native-speaker
+  review of new Japanese wording remain platform/integration limits.
+
+### Phase E follow-up — 2026-11-17
+
+- Teacher reports building and running the app on Windows, grading a question,
+  and confirming that highlighting and grading work well. This supplies the
+  post-E Windows trial-build check; it does not establish the other platform
+  and integration checks listed above.
+- Readiness regression check at `8a340f3`: 381 tests run with no skips; the
+  sandbox blocked localhost socket binding in launcher tests (four error
+  reports). Re-ran `build/venv/bin/python -m unittest tests.test_launcher`
+  with localhost access: all 8 passed. All other tests passed in the full run.
+- PR #8 remains open. Phase G has not started.

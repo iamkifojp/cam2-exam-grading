@@ -6,6 +6,36 @@ year-month-day.
 
 ## Unreleased
 
+### Phase E — class grid (`F11`)
+
+- **Class grid in Step 4 (`static/js/step4.js`, `static/app.css`).**
+  Teachers can open **Class grid** from Step 4 (blocked if a comment or note
+  is over its limit, and flushing pending edits first) and return with **Back
+  to grading** or `Esc`, restoring their chosen view, column count, and scroll
+  position.
+  - **This question** shows one card per student with a bounded answer
+    preview, current-criterion grade or status, projected highlights/numbered
+    stamps, and a part-count badge on multi-part answers. Clicking a card opens
+    that student, question, and criterion in normal grading view.
+  - **Whole papers** shows a page preview, page count, and `‹`/`›` arrows that
+    load other pages on demand; clicking a card opens that student at that page
+    in whole-page mode while keeping and showing the active question.
+  - **Columns, ordering, filtering, and privacy:** 2, 3, 4, or 5 columns
+    (default 3, remembered per computer in `prefs.json` `grid_columns`,
+    stepping down cleanly on narrow windows without losing the choice); paper or
+    shuffle order, plus grade sorting in **This question** view with *Ungraded*
+    and *Not answered* kept apart; filters displaying *n of class*; and full
+    **Hide student names** enforcement across card text, `aria-label`, and
+    image `alt` attributes using stable student IDs.
+- **Bounded, cached grid thumbnails (`engine/slicer.py`, `app.py`).**
+  Added `slicer.crop_thumbnail()` and optional `?w=` thumbnail scaling on
+  `/api/crop/<region>/<student>`, faster bounded rendering in `page_preview()`,
+  and a byte-bounded server LRU thumbnail cache keyed by session, file
+  modification time, and `sliced_at` (alongside `?v=<sliced_at>` browser
+  caching). Grid cards use `IntersectionObserver` to load thumbnails near the
+  viewport and release off-screen `img` sources to keep memory bounded during
+  repeated scrolling.
+
 ### Phase D — annotations and long-answer reports (`D1`–`D4`)
 
 - **Unified answer and whole-page geometry (`D1`).**

@@ -149,7 +149,7 @@ class ShellTests(AppTestCase):
         self.assertFalse(self.client.get("/api/state").get_json()["prefs"]["shuffle_papers"])
         self.post("/api/prefs", {"shuffle_papers": True})
         prefs = self.client.get("/api/state").get_json()["prefs"]
-        self.assertEqual(prefs, {"hide_names": False, "shuffle_papers": True})   # independent of hiding
+        self.assertEqual(prefs, {"hide_names": False, "shuffle_papers": True, "grid_columns": 3})   # independent of hiding
 
     def test_language_switch(self):
         self.assertEqual(self.client.get("/api/i18n").get_json()["language"], "en")
@@ -1029,6 +1029,49 @@ class AnnotationAppTests(AppTestCase):
         })["session"]
         self.assertEqual(len(s["grades"]["grades"]["s001"]["q2"]["annotations"]), 7)
         self.assertNotIn("highlights", s["grades"]["grades"]["s001"]["q2"])
+
+
+class ClassGridAppTests(AppTestCase):
+    def test_grid_columns_pref_and_bounded_crop_thumbnails(self):
+        self.folder = self.create()["folder"]
+        self.set_up_questions()
+
+        state = self.client.get("/api/state").get_json()
+        self.assertEqual(state["prefs"]["grid_columns"], 3)
+
+        self.post("/api/prefs", {"grid_columns": 5})
+        self.assertEqual(self.client.get("/api/state").get_json()["prefs"]["grid_columns"], 5)
+
+        self.post("/api/prefs", {"grid_columns": 99})
+        self.assertEqual(self.client.get("/api/state").get_json()["prefs"]["grid_columns"], 5)
+        self.post("/api/prefs", {"grid_columns": 1})
+        self.assertEqual(self.client.get("/api/state").get_json()["prefs"]["grid_columns"], 2)
+        self.post("/api/prefs", {"grid_columns": True})
+        self.assertEqual(self.client.get("/api/state").get_json()["prefs"]["grid_columns"], 3)
+
+        # Full-size crop returns PNG; ?w= returns bounded JPEG thumbnail cached by ?v=
+        full = self.fetch("/api/crop/q1/s001")
+        self.assertEqual(full.status_code, 200)
+        self.assertEqual(full.mimetype, "image/png")
+
+        stamp = state["session"]["config"]["sliced_at"]
+        thumb = self.fetch(f"/api/crop/q1/s001?w=300&v={stamp}")
+        self.assertEqual(thumb.status_code, 200)
+        self.assertEqual(thumb.mimetype, "image/jpeg")
+        self.assertIn("max-age=86400", thumb.headers.get("Cache-Control", ""))
+        from PIL import Image
+        with Image.open(io.BytesIO(thumb.get_data())) as im:
+            self.assertLessEqual(im.width, 300)
+
+        # Invalid width is rejected cleanly
+        self.assertEqual(self.fetch("/api/crop/q1/s001?w=bad").status_code, 400)
+
+        # Page thumbnail for Whole papers view works and respects cache header
+        page = self.fetch(f"/api/page/s001/1?w=400&v={stamp}")
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual(page.mimetype, "image/jpeg")
+        with Image.open(io.BytesIO(page.get_data())) as im:
+            self.assertLessEqual(im.width, 400)
 
 
 if __name__ == "__main__":

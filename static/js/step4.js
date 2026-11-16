@@ -17,9 +17,21 @@ const NA = "not_answered";
 const MAX_BUTTONS = 15;          // above this, a number box with − / +
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
 const HL_COLOURS = ["yellow", "blue", "pink"];
+const GRID_THUMB_WIDTH = 520;
 
 const geometryCache = new Map();
 const noteSavers = new Map();    // `${sid}|${qid}|${nid}` -> debounced saver
+let gridObserver = null;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!app.session || app.step !== 4 || !app.draft.grading?.gridOpen) return;
+    if (document.querySelector(".modal-backdrop")) return;
+    e.preventDefault();
+    closeGrid();
+  });
+}
 
 // --- State helpers ------------------------------------------------------------------
 
@@ -69,11 +81,17 @@ function draft() {
       qid: it.q.id, rid, sid, ungradedOnly: anyGraded, zoom: 1,
       wholePage: false, page: 1, tool: "pan", hlColour: "yellow",
       pickedKeyword: null, pendingNote: null,
+      gridOpen: false, gridView: "question", gridSort: "order",
+      gridFilter: "all", gridScroll: 0, gridPages: {},
     };
   }
   const d = app.draft.grading;
   if (!d.tool) d.tool = "pan";
   if (!d.hlColour) d.hlColour = "yellow";
+  if (!d.gridView) d.gridView = "question";
+  if (!d.gridSort) d.gridSort = "order";
+  if (!d.gridFilter) d.gridFilter = "all";
+  if (!d.gridPages) d.gridPages = {};
   // Coming from the review table (no criterion given), or the criteria changed.
   const list = items(c);
   if (!list.some((x) => x.q.id === d.qid && (x.r?.id || null) === (d.rid || null))) {
@@ -109,7 +127,9 @@ async function moveTo(changes) {
   d.arrived = false;
   d.pendingNote = null;
   d.pickedKeyword = null;
+  const switchingQuestion = changes.qid && changes.qid !== d.qid;
   Object.assign(d, changes);
+  if (switchingQuestion && d.gridOpen) d.gridScroll = 0;
   d.revealed = null;
   d.page = firstPage(d.qid);
   savePosition(d.qid, d.sid, d.rid);
@@ -460,15 +480,59 @@ function nameOrReveal(d, student) {
   return button(["👁 ", t("step4.show_name")], () => { d.revealed = student.id; render(); }, "small ghost");
 }
 
-function setPref(key, on) {
-  app.prefs[key] = on;
-  post("/api/prefs", { [key]: on }).catch((err) => handleError(err, true));
+function setPref(key, value) {
+  app.prefs[key] = value;
+  post("/api/prefs", { [key]: value }).catch((err) => handleError(err, true));
   render();
+}
+
+const gridColumns = () => {
+  const n = Number(app.prefs.grid_columns);
+  return [2, 3, 4, 5].includes(n) ? n : 3;
+};
+
+async function openGrid() {
+  if (commentRefused() || !(await flushStep4())) return;
+  const d = draft();
+  d.pendingNote = null;
+  d.pickedKeyword = null;
+  d.gridOpen = true;
+  render();
+  requestAnimationFrame(() => window.scrollTo(0, d.gridScroll || 0));
+}
+
+function closeGrid() {
+  const d = draft();
+  d.gridScroll = window.scrollY;
+  d.gridOpen = false;
+  render();
+  window.scrollTo(0, 0);
+}
+
+async function openCard(studentId, { wholePage = false, page = null } = {}) {
+  if (commentRefused() || !(await flushStep4())) return;
+  const d = draft();
+  d.gridScroll = window.scrollY;
+  d.gridOpen = false;
+  d.arrived = false;
+  d.pendingNote = null;
+  d.pickedKeyword = null;
+  d.revealed = null;
+  d.sid = studentId;
+  d.wholePage = wholePage;
+  d.page = wholePage ? (page || 1) : firstPage(d.qid);
+  savePosition(d.qid, d.sid, d.rid);
+  render();
+  window.scrollTo(0, 0);
 }
 
 // --- Screen -------------------------------------------------------------------------------
 
 export function renderStep4() {
+  if (gridObserver) {
+    gridObserver.disconnect();
+    gridObserver = null;
+  }
   const c = config();
   const d = draft();
   const list = items(c);
@@ -493,15 +557,24 @@ export function renderStep4() {
       h("span", {}, t("step4.graded_count", { done: gradedHere, total: c.students.length })),
       h("div", { class: "progress small" }, h("div", { class: "progress-fill",
         style: { width: `${(gradedHere / c.students.length) * 100}%` } }))),
-    h("label", { class: "check" }, h("input", { type: "checkbox", checked: d.ungradedOnly,
+    d.gridOpen ? null : h("label", { class: "check" }, h("input", { type: "checkbox", checked: d.ungradedOnly,
       onchange: (e) => { d.ungradedOnly = e.target.checked; render(); } }), t("step4.ungraded_only")),
     h("label", { class: "check" }, h("input", { type: "checkbox", checked: hideNames(),
       onchange: (e) => setPref("hide_names", e.target.checked) }), t("step4.hide_names")),
     h("label", { class: "check" }, h("input", { type: "checkbox", checked: shufflePapers(),
       onchange: (e) => setPref("shuffle_papers", e.target.checked) }), t("step4.shuffle_papers")),
+    d.gridOpen
+      ? button(t("step4.back_to_grading"), closeGrid, "small on", { id: "grid-toggle" })
+      : button(["⊞ ", t("step4.class_grid")], openGrid, "small", { id: "grid-toggle" }),
     d.fromReview
       ? button(t("step4.back_to_review"), () => goTo(5, { next: true }), "primary")
       : button(t("step4.to_review"), () => goTo(5, { next: true }), "ghost"));
+
+  if (d.gridOpen) {
+    return h("main", { class: "page full grading grid-mode" },
+      questionBar,
+      ...classGridSection(c, d, item));
+  }
 
   const strip = h("nav", { class: "paper-strip", "aria-label": t("step4.papers") },
     h("span", { class: "strip-label" }, t("step4.papers")),
@@ -615,6 +688,7 @@ function viewer(c, d, item, student) {
     const pages = student.pages || 1;
     const boxes = encodeURIComponent(q.boxes.join(","));
     pageNav = h("div", { class: "page-nav" },
+      h("p", { class: "whole-page-grading center" }, t("step4.whole_page_grading", { label: itemLabel(item) })),
       h("div", { class: "row center" },
         button("‹", () => { if (d.page > 1) { d.page--; render(); } }, "small", { disabled: d.page <= 1, "aria-label": t("common.prev_page") }),
         h("span", {}, t("common.page_of", { page: d.page, pages })),
@@ -1335,4 +1409,291 @@ function doneCard(c, item) {
       : [h("p", {}, t("step4.everything_done")),
         button(t("step4.to_review"), () => goTo(5, { next: true }), "primary big", { id: "next-paper" })],
     h("p", { class: "muted small" }, t("step4.show_all_hint")));
+}
+
+// --- Class grid (F11) ----------------------------------------------------------------------
+
+function gridGradeBadge(q, r, value) {
+  if (value === null) {
+    return h("span", { class: "grid-grade ungraded" }, t("step4.grid_ungraded"));
+  }
+  if (value === NA) {
+    return h("span", { class: "grid-grade na" }, t("step5.na_short"));
+  }
+  const max = r ? Math.max(...r.bands.map((b) => b.max)) : q.max;
+  return h("span", { class: "grid-grade graded" }, `${value} / ${max}`);
+}
+
+function gridStudents(c, d, q, rid) {
+  const rows = papers(c, q.id).map((student, idx) => ({
+    student,
+    paperNum: idx + 1,
+    value: valueOf(student.id, q.id, rid),
+  }));
+  const filtered = rows.filter((row) => {
+    if (d.gridFilter === "ungraded") return row.value === null;
+    if (d.gridFilter === "graded") return typeof row.value === "number";
+    if (d.gridFilter === "na") return row.value === NA;
+    if (d.gridFilter === "noted") return hasAnnotationOrComment(row.student.id, q.id);
+    return true;
+  });
+  if (d.gridView !== "question" || d.gridSort === "order") return filtered;
+
+  const bucket = (v) => (typeof v === "number" ? 0 : v === NA ? 1 : 2);
+  const desc = d.gridSort === "grade_desc";
+  return [...filtered].sort((a, b) => {
+    const ba = bucket(a.value), bb = bucket(b.value);
+    if (ba !== bb) return ba - bb;
+    if (ba === 0 && a.value !== b.value) return desc ? b.value - a.value : a.value - b.value;
+    return a.paperNum - b.paperNum;
+  });
+}
+
+function renderCardOverlay(overlay, geom, c, q, sid) {
+  const e = entry(sid, q.id);
+  const projNotes = projectAnnotations(geom, e?.annotations);
+  const projHls = projectHighlights(geom, e?.highlights);
+  const children = [];
+  for (const hl of projHls) {
+    for (const piece of hl.pieces) {
+      children.push(h("div", {
+        class: `hl-rect hl-${hl.colour || "yellow"}`,
+        style: { left: `${piece.nx * 100}%`, top: `${piece.ny * 100}%`,
+          width: `${piece.nw * 100}%`, height: `${piece.nh * 100}%` },
+      }));
+    }
+  }
+  for (const ann of projNotes) {
+    const typeCls = ann.type === "strength" ? "strength" : ann.type === "growth" ? "growth" : "plain";
+    children.push(h("span", {
+      class: `note-stamp mini ${typeCls} ${ann.outOfCrop ? "check-pos" : ""}`,
+      style: { left: `${ann.nx * 100}%`, top: `${ann.ny * 100}%` },
+    }, String(ann.num)));
+  }
+  overlay.replaceChildren(...children);
+}
+
+function observeGridCards(thumbBoxes, c, q) {
+  const loadBox = (box) => {
+    const img = box.querySelector("img.grid-thumb-img");
+    const want = box.dataset.thumbSrc;
+    if (img && want && img.getAttribute("src") !== want) {
+      img.src = want;
+    }
+    if (box.dataset.hasMarks === "1" && !box.dataset.overlayDone) {
+      box.dataset.overlayDone = "1";
+      const sid = box.dataset.sid;
+      const overlay = box.querySelector(".grid-annot-layer");
+      if (sid && overlay) {
+        const cached = cachedGeometry(c, q.id, sid);
+        if (cached) {
+          renderCardOverlay(overlay, cached, c, q, sid);
+        } else {
+          loadGeometry(c, q.id, sid, (geom) => {
+            if (overlay.isConnected) renderCardOverlay(overlay, geom, c, q, sid);
+          });
+        }
+      }
+    }
+  };
+
+  if (typeof IntersectionObserver === "undefined") {
+    thumbBoxes.forEach(loadBox);
+    return;
+  }
+
+  gridObserver = new IntersectionObserver((entries) => {
+    for (const ev of entries) {
+      const box = ev.target;
+      if (ev.isIntersecting) {
+        loadBox(box);
+      } else {
+        const img = box.querySelector("img.grid-thumb-img");
+        if (img && img.hasAttribute("src")) {
+          if (box.clientHeight > 0) box.style.minHeight = `${box.clientHeight}px`;
+          if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+            const stage = box.querySelector(".grid-stage");
+            if (stage) stage.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+          }
+          img.removeAttribute("src");
+        }
+      }
+    }
+  }, { root: null, rootMargin: "350px 0px", threshold: 0 });
+
+  for (const box of thumbBoxes) gridObserver.observe(box);
+}
+
+function classGridSection(c, d, item) {
+  const q = item.q;
+  const r = item.r;
+  const rid = r?.id || null;
+  const cols = gridColumns();
+  const stamp = encodeURIComponent(c.sliced_at || "");
+  const totalCount = c.students.length;
+  const rows = gridStudents(c, d, q, rid);
+  const filtered = rows.length !== totalCount;
+  const boxesParam = encodeURIComponent((q.boxes || []).join(","));
+  const partCount = (q.boxes || []).length;
+
+  const toolbar = h("div", { class: "grid-toolbar" },
+    h("div", { class: "row" },
+      h("div", { class: "seg", role: "group", "aria-label": t("step4.grid_view") },
+        h("button", { type: "button", class: d.gridView === "question" ? "on" : "",
+          "aria-pressed": d.gridView === "question" ? "true" : "false",
+          onclick: () => { d.gridView = "question"; d.gridScroll = 0; render(); } }, t("step4.grid_view_question")),
+        h("button", { type: "button", class: d.gridView === "papers" ? "on" : "",
+          "aria-pressed": d.gridView === "papers" ? "true" : "false",
+          onclick: () => { d.gridView = "papers"; d.gridScroll = 0; render(); } }, t("step4.grid_view_papers"))),
+      h("div", { class: "row grid-cols-pick", role: "group", "aria-label": t("step4.grid_columns") },
+        h("span", { class: "label small" }, t("step4.grid_columns")),
+        h("div", { class: "seg small-seg" }, [2, 3, 4, 5].map((n) => h("button", {
+          type: "button", class: cols === n ? "on" : "",
+          "aria-pressed": cols === n ? "true" : "false",
+          onclick: () => setPref("grid_columns", n),
+        }, String(n)))))),
+    h("div", { class: "row" },
+      d.gridView === "question"
+        ? h("label", { class: "inline" }, h("span", { class: "label small" }, t("step4.grid_sort")),
+          h("select", { id: "grid-sort", onchange: (ev) => { d.gridSort = ev.target.value; render(); } },
+            h("option", { value: "order", selected: d.gridSort === "order" ? "selected" : null },
+              shufflePapers() ? t("step4.grid_sort_shuffled") : t("step4.grid_sort_order")),
+            h("option", { value: "grade_desc", selected: d.gridSort === "grade_desc" ? "selected" : null },
+              t("step4.grid_sort_high")),
+            h("option", { value: "grade_asc", selected: d.gridSort === "grade_asc" ? "selected" : null },
+              t("step4.grid_sort_low"))))
+        : null,
+      h("label", { class: "inline" }, h("span", { class: "label small" }, t("step4.grid_filter")),
+        h("select", { id: "grid-filter", onchange: (ev) => { d.gridFilter = ev.target.value; render(); } },
+          h("option", { value: "all", selected: d.gridFilter === "all" ? "selected" : null }, t("step4.grid_filter_all")),
+          h("option", { value: "ungraded", selected: d.gridFilter === "ungraded" ? "selected" : null }, t("step4.grid_filter_ungraded")),
+          h("option", { value: "graded", selected: d.gridFilter === "graded" ? "selected" : null }, t("step4.grid_filter_graded")),
+          h("option", { value: "na", selected: d.gridFilter === "na" ? "selected" : null }, t("step4.grid_filter_na")),
+          h("option", { value: "noted", selected: d.gridFilter === "noted" ? "selected" : null }, t("step4.grid_filter_noted")))),
+      h("span", { class: `grid-count small ${filtered ? "filtered" : "muted"}`, role: "status" },
+        filtered ? t("step4.grid_showing", { shown: rows.length, total: totalCount })
+          : t("step4.grid_showing_all", { total: totalCount })),
+      filtered ? button(t("step4.grid_show_all"), () => { d.gridFilter = "all"; render(); }, "small ghost") : null));
+
+  if (!rows.length) {
+    return [toolbar, h("section", { class: "card center grid-empty" },
+      h("p", { class: "muted" }, t("step4.grid_empty")),
+      button(t("step4.grid_show_all"), () => { d.gridFilter = "all"; render(); }, "primary small"))];
+  }
+
+  const thumbBoxes = [];
+  const cards = rows.map(({ student, paperNum, value }) => {
+    const labelName = hideNames() ? t("step4.grid_paper_num", { n: paperNum }) : student.display_name;
+    const headTitle = hideNames() ? labelName : `#${paperNum} ${student.display_name}`;
+    const e = entry(student.id, q.id);
+    const noteCount = (e?.annotations || []).length;
+    const hlCount = (e?.highlights || []).length;
+    const hasComment = !!(e?.comment || "").trim();
+
+    let preview;
+    let footer = null;
+    if (d.gridView === "papers") {
+      const pages = student.pages || 1;
+      let cardPage = Math.min(Math.max(Number(d.gridPages[student.id] || 1), 1), pages);
+      const pageUrl = (pg) => `/api/page/${encodeURIComponent(student.id)}/${pg}?w=${GRID_THUMB_WIDTH}&boxes=${boxesParam}&v=${stamp}`;
+      const img = h("img", { class: "grid-thumb-img", alt: labelName, decoding: "async" });
+      const thumbBox = h("div", {
+        class: "grid-thumb-viewport whole",
+        dataset: { sid: student.id, thumbSrc: pageUrl(cardPage) },
+      }, img);
+      img.onload = () => {
+        if (thumbBox.clientHeight > 0) thumbBox.style.minHeight = `${thumbBox.clientHeight}px`;
+      };
+      thumbBoxes.push(thumbBox);
+      preview = thumbBox;
+
+      const pageSpan = h("span", { class: "small muted" }, t("common.page_of", { page: cardPage, pages }));
+      const prevBtn = button("‹", (ev) => {
+        ev.stopPropagation();
+        if (cardPage <= 1) return;
+        cardPage -= 1;
+        d.gridPages[student.id] = cardPage;
+        const url = pageUrl(cardPage);
+        thumbBox.dataset.thumbSrc = url;
+        img.src = url;
+        pageSpan.textContent = t("common.page_of", { page: cardPage, pages });
+        prevBtn.disabled = cardPage <= 1;
+        nextBtn.disabled = cardPage >= pages;
+      }, "small", { disabled: cardPage <= 1, "aria-label": t("common.prev_page") });
+      const nextBtn = button("›", (ev) => {
+        ev.stopPropagation();
+        if (cardPage >= pages) return;
+        cardPage += 1;
+        d.gridPages[student.id] = cardPage;
+        const url = pageUrl(cardPage);
+        thumbBox.dataset.thumbSrc = url;
+        img.src = url;
+        pageSpan.textContent = t("common.page_of", { page: cardPage, pages });
+        prevBtn.disabled = cardPage <= 1;
+        nextBtn.disabled = cardPage >= pages;
+      }, "small", { disabled: cardPage >= pages, "aria-label": t("common.next_page") });
+
+      footer = h("div", { class: "row spread grid-card-foot grid-card-pager" },
+        prevBtn, pageSpan, nextBtn);
+    } else {
+      const thumbUrl = `/api/crop/${encodeURIComponent(q.id)}/${encodeURIComponent(student.id)}?w=${GRID_THUMB_WIDTH}&v=${stamp}`;
+      const img = h("img", { class: "grid-thumb-img", alt: labelName, decoding: "async" });
+      const overlay = h("div", { class: "annot-layer grid-annot-layer" });
+      const stage = h("div", { class: "grid-stage" }, img, overlay);
+      const cached = cachedGeometry(c, q.id, student.id);
+      if (cached?.width && cached?.height) {
+        stage.style.aspectRatio = `${cached.width} / ${cached.height}`;
+      }
+      const thumbBox = h("div", {
+        class: "grid-thumb-viewport",
+        dataset: { sid: student.id, thumbSrc: thumbUrl, hasMarks: (noteCount || hlCount) ? "1" : "0" },
+      }, stage);
+      img.onload = () => {
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          stage.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+        }
+        if (thumbBox.clientHeight > 0) thumbBox.style.minHeight = `${thumbBox.clientHeight}px`;
+      };
+      thumbBoxes.push(thumbBox);
+      preview = thumbBox;
+
+      const meta = [];
+      if (partCount > 1) meta.push(h("span", { class: "badge" }, t("step4.grid_parts", { n: partCount })));
+      if (noteCount > 0) {
+        meta.push(h("span", { class: "badge" }, noteCount === 1
+          ? t("step4.grid_notes_one") : t("step4.grid_notes_many", { n: noteCount })));
+      }
+      if (hasComment) meta.push(h("span", { class: "badge" }, t("step4.grid_comment")));
+      if (meta.length) footer = h("div", { class: "row grid-card-foot" }, meta);
+    }
+
+    const openTarget = () => (d.gridView === "papers"
+      ? openCard(student.id, { wholePage: true, page: Math.min(Math.max(Number(d.gridPages[student.id] || 1), 1), student.pages || 1) })
+      : openCard(student.id, { wholePage: false }));
+
+    return h("article", {
+      class: `grid-card ${value !== null ? "graded" : ""} ${student.id === d.sid ? "current" : ""}`,
+      role: "button",
+      tabindex: "0",
+      dataset: { studentId: student.id },
+      "aria-label": t("step4.grid_open_paper", { name: labelName }),
+      onclick: openTarget,
+      onkeydown: (ev) => {
+        if (ev.target !== ev.currentTarget) return;
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openTarget();
+        }
+      },
+    },
+    h("div", { class: "row spread grid-card-head" },
+      h("strong", { class: "grid-card-name" }, headTitle),
+      gridGradeBadge(q, r, value)),
+    preview,
+    footer);
+  });
+
+  const gridEl = h("div", { class: `class-grid cols-${cols}` }, cards);
+  requestAnimationFrame(() => observeGridCards(thumbBoxes, c, q));
+  return [toolbar, gridEl];
 }
