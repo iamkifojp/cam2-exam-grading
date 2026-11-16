@@ -39,7 +39,7 @@ export function formatRange(b) {
   return `page${b.page}!${colName(b.c1)}${b.r1 + 1}:${colName(b.c2)}${b.r2 + 1}`;
 }
 
-function snap(page, x0, y0, x1, y1, cols, rows) {
+export function snap(page, x0, y0, x1, y1, cols, rows) {
   const clamp = (v) => Math.min(Math.max(v, 0), 1);
   [x0, x1] = [clamp(x0), clamp(x1)].sort((a, b) => a - b);
   [y0, y1] = [clamp(y0), clamp(y1)].sort((a, b) => a - b);

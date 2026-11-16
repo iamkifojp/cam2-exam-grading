@@ -1,11 +1,11 @@
-"""Quick comments: the per-exam list and rebuilding a comment's generated line.
+"""Quick comments: the per-exam list of notes to place while grading.
 
 Run:  python -m unittest tests.test_keywords
 """
 
 import unittest
 
-from engine import grading_summary, keywords, model
+from engine import keywords, model
 from engine.errors import UserError
 
 
@@ -16,82 +16,62 @@ def exam():
 
 
 class ListTests(unittest.TestCase):
-    def test_default_list_follows_the_language(self):
+    def test_default_list_has_four_items_and_follows_the_language(self):
         config, _ = exam()
         en = keywords.keyword_list(config, "en")
-        self.assertEqual(len(en), keywords.DEFAULT_COUNT)
-        self.assertEqual(en[4], {"label": "check calculations", "type": "growth"})
-        self.assertEqual(keywords.keyword_list(config, "ja")[4]["label"], "計算を見直そう")
+        self.assertEqual(len(en), 4)
+        self.assertEqual(en[0], {"label": "Well explained.", "type": "strength"})
+        self.assertEqual(en[1], {"label": "More explanation needed.", "type": "growth"})
+        self.assertEqual(en[2], {"label": "Incomplete answer.", "type": "growth"})
+        self.assertEqual(en[3], {"label": "Hard to read.", "type": "growth"})
+        ja = keywords.keyword_list(config, "ja")
+        self.assertEqual(len(ja), 4)
+        self.assertEqual(ja[0]["type"], "strength")
+        self.assertEqual(ja[3]["type"], "growth")
 
-    def test_set_list_cleans_up(self):
+    def test_set_list_cleans_up_and_allows_optional_type(self):
         config, _ = exam()
-        keywords.set_list(config, [{"label": "  clear   working ", "type": "strength"},
-                                   {"label": "Clear working"}, {"label": ""}, "junk",
-                                   {"label": "units missing", "type": "other"}])
-        self.assertEqual(config["keywords"], [{"label": "clear working", "type": "strength"},
-                                              {"label": "units missing", "type": "growth"}])
+        keywords.set_list(config, [
+            {"label": "  clear   working ", "type": "strength"},
+            {"label": "Clear working"},
+            {"label": ""},
+            "junk",
+            {"label": "units missing", "type": "growth"},
+            {"label": "plain note", "type": None},
+        ])
+        self.assertEqual(config["keywords"], [
+            {"label": "clear working", "type": "strength"},
+            {"label": "units missing", "type": "growth"},
+            {"label": "plain note", "type": None},
+        ])
         keywords.set_list(config, [])
         self.assertEqual(keywords.keyword_list(config, "en"), [])     # an emptied list stays empty
 
-
-class ApplyTests(unittest.TestCase):
-    def setUp(self):
-        self.config, self.grades = exam()
-        keywords.set_list(self.config, [{"label": "clear working", "type": "strength"},
-                                        {"label": "units missing", "type": "growth"},
-                                        {"label": "check calculations", "type": "growth"}])
-
-    def entry(self):
-        return self.grades["grades"]["s1"]["q1"]
-
-    def test_ticking_rebuilds_the_line_and_keeps_typed_text(self):
-        keywords.apply(self.config, self.grades, "s1", "q1", ["units missing", "clear working"], "en")
-        self.assertEqual(self.entry()["comment"], "Strengths: clear working. Areas to develop: units missing.")
-        self.entry()["comment"] += "\nGood diagram."                     # typed by the teacher
-        keywords.apply(self.config, self.grades, "s1", "q1",
-                       ["clear working", "units missing", "check calculations"], "en")
-        self.assertEqual(self.entry()["comment"],
-                         "Strengths: clear working. Areas to develop: units missing, check calculations.\n"
-                         "Good diagram.")
-        self.assertEqual(self.entry()["keywords"], ["clear working", "units missing", "check calculations"])
-        keywords.apply(self.config, self.grades, "s1", "q1", [], "en")
-        self.assertEqual(self.entry()["comment"], "Good diagram.")
-        self.assertIsNone(self.entry()["value"])                         # the grade is untouched
-
-    def test_language_change_still_replaces_the_line(self):
-        keywords.apply(self.config, self.grades, "s1", "q1", ["units missing"], "en")
-        keywords.apply(self.config, self.grades, "s1", "q1", ["units missing"], "ja")
-        self.assertEqual(self.entry()["comment"], "改善点：units missing。")
-
-    def test_edited_line_is_kept_as_typed_text(self):
-        keywords.apply(self.config, self.grades, "s1", "q1", ["units missing"], "en")
-        self.entry()["comment"] = "Mostly fine."
-        keywords.apply(self.config, self.grades, "s1", "q1", ["clear working"], "en")
-        self.assertEqual(self.entry()["comment"], "Strengths: clear working.\nMostly fine.")
-
-    def test_unknown_keyword_or_ids(self):
+    def test_limits_enforce_8_items_and_120_chars_while_keeping_longer_legacy_lists(self):
+        config, _ = exam()
+        items8 = [{"label": f"Item {i}", "type": "growth"} for i in range(8)]
+        keywords.set_list(config, items8)
         with self.assertRaises(UserError) as ctx:
-            keywords.apply(self.config, self.grades, "s1", "q1", ["nope"], "en")
-        self.assertEqual(ctx.exception.code, "unknown_keyword")
-        with self.assertRaises(UserError):
-            keywords.apply(self.config, self.grades, "s9", "q1", [], "en")
+            keywords.set_list(config, items8 + [{"label": "Item 9", "type": "growth"}])
+        self.assertEqual(ctx.exception.code, "too_many_keywords")
 
+        with self.assertRaises(UserError) as ctx2:
+            keywords.set_list(config, [{"label": "x" * 121, "type": "growth"}])
+        self.assertEqual(ctx2.exception.code, "note_too_long")
 
+        # Legacy session with 10 items and a 150-char label: kept on read and can shorten, not grow
+        legacy = [{"label": f"Old {i}", "type": "growth"} for i in range(9)] + [{"label": "z" * 150, "type": None}]
+        config["keywords"] = legacy
+        self.assertEqual(len(keywords.keyword_list(config, "en")), 10)
+        self.assertEqual(len(keywords.keyword_list(config, "en")[-1]["label"]), 150)
 
-class CommentLimitTests(unittest.TestCase):
-    def test_a_tick_is_never_stopped_by_the_limit(self):
-        config, grades = exam()
-        keywords.set_list(config, [{"label": "units missing", "type": "growth"}])
-        grading_summary.set_grade(config, grades, "s1", "q1", comment="x" * grading_summary.MAX_QUESTION_COMMENT)
-        keywords.apply(config, grades, "s1", "q1", ["units missing"], "en")
-        entry = grades["grades"]["s1"]["q1"]
-        self.assertEqual(entry["comment"], f"{entry['keyword_text']}\n{'x' * 300}")
-        # Typing on is measured without the line, so the comment as it stands still saves.
-        grading_summary.set_grade(config, grades, "s1", "q1", comment=entry["comment"])
-        with self.assertRaises(UserError):
-            grading_summary.set_grade(config, grades, "s1", "q1", comment=entry["comment"] + "x")
-        keywords.apply(config, grades, "s1", "q1", [], "en")
-        self.assertEqual(grades["grades"]["s1"]["q1"]["comment"], "x" * 300)
+        # Keeping the 10 items or shortening to 9 works; growing to 11 is refused
+        keywords.set_list(config, legacy)
+        keywords.set_list(config, legacy[:9])
+        with self.assertRaises(UserError) as ctx3:
+            keywords.set_list(config, legacy[:9] + [{"label": "New 10", "type": None}])
+        self.assertEqual(ctx3.exception.code, "too_many_keywords")
+
 
 if __name__ == "__main__":
     unittest.main()

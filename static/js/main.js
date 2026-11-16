@@ -9,7 +9,7 @@ import { renderNewSession, renderScanCheck } from "./step1.js";
 import { flushQuestions } from "./boxes.js";
 import { flushRubrics, renderStep2 } from "./step2.js";
 import { renderStep3 } from "./step3.js";
-import { renderStep4, saveComment as saveQuestionComment } from "./step4.js";
+import { flushStep4, renderStep4, saveComment as saveQuestionComment } from "./step4.js";
 import { renderStep5, saveComment as saveOverallComment } from "./step5.js";
 
 const STEPS = [1, 2, 3, 4, 5];
@@ -37,6 +37,7 @@ async function flushPending() {
   const checks = await Promise.all([
     flushQuestions(),
     saveQuestionComment.flush(),
+    flushStep4(),
     saveOverallComment.flush(),
   ]);
   return checks.every(Boolean);

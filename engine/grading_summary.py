@@ -38,11 +38,13 @@ used.
 
 from __future__ import annotations
 
+import math
+import re
 from decimal import ROUND_HALF_UP, Decimal
 from fractions import Fraction
 from typing import Dict, List, Optional
 
-from . import model, rubrics
+from . import keywords, model, rubrics
 from .errors import UserError
 
 NOT_ANSWERED = model.NOT_ANSWERED
@@ -191,6 +193,24 @@ def check_choice_groups(config: dict) -> None:
 # kept or shortened but can't grow.
 MAX_QUESTION_COMMENT = 300
 MAX_OVERALL_COMMENT = 600
+MAX_NOTE_TEXT = 120
+MAX_NOTES_PER_PAGE = 8
+HIGHLIGHT_COLOURS = ("yellow", "blue", "pink")
+_BOX_PAGE_RE = re.compile(r"^\s*(?:page\s*(\d+)\s*!)?", re.IGNORECASE)
+
+
+def question_pages_count(question: dict) -> int:
+    """Distinct scanned pages covered by ``question['boxes']`` (at least 1)."""
+    pages = set()
+    for raw in question.get("boxes") or []:
+        m = _BOX_PAGE_RE.match(str(raw or ""))
+        pages.add(int(m.group(1)) if m and m.group(1) else 1)
+    return max(1, len(pages))
+
+
+def question_comment_limit(config: dict, question: dict) -> int:
+    """300 characters per scanned page the question's boxes cover."""
+    return MAX_QUESTION_COMMENT * question_pages_count(question)
 
 
 def typed_comment(comment, generated_line: str = "") -> str:
@@ -202,8 +222,11 @@ def typed_comment(comment, generated_line: str = "") -> str:
 
 
 def _check_comment_length(new, old, limit: int, generated_line: str = "") -> None:
-    length = len(typed_comment(new, generated_line))
-    if length > limit and length > len(typed_comment(old, generated_line)):
+    raw_new = str(new or "")
+    raw_old = str(old or "")
+    length = len(typed_comment(raw_new, generated_line))
+    old_length = len(typed_comment(raw_old, generated_line))
+    if length > limit and length > old_length and len(raw_new) > len(raw_old):
         raise UserError("comment_too_long", limit=limit)
 
 
@@ -250,7 +273,8 @@ def set_grade(config: dict, grades_data: dict, student_id: str, question_id: str
             raise UserError("mark_out_of_range", value=value, max=question.get("max"))
     if comment is not None:
         saved = _entry(grades_data, student_id, question_id)
-        _check_comment_length(comment, saved.get("comment"), MAX_QUESTION_COMMENT,
+        _check_comment_length(comment, saved.get("comment"),
+                              question_comment_limit(config, question),
                               str(saved.get("keyword_text") or ""))
     entry = grades_data.setdefault("grades", {}).setdefault(student_id, {}).setdefault(
         question_id, {"value": None, "comment": ""})
@@ -268,6 +292,163 @@ def set_grade(config: dict, grades_data: dict, student_id: str, question_id: str
             entry["value"] = value
     if comment is not None:
         entry["comment"] = str(comment)
+    return grades_data
+
+
+def _check_student_question(config: dict, student_id: str, question_id: str) -> dict:
+    if student_id not in {s["id"] for s in config.get("students") or []}:
+        raise UserError("unknown_student", student=student_id)
+    return _question(config, question_id)
+
+
+def _check_page(page) -> int:
+    if isinstance(page, bool):
+        raise UserError("annotation_invalid")
+    try:
+        p = int(page)
+    except (TypeError, ValueError):
+        raise UserError("annotation_invalid")
+    if p < 1:
+        raise UserError("annotation_invalid")
+    return p
+
+
+def _check_unit(val, allow_zero: bool = True) -> float:
+    if isinstance(val, bool):
+        raise UserError("annotation_invalid")
+    try:
+        num = float(val)
+    except (TypeError, ValueError):
+        raise UserError("annotation_invalid")
+    if not math.isfinite(num) or num < 0.0 or num > 1.0 or (not allow_zero and num <= 0.0):
+        raise UserError("annotation_invalid")
+    return num
+
+
+def _ensure_entry(grades_data: dict, student_id: str, question_id: str) -> dict:
+    return grades_data.setdefault("grades", {}).setdefault(student_id, {}).setdefault(
+        question_id, {"value": None, "comment": ""})
+
+
+def add_annotation(config: dict, grades_data: dict, student_id: str, question_id: str,
+                   page, x, y, text: str, note_type=None, note_id: Optional[str] = None) -> dict:
+    """Add a numbered note at a scanned-page position ``(page, x, y)``."""
+    _check_student_question(config, student_id, question_id)
+    p = _check_page(page)
+    px, py = _check_unit(x), _check_unit(y)
+    cleaned = str(text or "").strip()
+    if not cleaned:
+        raise UserError("note_text_required")
+    if len(cleaned) > MAX_NOTE_TEXT:
+        raise UserError("note_too_long", limit=MAX_NOTE_TEXT)
+    saved = _entry(grades_data, student_id, question_id)
+    anns = list(saved.get("annotations") or [])
+    if sum(1 for a in anns if int(a.get("page") or 0) == p) >= MAX_NOTES_PER_PAGE:
+        raise UserError("too_many_notes_on_page", limit=MAX_NOTES_PER_PAGE, page=p)
+    used_ids = {a.get("id") for a in anns}
+    nid = str(note_id or "").strip()
+    if not nid or nid in used_ids:
+        nid = f"a{model.new_session_id()[:12]}"
+        while nid in used_ids:
+            nid = f"a{model.new_session_id()[:12]}"
+    entry = _ensure_entry(grades_data, student_id, question_id)
+    entry.setdefault("annotations", []).append({
+        "id": nid, "page": p, "x": px, "y": py,
+        "text": cleaned, "type": keywords.clean_type(note_type),
+    })
+    return grades_data
+
+
+def update_annotation(config: dict, grades_data: dict, student_id: str, question_id: str,
+                      note_id: str, text=..., note_type=...) -> dict:
+    """Edit the text and/or optional type of an existing note."""
+    _check_student_question(config, student_id, question_id)
+    entry = (grades_data.get("grades") or {}).get(student_id, {}).get(question_id)
+    anns = (entry or {}).get("annotations") or []
+    ann = next((a for a in anns if a.get("id") == note_id), None)
+    if ann is None:
+        raise UserError("unknown_annotation")
+    if text is not ...:
+        cleaned = str(text or "").strip()
+        if not cleaned:
+            raise UserError("note_text_required")
+        old_text = str(ann.get("text") or "")
+        if len(cleaned) > MAX_NOTE_TEXT and len(cleaned) > len(old_text):
+            raise UserError("note_too_long", limit=MAX_NOTE_TEXT)
+        ann["text"] = cleaned
+    if note_type is not ...:
+        ann["type"] = keywords.clean_type(note_type)
+    return grades_data
+
+
+def move_annotation(config: dict, grades_data: dict, student_id: str, question_id: str,
+                    note_id: str, page, x, y) -> dict:
+    """Move an existing note to ``(page, x, y)``, checking the per-page limit."""
+    _check_student_question(config, student_id, question_id)
+    p = _check_page(page)
+    px, py = _check_unit(x), _check_unit(y)
+    entry = (grades_data.get("grades") or {}).get(student_id, {}).get(question_id)
+    anns = (entry or {}).get("annotations") or []
+    ann = next((a for a in anns if a.get("id") == note_id), None)
+    if ann is None:
+        raise UserError("unknown_annotation")
+    if int(ann.get("page") or 0) != p:
+        if sum(1 for a in anns if int(a.get("page") or 0) == p) >= MAX_NOTES_PER_PAGE:
+            raise UserError("too_many_notes_on_page", limit=MAX_NOTES_PER_PAGE, page=p)
+    ann["page"], ann["x"], ann["y"] = p, px, py
+    return grades_data
+
+
+def delete_annotation(config: dict, grades_data: dict, student_id: str, question_id: str,
+                      note_id: str) -> dict:
+    """Remove a note; remaining notes keep their order and renumber naturally."""
+    _check_student_question(config, student_id, question_id)
+    entry = (grades_data.get("grades") or {}).get(student_id, {}).get(question_id)
+    if entry and "annotations" in entry:
+        entry["annotations"] = [a for a in entry["annotations"] if a.get("id") != note_id]
+        if not entry["annotations"]:
+            entry.pop("annotations", None)
+    return grades_data
+
+
+def add_highlight(config: dict, grades_data: dict, student_id: str, question_id: str,
+                  page, x, y, w, h, colour: Optional[str] = "yellow",
+                  highlight_id: Optional[str] = None) -> dict:
+    """Add a snapped highlight rectangle in page fractions."""
+    _check_student_question(config, student_id, question_id)
+    p = _check_page(page)
+    hx, hy = _check_unit(x), _check_unit(y)
+    hw, hh = _check_unit(w, allow_zero=False), _check_unit(h, allow_zero=False)
+    if hx + hw > 1.0 + 1e-6 or hy + hh > 1.0 + 1e-6:
+        raise UserError("annotation_invalid")
+    col = str(colour or "yellow").lower()
+    if col not in HIGHLIGHT_COLOURS:
+        raise UserError("unknown_highlight_colour", colour=col)
+    saved = _entry(grades_data, student_id, question_id)
+    hls = list(saved.get("highlights") or [])
+    used_ids = {item.get("id") for item in hls}
+    hid = str(highlight_id or "").strip()
+    if not hid or hid in used_ids:
+        hid = f"h{model.new_session_id()[:12]}"
+        while hid in used_ids:
+            hid = f"h{model.new_session_id()[:12]}"
+    entry = _ensure_entry(grades_data, student_id, question_id)
+    entry.setdefault("highlights", []).append({
+        "id": hid, "page": p, "x": hx, "y": hy,
+        "w": min(hw, 1.0 - hx), "h": min(hh, 1.0 - hy), "colour": col,
+    })
+    return grades_data
+
+
+def delete_highlight(config: dict, grades_data: dict, student_id: str, question_id: str,
+                     highlight_id: str) -> dict:
+    """Remove a highlight by its stable ID."""
+    _check_student_question(config, student_id, question_id)
+    entry = (grades_data.get("grades") or {}).get(student_id, {}).get(question_id)
+    if entry and "highlights" in entry:
+        entry["highlights"] = [item for item in entry["highlights"] if item.get("id") != highlight_id]
+        if not entry["highlights"]:
+            entry.pop("highlights", None)
     return grades_data
 
 

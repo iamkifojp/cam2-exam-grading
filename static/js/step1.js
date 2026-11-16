@@ -418,6 +418,7 @@ export function renderScanCheck() {
 function hasWork(studentId) {
   const per = app.session?.grades?.grades?.[studentId] || {};
   return Object.values(per).some((e) => e && (e.value != null || String(e.comment || "").trim()
+    || (e.annotations || []).length || (e.highlights || []).length
     || Object.values(e.levels || {}).some((v) => v != null)));
 }
 

@@ -371,5 +371,94 @@ class SlicingTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "page_missing")
 
 
+class AnnotationGeometryTests(unittest.TestCase):
+    def test_geometry_matches_crop_boxes_across_unequal_widths_overlaps_and_pages(self):
+        layout = Layout("A4")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = make_pdf(os.path.join(tmp, "s.pdf"), pages=2)
+            # Part 0: narrow box on page 1; Part 1: overlapping wider box on page 1; Part 2: page 2
+            boxes = slicer.parse_boxes(["page1!C4:H10", "page1!A8:T14", "page2!B2:K8"], layout)
+            geom = slicer.answer_geometry(path, boxes, layout)
+            with slicer.crop_boxes(path, boxes, layout) as crop:
+                self.assertEqual((geom["width"], geom["height"]), crop.size)
+            self.assertEqual(len(geom["parts"]), 3)
+            self.assertEqual(geom["divider"], slicer.DIVIDER_PX)
+            p0, p1, p2 = geom["parts"]
+            self.assertGreater(p1["crop_w"], p0["crop_w"])
+            self.assertEqual(p1["crop_y"], p0["crop_h"] + slicer.DIVIDER_PX)
+            self.assertEqual(p2["crop_y"], p1["crop_y"] + p1["crop_h"] + slicer.DIVIDER_PX)
+
+            # White padding to the right of narrow Part 0 and divider gap are not page positions
+            self.assertIsNone(slicer.crop_point_to_page(geom, p0["crop_w"] + 5, p0["crop_h"] // 2))
+            self.assertIsNone(slicer.crop_point_to_page(geom, 10, p0["crop_h"] + slicer.DIVIDER_PX / 2))
+
+            # Round-trip a point in Part 2 back onto page 2
+            mapped = slicer.crop_point_to_page(geom, p2["crop_w"] / 2, p2["crop_y"] + p2["crop_h"] / 2)
+            self.assertEqual(mapped["page"], 2)
+            proj = slicer.project_annotations(geom, [{"id": "a1", "page": 1, "x": 10 / 42, "y": 9.5 / 60},
+                                                     {"id": "a2", "page": 2, "x": mapped["x"], "y": mapped["y"]}])
+            self.assertEqual(len(proj), 2)
+            self.assertFalse(proj[0]["out_of_crop"])
+            self.assertFalse(proj[1]["out_of_crop"])
+            self.assertAlmostEqual(proj[1]["cx"], p2["crop_w"] / 2, delta=0.5)
+            self.assertAlmostEqual(proj[1]["cy"], p2["crop_y"] + p2["crop_h"] / 2, delta=0.5)
+
+    def test_whole_page_is_a_valid_part_and_rotated_pdf_matches_image_size(self):
+        import pymupdf as fitz
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "rot.pdf")
+            with fitz.open() as doc:
+                page = doc.new_page(width=595.28, height=841.89)
+                page.set_rotation(90)
+                doc.save(path)
+            with slicer.load_page_image(path, 1) as im:
+                self.assertEqual(slicer.page_image_size(path, 1), im.size)
+                geom = slicer.whole_page_geometry(path, 1)
+                self.assertEqual((geom["width"], geom["height"]), im.size)
+            part = geom["parts"][0]
+            self.assertEqual(part["rect"], {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0})
+            pt = slicer.crop_point_to_page(geom, geom["width"] * 0.25, geom["height"] * 0.75)
+            self.assertAlmostEqual(pt["x"], 0.25, places=4)
+            self.assertAlmostEqual(pt["y"], 0.75, places=4)
+
+    def test_highlights_snap_to_5mm_even_on_coarse_grid(self):
+        coarse = Layout("A4", "normal")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = make_pdf(os.path.join(tmp, "s.pdf"), pages=1)
+            boxes = slicer.parse_boxes(["page1!A1:O21"], coarse)
+            geom = slicer.answer_geometry(path, boxes, coarse)
+            hl = slicer.snap_highlight_from_crop(geom, 10, 10, 100, 30, coarse)
+            self.assertEqual(hl["page"], 1)
+            # Stored fractions align to 5mm (42 x 60), not coarse (15 x 21)
+            self.assertAlmostEqual(hl["w"] * 42, round(hl["w"] * 42), places=6)
+            self.assertAlmostEqual(hl["h"] * 60, round(hl["h"] * 60), places=6)
+
+    def test_out_of_crop_annotations_and_excluded_highlights(self):
+        layout = Layout("A4")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = make_pdf(os.path.join(tmp, "s.pdf"), pages=2)
+            boxes = slicer.parse_boxes(["page1!D10:J15"], layout)
+            geom = slicer.answer_geometry(path, boxes, layout)
+            # a1: same page above the box -> clamps to top edge of box; a2: on page 2 -> start of answer
+            proj = slicer.project_annotations(geom, [
+                {"id": "a1", "page": 1, "x": 5 / 42, "y": 2 / 60},
+                {"id": "a2", "page": 2, "x": 0.5, "y": 0.5},
+            ])
+            self.assertTrue(proj[0]["out_of_crop"])
+            self.assertEqual(proj[0]["confirmed_page"], 1)
+            self.assertAlmostEqual(proj[0]["confirmed_y"], geom["parts"][0]["rect"]["y"], places=6)
+            self.assertTrue(proj[1]["out_of_crop"])
+            self.assertEqual((proj[1]["cx"], proj[1]["cy"]), (0.0, 0.0))
+
+            hls = slicer.project_highlights(geom, [
+                {"id": "h1", "page": 1, "x": 0.0, "y": 11 / 60, "w": 0.5, "h": 2 / 60, "colour": "yellow"},
+                {"id": "h2", "page": 2, "x": 0.1, "y": 0.1, "w": 0.2, "h": 0.05, "colour": "pink"},
+            ])
+            self.assertFalse(hls[0]["excluded"])
+            self.assertEqual(len(hls[0]["pieces"]), 1)
+            self.assertTrue(hls[1]["excluded"])
+            self.assertEqual(hls[1]["pieces"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

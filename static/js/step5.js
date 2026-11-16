@@ -144,7 +144,8 @@ export function renderStep5() {
   const sharing = (c.sections || []).filter((s) => s.weight !== null && s.weight !== undefined);
   const sectionCols = sharing.length >= 2 ? sharing : [];
   const weighted = !!c.weighted && sharing.length >= 2;
-  const anyComment = Object.values(grades).some((per) => Object.values(per || {}).some((e) => (e?.comment || "").trim()));
+  const anyComment = Object.values(grades).some((per) => Object.values(per || {}).some((e) =>
+    (e?.comment || "").trim() || (e?.annotations || []).length));
   const cols = columns(c);
 
   // What the teacher decides comes first, beside the name; each question's grade
@@ -166,7 +167,9 @@ export function renderStep5() {
       .flatMap((g) => g.questions));
     const cells = cols.map(({ q, r, multi }) => {
       const value = gradeOf(s.id, q.id, r?.id);
-      const note = (grades[s.id]?.[q.id]?.comment || "").trim();
+      const entry = grades[s.id]?.[q.id];
+      const note = [(entry?.comment || "").trim(),
+        ...(entry?.annotations || []).map((a, idx) => `(${idx + 1}) ${a.text}`)].filter(Boolean).join("\n");
       const notCounted = inGroup.has(q.id) && !waiting.has(q.id) && value !== null && !(q.id in res.counted);
       const cls = ["num-col", "grade-cell", value === null ? "missing" : "", notCounted ? "not-counted" : "",
         note ? "has-comment" : ""].join(" ");

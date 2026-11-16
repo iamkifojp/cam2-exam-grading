@@ -64,6 +64,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             return None
         config = state.config
         layout = Layout.from_config(config.get("layout"))
+        g5 = slicer.layout_5mm(layout)
         students = [dict(s, display_name=workflow.display_name(config, s))
                     for s in config.get("students") or []]
         grades = state.grades or {}
@@ -73,8 +74,18 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
                            keywords=keywords.keyword_list(config, language()),
                            report_options=workflow.report_options(config)),
             "grid": {"cols": layout.cols, "rows": layout.rows},
-            "comment_limits": {"question": grading_summary.MAX_QUESTION_COMMENT,
-                               "overall": grading_summary.MAX_OVERALL_COMMENT},
+            "grid_5mm": {"cols": g5.cols, "rows": g5.rows},
+            "comment_limits": {
+                "question": grading_summary.MAX_QUESTION_COMMENT,
+                "overall": grading_summary.MAX_OVERALL_COMMENT,
+                "per_question": {
+                    q["id"]: grading_summary.question_comment_limit(config, q)
+                    for q in config.get("questions") or []
+                },
+                "note": grading_summary.MAX_NOTE_TEXT,
+                "notes_per_page": grading_summary.MAX_NOTES_PER_PAGE,
+                "keywords_max": keywords.MAX_KEYWORDS,
+            },
             "grades": {"grades": grades.get("grades") or {}, "overall": grades.get("overall") or {}},
             "locked_questions": [q["id"] for q in config.get("questions") or []
                                  if grading_summary.question_has_grade(grades, q["id"])],
@@ -465,6 +476,18 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         return jpeg(slicer.crop_preview(workflow.student_scan_path(session, student),
                                         boxes, layout))
 
+    @app.get("/api/geometry/<question_id>/<student_id>")
+    def answer_geometry(question_id, student_id):
+        session = state.require_session()
+        student = workflow.find_student(state.config, student_id)
+        question = next((q for q in state.config.get("questions") or [] if q["id"] == question_id), None)
+        if question is None:
+            abort(404)
+        layout = Layout.from_config(state.config.get("layout"))
+        boxes = slicer.parse_boxes(question["boxes"], layout) if question.get("boxes") else []
+        geom = slicer.answer_geometry(workflow.student_scan_path(session, student), boxes, layout)
+        return image_cache(jsonify(geom))
+
     # --- Step 2: set-up -----------------------------------------------------------------
 
     @app.post("/api/setup/layout")
@@ -622,8 +645,6 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
 
         Leave out "value" to change only the comment; "value": null clears it.
         "rubric_id" says which criterion of a question assessed on several.
-        "keywords" ticks exactly those quick comments and rebuilds the
-        comment's generated line.
         """
         state.require_session()
         data = body()
@@ -632,9 +653,47 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             grading_summary.set_grade(state.config, state.grades, str(data.get("student_id")),
                                       str(data.get("question_id")), value, data.get("comment"),
                                       rubric_id=data.get("rubric_id") or None)
-            if "keywords" in data:
-                keywords.apply(state.config, state.grades, str(data.get("student_id")),
-                               str(data.get("question_id")), data.get("keywords") or [], language())
+            state.save_grades()
+            state.remember()
+        return ok()
+
+    @app.post("/api/annotations")
+    def annotations():
+        """Add, edit, move, or delete a numbered note or highlight on one answer."""
+        state.require_session()
+        data = body()
+        action = str(data.get("action") or "")
+        sid = str(data.get("student_id") or "")
+        qid = str(data.get("question_id") or "")
+        with state.lock:
+            if action == "add_note":
+                grading_summary.add_annotation(
+                    state.config, state.grades, sid, qid,
+                    data.get("page"), data.get("x"), data.get("y"),
+                    data.get("text"), data.get("type"), data.get("id"))
+            elif action == "update_note":
+                text = data["text"] if "text" in data else ...
+                note_type = data["type"] if "type" in data else ...
+                grading_summary.update_annotation(
+                    state.config, state.grades, sid, qid,
+                    str(data.get("id") or ""), text=text, note_type=note_type)
+            elif action == "move_note":
+                grading_summary.move_annotation(
+                    state.config, state.grades, sid, qid,
+                    str(data.get("id") or ""), data.get("page"), data.get("x"), data.get("y"))
+            elif action == "delete_note":
+                grading_summary.delete_annotation(
+                    state.config, state.grades, sid, qid, str(data.get("id") or ""))
+            elif action == "add_highlight":
+                grading_summary.add_highlight(
+                    state.config, state.grades, sid, qid,
+                    data.get("page"), data.get("x"), data.get("y"),
+                    data.get("w"), data.get("h"), data.get("colour", "yellow"), data.get("id"))
+            elif action == "delete_highlight":
+                grading_summary.delete_highlight(
+                    state.config, state.grades, sid, qid, str(data.get("id") or ""))
+            else:
+                raise UserError("unknown_annotation_action", action=action)
             state.save_grades()
             state.remember()
         return ok()

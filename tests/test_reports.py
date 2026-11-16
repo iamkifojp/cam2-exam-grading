@@ -675,5 +675,91 @@ class RubricOnlyReportTests(ReportTestCase):
         self.assertIn("A3", text)
 
 
+class AnnotationReportTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = self.tmp.name
+        env = mock.patch.dict(os.environ, {"CAM2_APP_DATA": os.path.join(self.root, "appdata")})
+        env.start()
+        self.addCleanup(env.stop)
+        scans = os.path.join(self.root, "scans")
+        os.makedirs(scans)
+        # 3-page student scan for a long essay plus a narrow tall single-part answer
+        make_pdf(os.path.join(scans, "Alice.pdf"), pages=3,
+                 fills={1: [(Layout("A4"), 5, 5, RED)],
+                        2: [(Layout("A4"), 10, 10, (0, 200, 0))],
+                        3: [(Layout("A4"), 15, 15, (0, 0, 200))]})
+        self.session, self.config, self.grades = storage.create_session(
+            os.path.join(self.root, "session"), "Essay Test")
+        workflow.import_scans(self.session, self.config, {"type": "folder", "path": scans})
+        workflow.set_mode(self.config, "marks")
+        workflow.set_questions(self.config, {
+            "name_box": ["page1!A1:D2"],
+            "questions": [
+                {"id": "q1", "label": "Essay",
+                 "boxes": ["page1!A1:AP60", "page2!A1:AP60", "page3!A1:AP60"], "max": 20},
+                {"id": "q2", "label": "Column",
+                 "boxes": ["page1!A1:P60"], "max": 5},
+            ],
+        })
+        workflow.slice_session(self.session, self.config)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_three_page_essay_24_notes_900_comment_highlights_and_gradebook(self):
+        gs.set_grade(self.config, self.grades, "s001", "q1", 18, comment="E" * 900)
+        for p in (1, 2, 3):
+            for i in range(8):
+                gs.add_annotation(self.config, self.grades, "s001", "q1", p,
+                                  0.1 + 0.08 * i, 0.2 + 0.05 * i,
+                                  f"Note p{p}-{i + 1}", "strength" if i == 0 else "growth")
+        gs.add_highlight(self.config, self.grades, "s001", "q1", 2, 0.1, 0.2, 0.4, 0.05, "yellow")
+        # Oversized narrow part on q2 (width ~ 16 cols => natural height > PAGE_ROOM, must split cleanly)
+        gs.set_grade(self.config, self.grades, "s001", "q2", 4, comment="Narrow tall answer.")
+        gs.add_annotation(self.config, self.grades, "s001", "q2", 1, 0.15, 0.85, "Bottom note")
+
+        pdf_path = os.path.join(self.root, "essay.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades,
+                                  self.config["students"][0], "en", pdf_path)
+        with fitz.open(pdf_path) as doc:
+            self.assertGreaterEqual(doc.page_count, 5)
+            full_text = "\n".join(page.get_text() for page in doc)
+        # All 24 notes print once, plus the 900-char comment and stamp numbers 1..24
+        self.assertIn("E" * 900, full_text.replace("\n", ""))
+        for p in (1, 2, 3):
+            for i in range(8):
+                self.assertEqual(full_text.count(f"Note p{p}-{i + 1}"), 1)
+        self.assertIn("(24)", full_text)
+        self.assertEqual(full_text.count("Bottom note"), 1)
+
+        # Preview matches exported PDF content
+        prev = reports.preview_pdf(self.session, self.config, self.grades,
+                                   self.config["students"][0], "en")
+        with fitz.open(stream=prev, filetype="pdf") as pdoc:
+            self.assertIn("(24)", "\n".join(p.get_text() for p in pdoc))
+
+        # Section images off still prints all numbered note text
+        workflow.set_report_options(self.config, {"no_images_for": ["sec1"]})
+        noimg_path = os.path.join(self.root, "noimg.pdf")
+        reports.build_student_pdf(self.session, self.config, self.grades,
+                                  self.config["students"][0], "ja", noimg_path)
+        with fitz.open(noimg_path) as doc:
+            self.assertEqual(sum(len(p.get_images()) for p in doc), 0)
+            ja_text = "\n".join(p.get_text() for p in doc)
+        self.assertIn("Note p3-8", ja_text)
+        self.assertIn("よくできた点", ja_text)
+
+        # Excel gradebook adds numbered notes without mutating stored comment
+        xlsx_path = gradebook_xlsx.export_gradebook(self.session, self.config, self.grades, "en")
+        wb = load_workbook(xlsx_path)
+        ws = wb["Grades & Comments"]
+        header = [c.value for c in ws[1]]
+        row = {h: c.value for h, c in zip(header, ws[2])}
+        self.assertIn("(1) Note p1-1", row["Essay comment"])
+        self.assertIn("(24) Note p3-8", row["Essay comment"])
+        self.assertEqual(self.grades["grades"]["s001"]["q1"]["comment"], "E" * 900)
+
+
 if __name__ == "__main__":
     unittest.main()

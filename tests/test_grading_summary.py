@@ -772,5 +772,81 @@ class LevelCapTests(unittest.TestCase):
         self.assertEqual((summary["marks"]["total"], summary["marks"]["max"], summary["marks"]["percent"]),
                          (8, 10, 80.0))
 
+
+class AnnotationTests(unittest.TestCase):
+    def exam(self):
+        config, grades = marks_exam()
+        config["questions"][0]["boxes"] = ["page1!A1:J10"]
+        config["questions"][1]["boxes"] = ["page1!A12:J20", "page2!A1:J20", "page3!A1:J20"]
+        config["questions"][2]["boxes"] = ["page2!A1:E5", "page2!F1:J5"]  # two boxes on 1 page
+        return config, grades
+
+    def test_question_comment_limit_follows_distinct_scanned_pages(self):
+        config, grades = self.exam()
+        self.assertEqual(gs.question_comment_limit(config, config["questions"][0]), 300)
+        self.assertEqual(gs.question_comment_limit(config, config["questions"][1]), 900)
+        self.assertEqual(gs.question_comment_limit(config, config["questions"][2]), 300)
+
+        gs.set_grade(config, grades, "s1", "q2", comment="字" * 900)
+        with self.assertRaises(UserError) as ctx:
+            gs.set_grade(config, grades, "s1", "q2", comment="字" * 901)
+        self.assertEqual(ctx.exception.code, "comment_too_long")
+        self.assertEqual(ctx.exception.params["limit"], 900)
+
+        # Narrowing boxes from 3 pages down to 1 lowers the limit to 300,
+        # but the saved 900-char comment is kept and can be shortened, not grown.
+        config["questions"][1]["boxes"] = ["page1!A12:J20"]
+        self.assertEqual(gs.question_comment_limit(config, config["questions"][1]), 300)
+        gs.set_grade(config, grades, "s1", "q2", comment="字" * 900)
+        gs.set_grade(config, grades, "s1", "q2", comment="字" * 500)
+        with self.assertRaises(UserError):
+            gs.set_grade(config, grades, "s1", "q2", comment="字" * 501)
+
+    def test_notes_per_page_limit_renumbering_and_120_char_limit(self):
+        config, grades = self.exam()
+        for page in (1, 2, 3):
+            for i in range(8):
+                gs.add_annotation(config, grades, "s1", "q2", page, 0.1 * (i + 1), 0.2, f"p{page}-{i}")
+        anns = grades["grades"]["s1"]["q2"]["annotations"]
+        self.assertEqual(len(anns), 24)
+
+        with self.assertRaises(UserError) as ctx:
+            gs.add_annotation(config, grades, "s1", "q2", 1, 0.5, 0.5, "9th note")
+        self.assertEqual(ctx.exception.code, "too_many_notes_on_page")
+
+        first_id = anns[0]["id"]
+        p2_id_a = anns[8]["id"]
+        p2_id_b = anns[9]["id"]
+        gs.delete_annotation(config, grades, "s1", "q2", first_id)
+        self.assertEqual(len(grades["grades"]["s1"]["q2"]["annotations"]), 23)
+        gs.move_annotation(config, grades, "s1", "q2", p2_id_a, 1, 0.3, 0.4)
+        with self.assertRaises(UserError) as ctx2:
+            gs.move_annotation(config, grades, "s1", "q2", p2_id_b, 1, 0.3, 0.4)
+        self.assertEqual(ctx2.exception.code, "too_many_notes_on_page")
+
+        gs.move_annotation(config, grades, "s1", "q2", p2_id_a, 1, 0.6, 0.7)
+        gs.update_annotation(config, grades, "s1", "q2", p2_id_a, text="あ" * 120, note_type="strength")
+        with self.assertRaises(UserError) as ctx3:
+            gs.update_annotation(config, grades, "s1", "q2", p2_id_a, text="あ" * 121)
+        self.assertEqual(ctx3.exception.code, "note_too_long")
+        with self.assertRaises(UserError) as ctx4:
+            gs.add_annotation(config, grades, "s1", "q1", 1, 0.5, 0.5, "x" * 121)
+        self.assertEqual(ctx4.exception.code, "note_too_long")
+
+    def test_highlights_do_not_count_against_note_limit_and_legacy_keywords_untouched(self):
+        config, grades = self.exam()
+        grades["grades"] = {"s1": {"q1": {"value": 3, "comment": "Areas to develop: check units.\nGood.",
+                                          "keywords": ["check units"],
+                                          "keyword_text": "Areas to develop: check units."}}}
+        for _ in range(10):
+            gs.add_highlight(config, grades, "s1", "q1", 1, 0.1, 0.1, 0.3, 0.05, "yellow")
+        for i in range(8):
+            gs.add_annotation(config, grades, "s1", "q1", 1, 0.1 * (i + 1), 0.2, f"n{i}")
+        self.assertEqual(len(grades["grades"]["s1"]["q1"]["highlights"]), 10)
+        self.assertEqual(len(grades["grades"]["s1"]["q1"]["annotations"]), 8)
+        self.assertEqual(grades["grades"]["s1"]["q1"]["keywords"], ["check units"])
+        self.assertEqual(grades["grades"]["s1"]["q1"]["keyword_text"], "Areas to develop: check units.")
+
+
 if __name__ == "__main__":
     unittest.main()

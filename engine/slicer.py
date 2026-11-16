@@ -20,6 +20,7 @@ right part of the page because each axis is scaled separately.
 from __future__ import annotations
 
 import io
+import math
 import os
 import re
 import shutil
@@ -381,6 +382,39 @@ def load_page_image(path: str, page: int, dpi: int = RENDER_DPI) -> Image.Image:
         return ImageOps.exif_transpose(im).convert("RGB")
 
 
+def page_image_sizes(path: str, pages: Iterable[int], dpi: int = RENDER_DPI) -> dict:
+    """Pixel ``(width, height)`` per 1-based page at ``dpi``, without rasterising."""
+    wanted = sorted({int(p) for p in pages})
+    if not wanted:
+        return {}
+    ext = os.path.splitext(path)[1].lower()
+    if ext == PDF_EXT:
+        fitz = _fitz()
+        zoom = dpi / 72.0
+        mat = fitz.Matrix(zoom, zoom)
+        with fitz.open(path) as doc:
+            out = {}
+            for p in wanted:
+                if not 1 <= p <= doc.page_count:
+                    raise UserError("page_missing", file=os.path.basename(path),
+                                    page=p, pages=doc.page_count)
+                irect = (doc[p - 1].rect * mat).irect
+                out[p] = (irect.width, irect.height)
+            return out
+    for p in wanted:
+        if p != 1:
+            raise UserError("page_missing", file=os.path.basename(path), page=p, pages=1)
+    with Image.open(path) as im:
+        orient = im.getexif().get(274, 1)
+        size = (im.height, im.width) if orient in (5, 6, 7, 8) else (im.width, im.height)
+    return {1: size}
+
+
+def page_image_size(path: str, page: int, dpi: int = RENDER_DPI) -> Tuple[int, int]:
+    """Pixel ``(width, height)`` of one scan page at ``dpi`` (pages are 1-based)."""
+    return page_image_sizes(path, [page], dpi=dpi)[int(page)]
+
+
 # --- Bringing scans into the session folder --------------------------------------
 
 def check_split(total_pages: int, pages_per_student: int) -> Tuple[int, int]:
@@ -532,7 +566,275 @@ def crop_boxes(path: str, boxes: Iterable[Box], layout: Layout,
             cache[box.page] = load_page_image(path, box.page)
         img = cache[box.page]
         parts.append(img.crop(range_to_bbox(img.width, img.height, box, layout)))
-    return stitch_vertical(parts)
+    out = stitch_vertical(parts)
+    if len(parts) > 1:
+        for im in parts:
+            im.close()
+    return out
+
+
+def layout_5mm(layout: Optional[Layout] = None, page_w: int = 0, page_h: int = 0) -> Layout:
+    """The 5 mm grid for highlights, even when an older exam uses a coarser box grid."""
+    if layout is not None:
+        return Layout(layout.paper, DENSITY, layout.landscape)
+    landscape = page_w > page_h
+    return Layout("A4", DENSITY, landscape)
+
+
+def _highlight_grid(layout: Optional[Layout], page_w: int, page_h: int) -> Tuple[int, int]:
+    if layout is not None:
+        g5 = Layout(layout.paper, DENSITY, layout.landscape)
+        return g5.cols, g5.rows
+    # Nominal ~5 mm cells from an image/page shape when no paper size is set (Phase G).
+    if page_w <= 0 or page_h <= 0:
+        return GRIDS["A4"][DENSITY]
+    long_cells = 60
+    if page_h >= page_w:
+        return max(1, round(long_cells * page_w / page_h)), long_cells
+    return long_cells, max(1, round(long_cells * page_h / page_w))
+
+
+def _build_geometry(specs: Sequence[Tuple[int, int, int, Tuple[int, int, int, int], float]],
+                    divider_px: int = DIVIDER_PX) -> dict:
+    """Composite geometry from ``[(page, page_w, page_h, bbox, scale)]``."""
+    if not specs:
+        return {"width": 0, "height": 0, "divider": divider_px, "parts": []}
+    parts = []
+    y = 0
+    max_w = 0
+    for i, (page, pw, ph, bbox, scale) in enumerate(specs):
+        left, top, right, bottom = bbox
+        part_w = max(1, int(round((right - left) * scale))) if scale != 1.0 else (right - left)
+        part_h = max(1, int(round((bottom - top) * scale))) if scale != 1.0 else (bottom - top)
+        parts.append({
+            "index": i,
+            "page": int(page),
+            "page_width": int(pw),
+            "page_height": int(ph),
+            "bbox": [int(left), int(top), int(right), int(bottom)],
+            "rect": {
+                "x": left / pw,
+                "y": top / ph,
+                "w": (right - left) / pw,
+                "h": (bottom - top) / ph,
+            },
+            "scale": float(scale),
+            "crop_x": 0,
+            "crop_y": y,
+            "crop_w": part_w,
+            "crop_h": part_h,
+        })
+        max_w = max(max_w, part_w)
+        y += part_h
+        if i < len(specs) - 1:
+            y += divider_px
+    return {"width": max_w, "height": y, "divider": divider_px, "parts": parts}
+
+
+def answer_geometry(path: str, boxes: Sequence[Box], layout: Layout,
+                    page_sizes: Optional[dict] = None, dpi: int = RENDER_DPI) -> dict:
+    """Geometry of a cropped answer matching :func:`crop_boxes` and :func:`stitch_vertical`."""
+    box_list = list(boxes)
+    if not box_list:
+        return _build_geometry([])
+    sizes = dict(page_sizes or {})
+    missing = [b.page for b in box_list if b.page not in sizes]
+    if missing:
+        sizes.update(page_image_sizes(path, missing, dpi=dpi))
+    specs = []
+    for box in box_list:
+        pw, ph = sizes[box.page]
+        specs.append((box.page, pw, ph, range_to_bbox(pw, ph, box, layout), 1.0))
+    return _build_geometry(specs, divider_px=DIVIDER_PX)
+
+
+def whole_page_geometry(path: str, page: int, target_width: Optional[int] = None,
+                        dpi: int = RENDER_DPI) -> dict:
+    """Geometry for a whole scanned page (one part covering ``[0, 1] x [0, 1]``)."""
+    pw, ph = page_image_size(path, page, dpi=dpi)
+    scale = (target_width / pw) if target_width else 1.0
+    return _build_geometry([(int(page), pw, ph, (0, 0, pw, ph), scale)], divider_px=0)
+
+
+def crop_point_to_page(geometry: dict, cx: float, cy: float) -> Optional[dict]:
+    """Map composite-image pixel ``(cx, cy)`` to ``{page, x, y, part_index}``.
+
+    Returns None when ``(cx, cy)`` lands on white padding or a divider gap.
+    """
+    for part in geometry.get("parts") or []:
+        x0, y0 = part["crop_x"], part["crop_y"]
+        w, h = part["crop_w"], part["crop_h"]
+        if x0 <= cx <= x0 + w and y0 <= cy <= y0 + h:
+            rx = (cx - x0) / w if w else 0.0
+            ry = (cy - y0) / h if h else 0.0
+            r = part["rect"]
+            return {
+                "page": part["page"],
+                "x": min(max(r["x"] + rx * r["w"], 0.0), 1.0),
+                "y": min(max(r["y"] + ry * r["h"], 0.0), 1.0),
+                "part_index": part["index"],
+            }
+    return None
+
+
+def snap_highlight_from_crop(geometry: dict, cx0: float, cy0: float, cx1: float, cy1: float,
+                             layout: Optional[Layout] = None) -> Optional[dict]:
+    """Snap a dragged composite rectangle to the 5 mm grid in page fractions.
+
+    Uses the part where the drag started (or the first intersecting part) and
+    clips the drag rectangle to that part so highlights never span padding or
+    dividers.
+    """
+    parts = geometry.get("parts") or []
+    start = crop_point_to_page(geometry, cx0, cy0)
+    part = parts[start["part_index"]] if start is not None else None
+    left, right = sorted((float(cx0), float(cx1)))
+    top, bottom = sorted((float(cy0), float(cy1)))
+    if part is None:
+        for candidate in parts:
+            x0, y0 = candidate["crop_x"], candidate["crop_y"]
+            x1, y1 = x0 + candidate["crop_w"], y0 + candidate["crop_h"]
+            if min(right, x1) > max(left, x0) and min(bottom, y1) > max(top, y0):
+                part = candidate
+                break
+    if part is None:
+        return None
+    x0, y0 = part["crop_x"], part["crop_y"]
+    w, h = part["crop_w"], part["crop_h"]
+    ix0, iy0 = max(left, x0), max(top, y0)
+    ix1, iy1 = min(right, x0 + w), min(bottom, y0 + h)
+    if ix1 <= ix0 or iy1 <= iy0 or w <= 0 or h <= 0:
+        return None
+    r = part["rect"]
+    px0 = r["x"] + ((ix0 - x0) / w) * r["w"]
+    py0 = r["y"] + ((iy0 - y0) / h) * r["h"]
+    px1 = r["x"] + ((ix1 - x0) / w) * r["w"]
+    py1 = r["y"] + ((iy1 - y0) / h) * r["h"]
+    cols, rows = _highlight_grid(layout, part["page_width"], part["page_height"])
+
+    def clamp(v):
+        return min(max(float(v), 0.0), 1.0)
+
+    sx0, sx1 = sorted((clamp(px0), clamp(px1)))
+    sy0, sy1 = sorted((clamp(py0), clamp(py1)))
+    eps = 1e-9
+    c1 = min(int(sx0 * cols), cols - 1)
+    r1 = min(int(sy0 * rows), rows - 1)
+    c2 = min(max(int(sx1 * cols - eps), c1), cols - 1)
+    r2 = min(max(int(sy1 * rows - eps), r1), rows - 1)
+    return {
+        "page": part["page"],
+        "x": c1 / cols,
+        "y": r1 / rows,
+        "w": (c2 - c1 + 1) / cols,
+        "h": (r2 - r1 + 1) / rows,
+    }
+
+
+def _part_crop_xy(part: dict, px: float, py: float, geom_w: float, geom_h: float) -> Tuple[float, float, float, float]:
+    r = part["rect"]
+    rx = ((px - r["x"]) / r["w"]) if r["w"] else 0.0
+    ry = ((py - r["y"]) / r["h"]) if r["h"] else 0.0
+    cx = part["crop_x"] + min(max(rx, 0.0), 1.0) * part["crop_w"]
+    cy = part["crop_y"] + min(max(ry, 0.0), 1.0) * part["crop_h"]
+    nx = (cx / geom_w) if geom_w else 0.0
+    ny = (cy / geom_h) if geom_h else 0.0
+    return cx, cy, nx, ny
+
+
+def project_annotations(geometry: dict, annotations: Sequence[dict]) -> List[dict]:
+    """Project stored page-fraction notes onto ``geometry``.
+
+    Each entry keeps its stored ``page, x, y``; if a box adjustment moved it
+    outside all parts, ``out_of_crop`` is True and ``cx, cy`` points to the
+    nearest spot in a box on the same page, or the start of the answer.
+    """
+    parts = geometry.get("parts") or []
+    gw, gh = geometry.get("width") or 0, geometry.get("height") or 0
+    out = []
+    for idx, ann in enumerate(annotations or [], 1):
+        page = int(ann.get("page") or 1)
+        px = float(ann.get("x") or 0.0)
+        py = float(ann.get("y") or 0.0)
+        if not parts:
+            out.append({**ann, "num": idx, "out_of_crop": True, "part_index": None,
+                        "cx": 0.0, "cy": 0.0, "nx": 0.0, "ny": 0.0,
+                        "confirmed_page": page, "confirmed_x": px, "confirmed_y": py})
+            continue
+        inside = []
+        for part in parts:
+            if part["page"] != page:
+                continue
+            r = part["rect"]
+            if r["x"] <= px <= r["x"] + r["w"] and r["y"] <= py <= r["y"] + r["h"]:
+                margin = min(
+                    (px - r["x"]) * part["page_width"],
+                    (r["x"] + r["w"] - px) * part["page_width"],
+                    (py - r["y"]) * part["page_height"],
+                    (r["y"] + r["h"] - py) * part["page_height"],
+                )
+                inside.append((margin, -part["index"], part))
+        if inside:
+            inside.sort(reverse=True)
+            part = inside[0][2]
+            cx, cy, nx, ny = _part_crop_xy(part, px, py, gw, gh)
+            out.append({**ann, "num": idx, "out_of_crop": False, "part_index": part["index"],
+                        "cx": cx, "cy": cy, "nx": nx, "ny": ny,
+                        "confirmed_page": page, "confirmed_x": px, "confirmed_y": py})
+            continue
+        same_page = [p for p in parts if p["page"] == page]
+        if same_page:
+            best = None
+            for part in same_page:
+                r = part["rect"]
+                qx = min(max(px, r["x"]), r["x"] + r["w"])
+                qy = min(max(py, r["y"]), r["y"] + r["h"])
+                dist = math.hypot((px - qx) * part["page_width"], (py - qy) * part["page_height"])
+                cand = (dist, part["index"], part, qx, qy)
+                if best is None or cand < best:
+                    best = cand
+            _, _, part, qx, qy = best
+        else:
+            part = parts[0]
+            qx, qy = part["rect"]["x"], part["rect"]["y"]
+        cx, cy, nx, ny = _part_crop_xy(part, qx, qy, gw, gh)
+        out.append({**ann, "num": idx, "out_of_crop": True, "part_index": part["index"],
+                    "cx": cx, "cy": cy, "nx": nx, "ny": ny,
+                    "confirmed_page": part["page"], "confirmed_x": qx, "confirmed_y": qy})
+    return out
+
+
+def project_highlights(geometry: dict, highlights: Sequence[dict]) -> List[dict]:
+    """Clip stored page-fraction highlights to each overlapping part."""
+    parts = geometry.get("parts") or []
+    gw, gh = geometry.get("width") or 0, geometry.get("height") or 0
+    out = []
+    for hl in highlights or []:
+        page = int(hl.get("page") or 1)
+        hx0 = float(hl.get("x") or 0.0)
+        hy0 = float(hl.get("y") or 0.0)
+        hx1 = hx0 + float(hl.get("w") or 0.0)
+        hy1 = hy0 + float(hl.get("h") or 0.0)
+        pieces = []
+        for part in parts:
+            if part["page"] != page:
+                continue
+            r = part["rect"]
+            ix0 = max(hx0, r["x"])
+            iy0 = max(hy0, r["y"])
+            ix1 = min(hx1, r["x"] + r["w"])
+            iy1 = min(hy1, r["y"] + r["h"])
+            if ix1 <= ix0 or iy1 <= iy0:
+                continue
+            cx0, cy0, nx0, ny0 = _part_crop_xy(part, ix0, iy0, gw, gh)
+            cx1, cy1, nx1, ny1 = _part_crop_xy(part, ix1, iy1, gw, gh)
+            pieces.append({
+                "part_index": part["index"],
+                "cx": cx0, "cy": cy0, "cw": cx1 - cx0, "ch": cy1 - cy0,
+                "nx": nx0, "ny": ny0, "nw": nx1 - nx0, "nh": ny1 - ny0,
+            })
+        out.append({**hl, "pieces": pieces, "excluded": not pieces})
+    return out
 
 
 def parse_boxes(ranges: Iterable[str], layout: Layout) -> List[Box]:
