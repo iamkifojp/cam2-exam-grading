@@ -3,6 +3,7 @@
 Run:  python -m unittest tests.test_slicer
 """
 
+import io
 import os
 import tempfile
 import unittest
@@ -458,6 +459,22 @@ class AnnotationGeometryTests(unittest.TestCase):
             self.assertEqual(len(hls[0]["pieces"]), 1)
             self.assertTrue(hls[1]["excluded"])
             self.assertEqual(hls[1]["pieces"], [])
+
+    def test_crop_thumbnail_bounds_width_and_preserves_aspect_ratio(self):
+        layout = Layout("A4")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = make_pdf(os.path.join(tmp, "s.pdf"), pages=2)
+            boxes = slicer.parse_boxes(["page1!A1:AP30", "page2!A1:AP30"], layout)
+            crop_path = os.path.join(tmp, "crop.png")
+            with slicer.crop_boxes(path, boxes, layout) as crop:
+                crop.save(crop_path, "PNG")
+                orig_w, orig_h = crop.size
+            self.assertGreater(orig_w, 520)
+            thumb_bytes = slicer.crop_thumbnail(crop_path, max_width=520)
+            self.assertTrue(thumb_bytes.startswith(b"\xff\xd8"))
+            with Image.open(io.BytesIO(thumb_bytes)) as thumb:
+                self.assertEqual(thumb.width, 520)
+                self.assertAlmostEqual(thumb.height / thumb.width, orig_h / orig_w, delta=0.01)
 
 
 if __name__ == "__main__":

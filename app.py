@@ -15,6 +15,7 @@ import base64
 import io
 import os
 import threading
+from collections import OrderedDict
 from copy import deepcopy
 
 from flask import Flask, abort, jsonify, request, send_file, send_from_directory
@@ -144,12 +145,55 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         storage.set_pref("language", lang)
         return jsonify({"ok": True, "language": lang})
 
+    GRID_COLUMNS_DEFAULT = 3
+    MAX_THUMB_ENTRIES = 128
+    MAX_THUMB_BYTES = 16 * 1024 * 1024
+    thumb_cache: OrderedDict = OrderedDict()
+    thumb_bytes = 0
+    thumb_lock = threading.Lock()
+
+    def _clean_grid_columns(value) -> int:
+        if isinstance(value, bool):
+            return GRID_COLUMNS_DEFAULT
+        try:
+            n = int(value)
+        except (TypeError, ValueError):
+            return GRID_COLUMNS_DEFAULT
+        return min(max(n, 2), 5)
+
+    def _thumb_clear():
+        nonlocal thumb_bytes
+        with thumb_lock:
+            thumb_cache.clear()
+            thumb_bytes = 0
+
+    def _thumb_get(key):
+        with thumb_lock:
+            data = thumb_cache.get(key)
+            if data is not None:
+                thumb_cache.move_to_end(key)
+            return data
+
+    def _thumb_put(key, data: bytes):
+        nonlocal thumb_bytes
+        with thumb_lock:
+            old = thumb_cache.pop(key, None)
+            if old is not None:
+                thumb_bytes -= len(old)
+            thumb_cache[key] = data
+            thumb_bytes += len(data)
+            while thumb_cache and (len(thumb_cache) > MAX_THUMB_ENTRIES or thumb_bytes > MAX_THUMB_BYTES):
+                _, evicted = thumb_cache.popitem(last=False)
+                thumb_bytes -= len(evicted)
+
     @app.post("/api/prefs")
     def set_prefs():
         data = body()
         for key in ("hide_names", "shuffle_papers"):
             if key in data:
                 storage.set_pref(key, bool(data[key]))
+        if "grid_columns" in data:
+            storage.set_pref("grid_columns", _clean_grid_columns(data["grid_columns"]))
         return jsonify({"ok": True})
 
     @app.post("/api/host/handoff")
@@ -185,11 +229,12 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
 
     @app.get("/api/state")
     def get_state():
+        prefs = {key: bool(storage.get_pref(key, False))
+                 for key in ("hide_names", "shuffle_papers")}
+        prefs["grid_columns"] = _clean_grid_columns(storage.get_pref("grid_columns", GRID_COLUMNS_DEFAULT))
         return jsonify({"language": language(), "version": VERSION,
                         "session": session_view(), "recent": storage.list_recent(),
-                        "host": host_view(),
-                        "prefs": {key: bool(storage.get_pref(key, False))
-                                  for key in ("hide_names", "shuffle_papers")}})
+                        "host": host_view(), "prefs": prefs})
 
     # --- Pickers --------------------------------------------------------------------
 
@@ -239,6 +284,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
                 storage.open_session(folder)         # still report a non-session folder
                 return None, {"locked_by": other}
         session, config, grades = storage.open_session(folder)
+        _thumb_clear()
         state.set_session(session, config, grades)
         storage.claim_lock(folder, force=True)
         adopt_host_session()
@@ -374,6 +420,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         if state.session is not None:
             state.save_all()
             state.close_session()
+        _thumb_clear()
         return jsonify({"ok": True, "recent": storage.list_recent()})
 
     @app.post("/api/session/forget")
@@ -445,12 +492,28 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
 
     @app.get("/api/crop/<region_id>/<student_id>")
     def crop(region_id, student_id):
-        state.require_session()
+        session = state.require_session()
         workflow.find_student(state.config, student_id)
         known = {q["id"] for q in state.config.get("questions") or []} | {model.NAME_BOX_ID}
         if region_id not in known:
             abort(404)
         name = slicer.crop_file(region_id, student_id, Layout.from_config(state.config.get("layout")))
+        width_arg = request.args.get("w")
+        if width_arg:
+            try:
+                width = min(max(int(width_arg), 120), 1200)
+            except ValueError:
+                abort(400)
+            path = session.path(f"{storage.CROPS_DIR}/{name}")
+            if not os.path.isfile(path):
+                abort(404)
+            key = (session.folder, "crop", region_id, student_id, width,
+                   state.config.get("sliced_at"), os.stat(path).st_mtime_ns)
+            data = _thumb_get(key)
+            if data is None:
+                data = slicer.crop_thumbnail(path, max_width=width)
+                _thumb_put(key, data)
+            return jpeg(data)
         return session_file(f"{storage.CROPS_DIR}/{name}", "image/jpeg" if name.endswith(".jpg") else "image/png")
 
     @app.get("/api/page/<student_id>/<int:page>")
@@ -459,12 +522,21 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         student = workflow.find_student(state.config, student_id)
         width = min(max(int(request.args.get("w") or 1400), 200), 2400)
         layout = Layout.from_config(state.config.get("layout"))
+        boxes_raw = request.args.get("boxes", "")
         outline = []
-        for r in request.args.get("boxes", "").split(","):
+        for r in boxes_raw.split(","):
             if r.strip():
                 outline.append(slicer.parse_range(r, layout))
-        return jpeg(slicer.page_preview(workflow.student_scan_path(session, student), page,
-                                        layout, outline, width))
+        scan_path = workflow.student_scan_path(session, student)
+        mtime = os.stat(scan_path).st_mtime_ns if os.path.isfile(scan_path) else None
+        key = (session.folder, "page", student_id, page, width, boxes_raw,
+               state.config.get("sliced_at"), mtime)
+        data = _thumb_get(key) if mtime is not None else None
+        if data is None:
+            data = slicer.page_preview(scan_path, page, layout, outline, width)
+            if mtime is not None:
+                _thumb_put(key, data)
+        return jpeg(data)
 
     @app.get("/api/preview-crop/<student_id>")
     def preview_crop(student_id):

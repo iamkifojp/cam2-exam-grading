@@ -887,12 +887,17 @@ def slice_all(scans: Sequence[Tuple[str, str]], regions: Sequence[Tuple[str, Seq
 # --- Previews for the browser -----------------------------------------------------
 
 def _to_bytes(img: Image.Image, fmt: str = "PNG", quality: int = 85) -> bytes:
-    buf = io.BytesIO()
-    if fmt == "JPEG":
-        img.convert("RGB").save(buf, "JPEG", quality=quality, optimize=True)
-    else:
-        img.save(buf, fmt)
-    return buf.getvalue()
+    with io.BytesIO() as buf:
+        if fmt == "JPEG":
+            rgb = img.convert("RGB") if img.mode != "RGB" else img
+            try:
+                rgb.save(buf, "JPEG", quality=quality, optimize=True)
+            finally:
+                if rgb is not img:
+                    rgb.close()
+        else:
+            img.save(buf, fmt)
+        return buf.getvalue()
 
 
 def _fit_width(img: Image.Image, max_width: int) -> Image.Image:
@@ -904,31 +909,64 @@ def _fit_width(img: Image.Image, max_width: int) -> Image.Image:
 
 def make_thumbnail(path: str, dest: str, width: int = 240) -> str:
     """Small JPEG of page 1, used for the Step 1 scan check."""
-    img = _fit_width(load_page_image(path, 1, dpi=60), width)
-    os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
-    with open(dest, "wb") as fh:
-        fh.write(_to_bytes(img, "JPEG", 80))
+    raw = load_page_image(path, 1, dpi=60)
+    img = _fit_width(raw, width)
+    try:
+        os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
+        with open(dest, "wb") as fh:
+            fh.write(_to_bytes(img, "JPEG", 80))
+    finally:
+        if img is not raw:
+            img.close()
+        raw.close()
     return dest
+
+
+def crop_thumbnail(path: str, max_width: int = 520, quality: int = 80) -> bytes:
+    """Bounded JPEG thumbnail of a cropped answer, preserving aspect ratio."""
+    with Image.open(path) as im:
+        resized = _fit_width(im, max_width)
+        try:
+            return _to_bytes(resized, "JPEG", quality)
+        finally:
+            if resized is not im:
+                resized.close()
 
 
 def page_preview(path: str, page: int, layout: Optional[Layout] = None,
                  outline: Sequence[Box] = (), max_width: int = 1400) -> bytes:
     """A page as JPEG bytes, optionally with question boxes outlined in red.
 
-    Used by Step 2's drawing canvas and by Step 4's "See whole page" viewer.
+    Used by Step 2's drawing canvas, Step 4's "See whole page" viewer, and the
+    class grid's Whole papers cards.
     """
-    img = load_page_image(path, page)
-    if outline and layout is not None:
-        draw = ImageDraw.Draw(img)
-        stroke = max(3, img.width // 300)
-        for box in outline:
-            if box.page == page:
-                draw.rectangle(range_to_bbox(img.width, img.height, box, layout),
-                               outline=(220, 30, 30), width=stroke)
-    return _to_bytes(_fit_width(img, max_width), "JPEG", 85)
+    dpi = 100 if max_width <= 700 else RENDER_DPI
+    img = load_page_image(path, page, dpi=dpi)
+    resized = None
+    try:
+        if outline and layout is not None:
+            draw = ImageDraw.Draw(img)
+            stroke = max(3, img.width // 300)
+            for box in outline:
+                if box.page == page:
+                    draw.rectangle(range_to_bbox(img.width, img.height, box, layout),
+                                   outline=(220, 30, 30), width=stroke)
+        resized = _fit_width(img, max_width)
+        return _to_bytes(resized, "JPEG", 85 if max_width > 700 else 80)
+    finally:
+        if resized is not None and resized is not img:
+            resized.close()
+        img.close()
 
 
 def crop_preview(path: str, boxes: Sequence[Box], layout: Layout,
                  max_width: int = 700) -> bytes:
     """One student's crop for the "Check on other papers" strip."""
-    return _to_bytes(_fit_width(crop_boxes(path, boxes, layout), max_width), "JPEG", 85)
+    raw = crop_boxes(path, boxes, layout)
+    resized = _fit_width(raw, max_width)
+    try:
+        return _to_bytes(resized, "JPEG", 85)
+    finally:
+        if resized is not raw:
+            resized.close()
+        raw.close()
