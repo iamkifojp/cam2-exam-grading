@@ -558,3 +558,15 @@ The teacher authorized pushing and merging PR #5 to `main`.
 - Limits: trial build after Phase E, frozen Mac `.app` / Windows `.exe` builds,
   native OS pickers, Windows file locks, live CAM sync, and native-speaker
   review of new Japanese wording remain platform/integration limits.
+
+### Phase E follow-up — 2026-11-17
+
+- Teacher reports building and running the app on Windows, grading a question,
+  and confirming that highlighting and grading work well. This supplies the
+  post-E Windows trial-build check; it does not establish the other platform
+  and integration checks listed above.
+- Readiness regression check at `8a340f3`: 381 tests run with no skips; the
+  sandbox blocked localhost socket binding in launcher tests (four error
+  reports). Re-ran `build/venv/bin/python -m unittest tests.test_launcher`
+  with localhost access: all 8 passed. All other tests passed in the full run.
+- PR #8 remains open. Phase G has not started.
