@@ -456,10 +456,12 @@ The teacher authorized pushing and merging PR #5 to `main`.
   Excel Sheet 2 ("Questions & Rubrics") lists ceilings while student PDFs omit
   them and final levels remain uncapped.
 - Automated checks (`build/venv/bin/python -m unittest discover -s tests -t .`
-  with localhost sockets enabled): covers v1/v2→v3 upgrades, pre-upgrade
-  backups, interrupted one-file upgrades, emergency copy upgrades, cap bounds,
-  custom non-MYP bands, batch section rejection, orphaned rubric edits, routes,
-  Excel Sheet 2, PDF reports, and bilingual i18n parity (`test_i18n`).
+  with Node.js `v26.13.1` and localhost sockets enabled): **373 run, 373 passed,
+  0 skipped**, including all 12 browser modules parsed cleanly via
+  `tests/test_ui_syntax.py`, v1/v2→v3 upgrades, pre-upgrade backups, interrupted
+  one-file upgrades, emergency copy upgrades, cap bounds, custom non-MYP bands,
+  batch section rejection, orphaned rubric edits, routes, Excel Sheet 2, PDF
+  reports, and bilingual i18n parity (`test_i18n`).
 - Live browser verification against isolated Flask server `127.0.0.1:5211` on a
   synthetic sliced exam (`Criterion A` MYP 0–8, `Criterion B` custom `0, 1,
   2–3, 4–5`, two sections, mixed marks Q3): verified Q3 marks hides cap select;
@@ -469,6 +471,5 @@ The teacher authorized pushing and merging PR #5 to `main`.
   rejected with toast & no mutation; Step 2 rubric edit leaving Q1 cap 4
   orphaned blocked with `#rubric-error` until restored; reload & JSON file
   persistence at version 3 with 0 uncaught console errors.
-- Limits: `tests/test_ui_syntax.py` skipped (`node` is not installed on this
-  machine); frozen Mac `.app` / Windows `.exe` builds, native OS pickers,
+- Limits: frozen Mac `.app` / Windows `.exe` builds, native OS pickers,
   Windows file locks, and live CAM sync remain platform/integration limits.
