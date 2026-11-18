@@ -11,7 +11,7 @@ import os
 import shutil
 from typing import Callable, List, Optional
 
-from . import grading_summary, model, pages, rubrics, slicer, storage
+from . import grading_summary, model, pages, rubrics, slicer, storage, submissions
 from .errors import UserError
 from .slicer import Layout
 
@@ -60,6 +60,11 @@ def source_files(source: dict) -> List[str]:
     ``pages_per_student``.
     """
     kind = source.get("type")
+    if kind == "submissions":
+        info = submissions.inspect_folder(source.get("path"))
+        if not info["files"]:
+            raise UserError("submission_none", files="; ".join(r["name"] for r in info["not_opened"]))
+        return info["files"]
     if kind == "combined":
         paths = pages.source_paths(source)
         if not paths:
@@ -213,7 +218,8 @@ def _finish_students(session: storage.Session, students: List[dict],
         path = student_scan_path(session, s)
         try:
             s["pages"] = slicer.page_count(path)
-            slicer.make_thumbnail(path, os.path.join(thumbs_dir, f"{s['id']}.jpg"))
+            key = slicer.student_crop_key(s)
+            slicer.make_thumbnail(path, os.path.join(thumbs_dir, f"{key}.jpg"))
         except Exception:
             s["pages"] = None
         s.setdefault("roster_id", None)
@@ -240,7 +246,7 @@ def scan_warnings(config: dict) -> dict:
         total = sum(s.get("pages") or 0 for s in students if not s.get("batch"))
         leftover = total % per
         class_size = slicer.check_class_size(total, per, record.get("students"))
-    return {"page_counts": slicer.page_count_warnings({s["id"]: s.get("pages") for s in students}),
+    return {"page_counts": [] if model.whole_submission(config) else slicer.page_count_warnings({s["id"]: s.get("pages") for s in students}),
             "leftover": leftover, "class_size": class_size}
 
 
@@ -257,6 +263,8 @@ def import_scans(session: storage.Session, config: dict, source: dict,
     """Copy (or cut up) the scans into the session, then count pages and make
     thumbnails. Replaces any earlier import and its crops."""
     files = check_source(source)
+    if source.get("type") == "submissions":
+        return import_submissions(session, config, source, progress=progress)
     _empty_dir(session.path(storage.SCANS_DIR))
     _empty_dir(session.path(storage.THUMBS_DIR))
     crops_dir = session.path(storage.CROPS_DIR)
@@ -275,7 +283,7 @@ def import_scans(session: storage.Session, config: dict, source: dict,
 
 
 def add_papers(session: storage.Session, config: dict, source: dict,
-               progress: Progress = None) -> List[str]:
+               progress: Progress = None, grades_data: Optional[dict] = None) -> List[str]:
     """Add papers to a session that already has its class, for example a
     student who sat the exam late. Set-up, names and grades are kept. If the
     class has been sliced, the new papers are sliced straight away, so they
@@ -283,6 +291,8 @@ def add_papers(session: storage.Session, config: dict, source: dict,
     if not config.get("students"):
         raise UserError("scans_not_chosen")
     files = check_source(source)
+    if source.get("type") == "submissions":
+        return import_submissions(session, config, source, grades_data, adding=True, progress=progress)
     parts = 3 if config.get("sliced") else 2
     writing = (lambda done, total: progress(done, total * parts)) if progress else None
     new = _write_papers(session, source, files, _next_number(config),
@@ -308,7 +318,8 @@ SHEET_ACTIONS = ("turn_sheet", "swap_sheet", "reverse_sheets")
 
 def _has_work(grades_data: Optional[dict], student_id: str) -> bool:
     per = ((grades_data or {}).get("grades") or {}).get(student_id) or {}
-    return any(isinstance(e, dict) and (
+    overall = ((grades_data or {}).get("overall") or {}).get(student_id) or {}
+    return bool(str(overall.get("comment") or "").strip()) or any(isinstance(e, dict) and (
         e.get("value") is not None
         or str(e.get("comment") or "").strip()
         or bool(e.get("annotations"))
@@ -319,7 +330,8 @@ def _has_work(grades_data: Optional[dict], student_id: str) -> bool:
 
 def class_has_work(grades_data: Optional[dict]) -> bool:
     """True once any paper has a grade, rubric level or comment."""
-    return any(_has_work(grades_data, sid) for sid in (grades_data or {}).get("grades") or {})
+    return any(_has_work(grades_data, sid) for sid in set((grades_data or {}).get("grades") or {})
+               | set((grades_data or {}).get("overall") or {}))
 
 
 def _refuse_if_graded(config: dict, grades_data: Optional[dict], students: List[dict]) -> None:
@@ -399,6 +411,15 @@ def edit_pages(session: storage.Session, config: dict, grades_data: Optional[dic
             g += 1
         flat.insert(g, pages.blank_ref(*size))
 
+    owners = list(student.get("page_files") or [])
+    if owners:
+        original = page - 1
+        if action in ("earlier", "later"):
+            owners[original], owners[g] = owners[g], owners[original]
+        elif action == "remove":
+            del owners[original]
+        elif action in ("blank_before", "blank_after"):
+            owners.insert(g, None)
     new_refs = [flat[i:i + per] for i in range(0, len(flat), per)] if stream else [flat]
     kept, removed = group[:len(new_refs)], group[len(new_refs):]
     changed = [s for i, s in enumerate(kept) if new_refs[i] != old_refs[i]]
@@ -412,12 +433,18 @@ def edit_pages(session: storage.Session, config: dict, grades_data: Optional[dic
         number += 1
     writes = [(s, new_refs[i]) for i, s in enumerate(kept) if s in changed]
     writes += list(zip(added, new_refs[len(kept):]))
-    _rewrite_papers(session, writes, removed)
+    if "page_files" in student and writes:
+        submissions.write_revision(session, student, new_refs[0])
+    else:
+        _rewrite_papers(session, writes, removed)
+    if owners:
+        student["page_files"] = owners
+        student["files"] = [f for f in student["files"] if f["id"] in owners]
 
     for s in changed:
         old = old_refs[group.index(s)]
         new = new_refs[group.index(s)]
-        if s.get("roster_id") and new[0][:2] != old[0][:2]:
+        if "page_files" not in s and s.get("roster_id") and new[0][:2] != old[0][:2]:
             s["roster_id"] = None      # the name was read from a page that has moved
     students = [s for s in config["students"] if s not in removed]
     at = students.index(kept[-1]) + 1
@@ -827,13 +854,16 @@ def set_section_weight(config: dict, section_id: str, value) -> dict:
 
 
 def report_options(config: dict) -> dict:
-    return dict(model.DEFAULT_REPORT_OPTIONS, **(config.get("report_options") or {}))
+    options = dict(model.DEFAULT_REPORT_OPTIONS, **(config.get("report_options") or {}))
+    if model.whole_submission(config):
+        options.setdefault("all_submission_pages", False)
+    return options
 
 
 def set_report_options(config: dict, raw: dict) -> dict:
     """Save the report options the teacher changed; the rest stay as they are."""
     options = report_options(config)
-    for key in ("section_results", "overall_criteria", "rubric_table", "overall_marks"):
+    for key in ("section_results", "overall_criteria", "rubric_table", "overall_marks", "all_submission_pages"):
         if key in raw:
             options[key] = bool(raw[key])
     if "no_images_for" in raw:
@@ -887,6 +917,8 @@ def check_ready(config: dict) -> None:
     """Everything needed before slicing; raises the first problem found."""
     if not config.get("students"):
         raise UserError("scans_not_chosen")
+    if model.whole_submission(config):
+        return
     questions = config.get("questions") or []
     if not questions:
         raise UserError("no_questions")
@@ -931,11 +963,15 @@ def slice_students(session: storage.Session, config: dict, student_ids: List[str
     """Crop every question for these papers only (late or fixed papers); the
     rest of the class keeps its crops."""
     check_ready(config)
+    if model.whole_submission(config):
+        config["sliced"] = True
+        return _finish_slicing(config, {"errors": [], "count": 0})
     wanted = set(student_ids)
-    scans = [(s["id"], student_scan_path(session, s)) for s in config["students"]
-             if s["id"] in wanted]
+    students = [s for s in config["students"] if s["id"] in wanted]
+    scans = [(s["id"], student_scan_path(session, s)) for s in students]
     summary = slicer.slice_all(scans, regions(config), Layout.from_config(config["layout"]),
-                               session.path(storage.CROPS_DIR), progress)
+                               session.path(storage.CROPS_DIR), progress,
+                               crop_keys={s["id"]: slicer.student_crop_key(s) for s in students})
     return _finish_slicing(config, summary)
 
 
@@ -958,7 +994,8 @@ def slice_question(session: storage.Session, config: dict, question_id: str,
         shutil.rmtree(folder)                  # no old crop survives a failed one
     scans = [(s["id"], student_scan_path(session, s)) for s in config["students"]]
     summary = slicer.slice_all(scans, [(question_id, slicer.parse_boxes(question["boxes"], layout))],
-                               layout, session.path(storage.CROPS_DIR), progress)
+                               layout, session.path(storage.CROPS_DIR), progress,
+                               crop_keys={s["id"]: slicer.student_crop_key(s) for s in config["students"]})
     config["crops_of"][question_id] = list(question["boxes"])
     config["sliced"] = not stale_regions(config)
     return _finish_slicing(config, summary)
@@ -971,7 +1008,7 @@ def _finish_slicing(config: dict, summary: dict) -> dict:
     for e in summary["errors"]:
         e["student_name"] = names.get(e["student"], e["student"])
         e["label"] = labels.get(e["region"], e["region"])
-    config["sliced_at"] = model.now_iso()      # lets the browser fetch fresh crops
+    config["sliced_at"] = model.new_session_id()      # lets the browser fetch fresh crops
     return summary
 
 
@@ -988,7 +1025,7 @@ def set_roster(config: dict, roster_entries: List[dict], auto: bool = True,
             s["roster_id"] = None
     if auto:
         taken = {s["roster_id"] for s in config["students"] if s.get("roster_id")}
-        free_students = [s for s in config["students"] if not s.get("roster_id")]
+        free_students = [s for s in config["students"] if not s.get("roster_id") and "page_files" not in s]
         free_roster = [r for r in roster_entries if r["id"] not in taken]
         for sid, rid in roster_mod.auto_match(free_students, free_roster).items():
             find_student(config, sid)["roster_id"] = rid
@@ -1018,3 +1055,118 @@ def match_student(config: dict, student_id: str, roster_id=None, name=None) -> d
     if name is not None:
         student["name"] = str(name).strip()[:100]
     return config
+
+
+# --- Multi-file submissions (exams may use the same importer) ----------------------
+
+def import_submissions(session, config, source, grades_data=None, adding=False, progress=None):
+    plans, rejected = submissions.plan(source.get("path"), config.get("roster") or [])
+    if not plans:
+        raise UserError("submission_none", files="; ".join(r["name"] for r in rejected))
+    existing = {}
+    if adding:
+        for student in config["students"]:
+            if student.get("roster_id"):
+                existing.setdefault(student["roster_id"], []).append(student)
+        # Check the whole batch before changing any files.
+        targets = [existing[p["roster_id"]][0] for p in plans
+                   if len(existing.get(p["roster_id"], [])) == 1]
+        _refuse_if_graded(config, grades_data, targets)
+        if any(s.get("sides") or _batch_record(config, s.get("batch") or 0).get("type") in pages.STREAM_TYPES
+               for s in targets):
+            raise UserError("submission_shared_scan")
+    elif class_has_work(grades_data):
+        raise UserError("scans_locked_graded")
+    os.makedirs(session.path(storage.SCANS_DIR), exist_ok=True)
+    students = list(config.get("students") or []) if adding else []
+    number = _next_number(config)  # Never reuse IDs on replacement.
+    changed = []
+    batch = len(config.get("more_imports") or []) + 1 if adding else 0
+    for i, plan in enumerate(plans):
+        candidates = existing.get(plan["roster_id"], [])
+        student = dict(candidates[0]) if len(candidates) == 1 else None
+        refs, files, owners = submissions.file_refs(plan["paths"], plan["names"])
+        if student:
+            path = student_scan_path(session, student)
+            refs = pages.stream_refs([path]) + refs
+            old_files = list(student.get("files") or [])
+            old_owners = list(student.get("page_files") or [])
+            if "page_files" not in student:
+                fid = "f" + model.new_session_id()
+                old_files = [{"id": fid, "name": student.get("source") or student["file"]}]
+                old_owners = [fid] * student["pages"]
+            # Keep any manual page and file ordering already done. Added
+            # files arrive in filename order at the end of this paper.
+            files = old_files + files
+            owners = old_owners + owners
+        else:
+            sid = f"s{number:03d}"
+            number += 1
+            student = {"id": sid, "source": plan["names"][0], "batch": batch,
+                       "roster_id": plan["roster_id"], "name": ""}
+        submissions.write_revision(session, student, refs, nominal_photos=model.whole_submission(config))
+        student.update(files=files, page_files=owners, pages=len(refs))
+        if len(candidates) == 1:
+            students[students.index(candidates[0])] = student
+        else:
+            students.append(student)
+        changed.append(student)
+        if progress:
+            progress(i + 1, len(plans))
+    config["students"] = students
+    config["not_opened"] = rejected
+    record = _import_record(source, [])
+    if adding:
+        config["more_imports"] = list(config.get("more_imports") or []) + [record]
+    else:
+        config["import"], config["more_imports"] = record, []
+    _finish_students(session, changed)
+    config["scan_warnings"] = scan_warnings(config)
+    if model.whole_submission(config):
+        config["sliced"] = True
+        config["sliced_at"] = model.new_session_id()
+    elif config.get("sliced") and adding:
+        slice_students(session, config, [s["id"] for s in changed])
+    else:
+        _crops_stale(config)
+    return [s["id"] for s in changed] if adding else config
+
+
+def edit_file(session, config, grades_data, student_id, file_id, action):
+    student = find_student(config, student_id)
+    _refuse_if_graded(config, grades_data, [student])
+    files = list(student.get("files") or [])
+    index = next((i for i, f in enumerate(files) if f["id"] == file_id), None)
+    if index is None:
+        raise UserError("submission_file_missing")
+    owners = student["page_files"]
+    path = student_scan_path(session, student)
+    refs = pages.stream_refs([path])
+    if action == "remove":
+        indices = [i for i, owner in enumerate(owners) if owner != file_id]
+        if not indices:
+            raise UserError("last_page")
+        files.pop(index)
+    elif action in ("earlier", "later"):
+        to = max(0, min(len(files) - 1, index + (-1 if action == "earlier" else 1)))
+        if to == index:
+            return {"student": student_id, "page": 1}
+        neighbor = files[to]["id"]
+        files[index], files[to] = files[to], files[index]
+        moved = [i for i, owner in enumerate(owners) if owner == file_id]
+        indices = [i for i, owner in enumerate(owners) if owner != file_id]
+        adjacent = [i for i, ref_index in enumerate(indices) if owners[ref_index] == neighbor]
+        insert_at = adjacent[0] if action == "earlier" else adjacent[-1] + 1
+        indices[insert_at:insert_at] = moved
+    else:
+        raise UserError("unknown_page_action", action=action)
+    submissions.write_revision(session, student, [refs[i] for i in indices])
+    student["files"] = files
+    student["page_files"] = [owners[i] for i in indices]
+    _finish_students(session, [student])
+    config["scan_warnings"] = scan_warnings(config)
+    if config.get("sliced"):
+        slice_students(session, config, [student_id])
+    else:
+        _crops_stale(config)
+    return {"student": student_id, "page": 1}

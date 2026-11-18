@@ -76,7 +76,7 @@ function header() {
     c?.host ? h("span", { class: "badge host-badge" },
       [c.host.name, c.host.class_name].filter(Boolean).join(" · ")) : null);
   const steps = c ? h("nav", { class: "stepbar", "aria-label": t("step.nav") },
-    STEPS.map((n) => {
+    STEPS.filter((n) => n !== 2 || !["assignment", "draft"].includes(c.task_kind)).map((n) => {
       const reachable = canGoTo(n);
       const cls = ["step", n === app.step ? "current" : "", n < app.step ? "done" : "", reachable ? "" : "locked"].join(" ");
       return h("button", { type: "button", class: cls, disabled: !reachable || n === app.step,

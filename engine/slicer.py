@@ -653,7 +653,13 @@ def whole_page_geometry(path: str, page: int, target_width: Optional[int] = None
     """Geometry for a whole scanned page (one part covering ``[0, 1] x [0, 1]``)."""
     pw, ph = page_image_size(path, page, dpi=dpi)
     scale = (target_width / pw) if target_width else 1.0
-    return _build_geometry([(int(page), pw, ph, (0, 0, pw, ph), scale)], divider_px=0)
+    geom = _build_geometry([(int(page), pw, ph, (0, 0, pw, ph), scale)], divider_px=0)
+    # PDF dimensions are physical points; converted images use their DPI or a
+    # nominal physical size from pages._image_pdf.
+    geom["parts"][0]["grid"] = {"cols": max(1, round(pw / dpi * 25.4 / 5)),
+                                 "rows": max(1, round(ph / dpi * 25.4 / 5))}
+    geom["whole_page"] = True
+    return geom
 
 
 def crop_point_to_page(geometry: dict, cx: float, cy: float) -> Optional[dict]:
@@ -710,7 +716,10 @@ def snap_highlight_from_crop(geometry: dict, cx0: float, cy0: float, cx1: float,
     py0 = r["y"] + ((iy0 - y0) / h) * r["h"]
     px1 = r["x"] + ((ix1 - x0) / w) * r["w"]
     py1 = r["y"] + ((iy1 - y0) / h) * r["h"]
-    cols, rows = _highlight_grid(layout, part["page_width"], part["page_height"])
+    if part.get("grid"):
+        cols, rows = part["grid"]["cols"], part["grid"]["rows"]
+    else:
+        cols, rows = _highlight_grid(layout, part["page_width"], part["page_height"])
 
     def clamp(v):
         return min(max(float(v), 0.0), 1.0)
@@ -851,14 +860,23 @@ def crop_file(region_id: str, student_id: str, layout: Layout) -> str:
     return f"{region_id}/{student_id}.{'jpg' if jpeg else 'png'}"
 
 
+def student_crop_key(student: dict) -> str:
+    """Use the scan version for joined papers so older saves keep their crops."""
+    if "page_files" in student:
+        return os.path.splitext(student["file"])[0]
+    return student["id"]
+
+
 def slice_all(scans: Sequence[Tuple[str, str]], regions: Sequence[Tuple[str, Sequence[Box]]],
               layout: Layout, crops_dir: str,
-              progress: Optional[Callable[[int, int], None]] = None) -> dict:
+              progress: Optional[Callable[[int, int], None]] = None, *,
+              crop_keys: Optional[dict] = None) -> dict:
     """Crop every region from every student's scan.
 
     ``scans`` is ``[(student_id, path)]`` and ``regions`` is
     ``[(region_id, [Box, ...])]`` (questions plus the name box). Crops land at
-    ``crops_dir/<region_id>/<student_id>.png`` (see :func:`crop_file`). A failure
+    ``crops_dir/<region_id>/<student_id>.png`` unless ``crop_keys`` supplies
+    a scan revision name (see :func:`crop_file`). A failure
     on one student never stops the rest of the class; it is reported in ``errors``.
     """
     summary = {"students": len(scans), "regions": len(regions), "crops": 0, "errors": []}
@@ -869,7 +887,7 @@ def slice_all(scans: Sequence[Tuple[str, str]], regions: Sequence[Tuple[str, Seq
         for region_id, boxes in regions:
             try:
                 image = crop_boxes(path, boxes, layout, pages)
-                name = crop_file(region_id, student_id, layout)
+                name = crop_file(region_id, (crop_keys or {}).get(student_id, student_id), layout)
                 if name.endswith(".jpg"):
                     image.save(os.path.join(crops_dir, name), "JPEG", quality=SLIDE_CROP_QUALITY)
                 else:

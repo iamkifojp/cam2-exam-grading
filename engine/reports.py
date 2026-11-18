@@ -522,7 +522,8 @@ def _draw_overlay(page, rect: fitz.Rect, win_x0: float, win_y0: float, win_w: fl
 def _question_with_image(w: _Writer, session: storage.Session, layout: slicer.Layout, question: dict,
                          student: dict, entry: dict, parts: List[tuple], note_items: List[str],
                          language: str) -> None:
-    crop = session.path(f"{storage.CROPS_DIR}/{slicer.crop_file(question['id'], student['id'], layout)}")
+    name = slicer.crop_file(question["id"], slicer.student_crop_key(student), layout)
+    crop = session.path(f"{storage.CROPS_DIR}/{name}")
     x_img = MARGIN + LABEL_W
     if os.path.isfile(crop):
         with Image.open(crop) as crop_im:
@@ -645,6 +646,37 @@ def _section_heading(w: _Writer, name: str, right: str, room: float) -> None:
 
 # --- One student ----------------------------------------------------------------------------
 
+def _submission_pages(w, session, config, grades, student, entries, options, language):
+    from .workflow import student_scan_path
+    path = student_scan_path(session, student)
+    q = config["questions"][0]
+    entry = entries.get(q["id"]) or {}
+    # The submission is the assessed item; its grade must print even when
+    # no pages carry annotations and the rubric table is off.
+    parts = _grades(config, grades, student["id"], q)
+    if grading_summary.question_mode(config, q):
+        w.html(_grade_html(parts, language))
+    notes = entry.get("annotations") or []
+    highlights = entry.get("highlights") or []
+    marked = {a["page"] for a in notes + highlights}
+    selected = range(1, student["pages"] + 1) if options["all_submission_pages"] else sorted(marked)
+    for number in selected:
+        w.new_page()
+        w.html(f"<h2>{_e(i18n.t('common.page_of', language, page=number, pages=student['pages']))}</h2>")
+        geom = slicer.whole_page_geometry(path, number)
+        with slicer.load_page_image(path, number) as im:
+            data, iw, ih = _encode_jpeg(im)
+        width, height = _fit(iw, ih, CONTENT_W, w.bottom - w.y)
+        rect = fitz.Rect(MARGIN, w.y, MARGIN + width, w.y + height)
+        w.page.insert_image(rect, stream=data)
+        projected = [a for a in slicer.project_annotations(geom, notes) if a["page"] == number]
+        _draw_overlay(w.page, rect, 0, 0, geom["width"], geom["height"], None,
+                      slicer.project_highlights(geom, highlights), projected)
+        w.y += height + GAP
+    for item in _question_note_items(config, q, entry, lambda _: False, {}, language):
+        w.html(item)
+
+
 def build_student_pdf(session: storage.Session, config: dict, grades: dict, student: dict,
                       language: str, out_path: str, day: Optional[date] = None) -> str:
     from .workflow import display_name, report_options    # avoid an import cycle
@@ -685,24 +717,27 @@ def build_student_pdf(session: storage.Session, config: dict, grades: dict, stud
         if overall:
             w.html(f"<p class='label'>{_e(t('report.overall_comment'))}</p><p>{_e(overall)}</p>", gap=GAP * 1.5)
 
-        # Questions, grouped by section ----------------------------------------------------
-        w.ensure(120)
-        w.html(f"<h2>{_e(t('report.questions'))}</h2>", gap=6)
-        for section, row in zip(grading_summary.sections(config), summary["sections"]):
-            images = section["id"] not in options["no_images_for"]
-            if config.get("sections"):
-                right = (_marks_text(row["total"], row["max"], row["percent"])
-                         if options["section_results"] and row["max"] else "")
-                _section_heading(w, _section_name(config, section, language), right, 140 if images else 40)
-            rows = [(q, _grades(config, grades, student["id"], q),
-                     _question_note_items(config, q, entries.get(q["id"]) or {}, not_counted, group_of, language))
-                    for q in section["questions"]]
-            if images:
-                for q, parts, note_items in rows:
-                    _question_with_image(w, session, slicer.Layout.from_config(config.get("layout")), q, student,
-                                         entries.get(q["id"]) or {}, parts, note_items, language)
-            else:
-                _questions_as_grid(w, [(q, parts, "".join(note_items)) for q, parts, note_items in rows], language)
+        if model.whole_submission(config):
+            _submission_pages(w, session, config, grades, student, entries, options, language)
+        else:
+            # Questions, grouped by section ----------------------------------------------------
+            w.ensure(120)
+            w.html(f"<h2>{_e(t('report.questions'))}</h2>", gap=6)
+            for section, row in zip(grading_summary.sections(config), summary["sections"]):
+                images = section["id"] not in options["no_images_for"]
+                if config.get("sections"):
+                    right = (_marks_text(row["total"], row["max"], row["percent"])
+                             if options["section_results"] and row["max"] else "")
+                    _section_heading(w, _section_name(config, section, language), right, 140 if images else 40)
+                rows = [(q, _grades(config, grades, student["id"], q),
+                         _question_note_items(config, q, entries.get(q["id"]) or {}, not_counted, group_of, language))
+                        for q in section["questions"]]
+                if images:
+                    for q, parts, note_items in rows:
+                        _question_with_image(w, session, slicer.Layout.from_config(config.get("layout")), q, student,
+                                             entries.get(q["id"]) or {}, parts, note_items, language)
+                else:
+                    _questions_as_grid(w, [(q, parts, "".join(note_items)) for q, parts, note_items in rows], language)
 
         w.finish()
         doc.subset_fonts()

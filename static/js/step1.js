@@ -6,6 +6,8 @@ import { enterWizard, goTo } from "./main.js";
 import { act, app, config, handleError, render } from "./store.js";
 import { button, coach, confirmBox, debounce, h, isSlide, modal, paperLabel, PAPERS, pickerWait, progressOverlay, toast } from "./ui.js";
 
+const wholeSubmission = () => ["assignment", "draft"].includes(
+  config() ? config().task_kind : app.draft.newSession?.fromHost ? app.host?.task_kind : null);
 const STREAM = ["combined", "photos"];
 
 function draft() {
@@ -49,6 +51,7 @@ function classSize(text) {
 
 function sourceReady(s) {
   if (s.kind === "combined" ? !s.pdfs.length : !s.folder) return false;
+  if (s.kind === "submissions") return s.folder.count > 0;
   return !isStream(s) || perValue(s) !== null;
 }
 
@@ -105,6 +108,7 @@ async function inspect(kind, path) {
 // owner that the source ("source") or the preview ("preview") changed, or
 // that a number was typed ("typed").
 function sourceChooser(s, onChange, { forAdd = false } = {}) {
+  if (wholeSubmission() || s.kind === "submissions") return submissionChooser(s, onChange);
   const holder = h("div", { class: "source-chooser" });
   const previewBox = h("div", { class: "preview-box" });
   let previewRun = 0;
@@ -242,6 +246,10 @@ function sourceChooser(s, onChange, { forAdd = false } = {}) {
         h("p", { class: "muted small" }, t("step1.booklet_flip_hint"))));
     }
     parts.push(previewBox);
+    if (config() || app.host) parts.push(button(t("submission.multifile"), () => {
+      s.kind = "submissions"; s.folder = null;
+      holder.replaceChildren(submissionChooser(s, onChange));
+    }, "small ghost"));
     holder.replaceChildren(...parts);
     drawPreview();
   };
@@ -315,7 +323,7 @@ export function renderNewSession() {
     h("section", { class: "form-step" }, h("h2", {}, h("span", { class: "num-badge" }, "1"), t("step1.exam_name")), examInput),
     h("section", { class: "form-step" }, h("h2", {}, h("span", { class: "num-badge" }, "2"), t("step1.where_scans")),
       sourceChooser(d.src, onSource)),
-    h("section", { class: "form-step" }, h("h2", {}, h("span", { class: "num-badge" }, "3"), t("step1.paper")),
+    wholeSubmission() ? null : h("section", { class: "form-step" }, h("h2", {}, h("span", { class: "num-badge" }, "3"), t("step1.paper")),
       h("p", { class: "muted" }, t("step1.paper_hint")), paperHolder),
     h("section", { class: "form-step" }, h("h2", {}, h("span", { class: "num-badge" }, "4"), t("step1.save_folder")),
       h("p", { class: "muted" }, d.fromHost ? t("host.save_folder", { host: app.host?.host || "CAM" })
@@ -335,7 +343,7 @@ export function renderNewSession() {
 }
 
 function ready(d) {
-  return !!(d.exam.trim() && sourceReady(d.src) && d.paper && d.saveFolder);
+  return !!(d.exam.trim() && sourceReady(d.src) && (d.paper || wholeSubmission()) && d.saveFolder);
 }
 
 async function createSession() {
@@ -398,6 +406,7 @@ export function renderScanCheck() {
   return h("main", { class: "page wide" },
     h("h1", {}, t("step1.check_title")),
     coach(t("step1.check_coach", { count: c.students.length })),
+    (c.not_opened || []).length ? h("div", { class: "banner warn" }, h("ul", {}, c.not_opened.map((f) => h("li", {}, f.name, ": ", t(`error.${f.reason}`))))) : null,
     list.length ? h("div", { class: "banner warn" }, h("div", {}, h("strong", {}, t("step1.warn_title")),
       h("ul", {}, list), h("p", { class: "small" }, t("step1.warn_advice")))) : null,
     h("div", { class: "thumbs" }, c.students.map((s, i) => h("button", {
@@ -412,12 +421,12 @@ export function renderScanCheck() {
         ? button(t("step1.choose_again"), null, "ghost", { disabled: true, title: t("step1.choose_again_locked") })
         : button(t("step1.choose_again"), chooseAgain, "ghost"),
       button(t("step1.add_papers"), openAddPapers),
-      button(t("step1.looks_right"), () => goTo(2, { next: true }), "primary big")));
+      button(t("step1.looks_right"), () => goTo(wholeSubmission() ? 3 : 2, { next: true }), "primary big")));
 }
 
 function hasWork(studentId) {
   const per = app.session?.grades?.grades?.[studentId] || {};
-  return Object.values(per).some((e) => e && (e.value != null || String(e.comment || "").trim()
+  return !!app.session?.grades?.overall?.[studentId]?.comment?.trim() || Object.values(per).some((e) => e && (e.value != null || String(e.comment || "").trim()
     || (e.annotations || []).length || (e.highlights || []).length
     || Object.values(e.levels || {}).some((v) => v != null)));
 }
@@ -445,6 +454,7 @@ function showPages(studentId, startPage = 1) {
   const img = h("img", { class: "page-view", alt: student.display_name });
   const label = h("span", {});
   const tools = h("div", { class: "page-tools" });
+  const fileTools = h("div", {});
   const title = h("span", {}, student.display_name);
 
   const show = () => {
@@ -452,6 +462,15 @@ function showPages(studentId, startPage = 1) {
     label.textContent = t("common.page_of", { page, pages: student.pages || 1 });
     title.textContent = student.display_name;
     drawTools();
+    fileTools.replaceChildren(...(student.files || []).map((file, i) => h("div", { class: "row" },
+      h("span", {}, file.name),
+      ...["earlier", "later", "remove"].map((action) => button(t(action === "remove" ? "submission.remove_file" : `pages.${action}`), async () => {
+        if (action === "remove" && !await confirmBox(t("pages.remove_title"), file.name, t("pages.remove"), t("common.cancel"), true)) return;
+        const data = await act(post("/api/files/edit", { student: student.id, file: file.id, action }), { rerender: false });
+        if (!data) return;
+        student = config().students.find((s) => s.id === studentId); page = 1; render(); show();
+      }, "small", { disabled: hasWork(student.id) || (action === "earlier" && i === 0) || (action === "later" && i === student.files.length - 1) }))
+    )));
   };
 
   const edit = async (action) => {
@@ -495,12 +514,12 @@ function showPages(studentId, startPage = 1) {
     label,
     button("›", () => { if (page < (student.pages || 1)) { page++; show(); } }, "small"));
   show();
-  modal({ title: student.display_name, body: h("div", {}, nav, tools, img), wide: true,
+  modal({ title: student.display_name, body: h("div", {}, nav, fileTools, tools, img), wide: true,
     actions: [{ label: t("common.close") }] });
 }
 
 function chooseAgain() {
-  const s = newSource();
+  const s = newSource({ kind: config()?.import?.type === "submissions" ? "submissions" : null });
   modal({
     title: t("step1.choose_again"), wide: true,
     body: h("div", {}, h("p", { class: "muted" }, t("step1.choose_again_hint")), sourceChooser(s, () => {})),
@@ -520,7 +539,7 @@ function chooseAgain() {
 // class's own layout and page count, since late papers usually match.
 export function openAddPapers() {
   const record = config()?.import || {};
-  const s = newSource({ layout: record.layout || "pages",
+  const s = newSource({ kind: record.type === "submissions" ? "submissions" : null, layout: record.layout || "pages",
     pagesPerStudent: record.pages_per_student ? String(record.pages_per_student) : "",
     flipFronts: !!record.flip_fronts, flipBacks: !!record.flip_backs, insideFirst: !!record.inside_first });
   modal({
@@ -540,4 +559,30 @@ export function openAddPapers() {
       } },
     ],
   });
+}
+
+
+function submissionChooser(s, onChange) {
+  s.kind = "submissions";
+  s.layout = "pages";
+  const chosen = h("div", {});
+  const input = h("input", { type: "text", class: "path-input", placeholder: t("step1.paste_path_placeholder") });
+  const showChosen = () => {
+    if (!s.folder) return;
+    chosen.replaceChildren(h("p", {}, s.folder.path), h("p", {}, t("step1.files_found", { count: s.folder.count })),
+      h("ul", {}, s.folder.not_opened.map((f) => h("li", {}, f.name, " — ", t(`error.${f.reason}`)))));
+  };
+  showChosen();
+  const use = async (path) => {
+    if (!path) return;
+    try {
+      s.folder = await post("/api/inspect", { kind: "submissions", path });
+      showChosen();
+      onChange("source");
+    } catch (err) { toast(err.message, "error"); }
+  };
+  return h("div", {}, h("p", {}, t("submission.folder_hint")),
+    button(t("step1.choose_folder"), async () => use(await pick("folder"))),
+    h("details", {}, h("summary", {}, t("step1.paste_path")), input,
+      button(t("step1.use_folder"), () => use(input.value))), chosen);
 }

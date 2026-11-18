@@ -14,7 +14,10 @@ host can file results without matching names again. When grading is done the
 teacher clicks *Send to CAM*, which stamps ``host_ready_at`` in
 ``cam2_session.json``; the host only reads the session folder.
 
-Nothing here changes how CAM2 works on its own.
+An optional ``task_kind`` selects ``exam`` (default), ``assignment`` or
+``draft`` when creating the session. For an assignment the handoff can
+include ``rubrics`` in the same form as CAM2 rubric setup. The task kind is
+kept when that session opens again.
 """
 
 from __future__ import annotations
@@ -51,7 +54,10 @@ def normalize(data) -> dict:
         if ext and name and ext not in seen:
             seen.add(ext)
             roster.append({"external_id": ext, "name": name})
-    return {"host": " ".join(str(data.get("host") or "CAM").split())[:40] or "CAM",
+    kind = data.get("task_kind", "exam")
+    if kind not in ("exam", "assignment", "draft"):
+        raise UserError("host_handoff_invalid")
+    return {"task_kind": kind, "rubrics": data.get("rubrics") or [], "host": " ".join(str(data.get("host") or "CAM").split())[:40] or "CAM",
             "exam_name": exam,
             "class_name": " ".join(str(data.get("class_name") or "").split())[:80],
             "session_folder": os.path.normpath(folder),
@@ -99,3 +105,15 @@ def set_ready(config: dict, ready: bool) -> dict:
     """Grading finished (or not): the host reads results only when stamped."""
     config["host_ready_at"] = model.now_iso() if ready else None
     return config
+
+
+def apply_task(config, handoff):
+    """Set task kind only when a CAM session is first created."""
+    config["task_kind"] = handoff.get("task_kind", "exam")
+    if model.whole_submission(config):
+        criteria = handoff.get("rubrics") if config["task_kind"] == "assignment" else None
+        workflow.set_rubrics(config, criteria or [])
+        config["questions"] = [{"id": "submission", "label": config["exam_name"],
+                                "boxes": [], "max": None,
+                                "rubric_ids": [r["id"] for r in config["rubrics"]]}]
+        config["mode"] = "rubric"
