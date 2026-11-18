@@ -377,7 +377,7 @@ Keep source commits apart from packaging results. On another computer, check for
 | C: format 3, tiered levels | Done (PR #6) | [PR #6](https://github.com/iamkifojp/cam2-exam-grading/pull/6), branch `phase-c-format3-tiered-levels`, implementation `ee94e51`. Format version 3 (`C1`) + per-question/criterion level ceilings (`C2`). Verification and platform limits below. |
 | D: annotations, long-answer reports | Done (PR #7) | [PR #7](https://github.com/iamkifojp/cam2-exam-grading/pull/7), branch `phase-d-annotations`, implementation `9956809`. Unified geometry (`D1`), Step 4 pointer tools, quick comments, per-page limits (`D2`), box-adjustment projection and work guards (`D3`), and long-answer reports + gradebook notes (`D4`). Verification and platform limits below. |
 | E: class grid | Done (PR #8) | [PR #8](https://github.com/iamkifojp/cam2-exam-grading/pull/8), branch `phase-e-class-grid`, implementation `8355cc7`. Step 4 **Class grid** (**This question** and **Whole papers** views, 2–5 columns in `grid_columns`, grade sort with NA/Ungraded apart, filters showing *n of class*, `IntersectionObserver` lazy load & off-screen release, bounded server thumbnail cache). Verification and limits below. |
-| G: whole-submission tasks | Not started | |
+| G: whole-submission tasks | Implemented, ready for review | Branch `codex/phase-g-whole-submissions`, implementation `3ed948f`. Verification and limits below. |
 | H: assignments, drafts, Late, partners | Not started | Write the session contract for CAM first |
 | I: CAM, workspace removed | Not started | In CAM's repo |
 | J: verification and release | Not started | Includes the rename to CAM2 Grading |
@@ -569,4 +569,32 @@ The teacher authorized pushing and merging PR #5 to `main`.
   sandbox blocked localhost socket binding in launcher tests (four error
   reports). Re-ran `build/venv/bin/python -m unittest tests.test_launcher`
   with localhost access: all 8 passed. All other tests passed in the full run.
-- PR #8 remains open. Phase G has not started.
+- PR #8 was merged into `main` at `712a345` after the teacher confirmed the
+  Windows trial and approved the merge.
+
+
+### Phase G verification — 2026-11-18
+
+- `build/venv/bin/python -m unittest discover -s tests -t .` with localhost
+  access and Node.js on `PATH` passed all 391 tests. The generated fixtures
+  cover ID and full-name matching, ambiguous names, natural filename order,
+  unsupported files, mixed pages, attachment and page edits, late work,
+  refused edits on annotated papers, and reopening a copied session folder.
+  Tests also cover exam crops after a file move and both languages in PDF and
+  gradebook output.
+- Live Chrome checks on local Flask with synthetic handoffs verified import,
+  attachment movement, skipping box setup, highlight and stamp placement on
+  a landscape page, saving an overall comment when paging, and opening the
+  correct page from Whole papers. In the 32-paper grid, scrolling released the
+  first thumbnail's image source and kept only 9–12 preview sources attached
+  at the observed positions. The browser exported 32 reports and a workbook.
+  The 25-page student's PDF contained all 25 page images and the same overall
+  comment as the workbook.
+- Attachment additions preserve the existing page order. They append the new
+  batch in filename order and can then be moved in the scan check. A paper
+  with teacher work refuses attachment changes. Prior scan revisions are kept
+  so a saved config still has its original scan and crops after a refused save.
+- Limits: no frozen Phase G binaries or live CAM handoff were run. Portability
+  was tested by copying and reopening locally. The browser check observed
+  thumbnail loading and release without profiling native memory. The Phase H
+  and I checks cover assignment and draft results in live CAM.
