@@ -377,7 +377,7 @@ Keep source commits apart from packaging results. On another computer, check for
 | C: format 3, tiered levels | Done (PR #6) | [PR #6](https://github.com/iamkifojp/cam2-exam-grading/pull/6), branch `phase-c-format3-tiered-levels`, implementation `ee94e51`. Format version 3 (`C1`) + per-question/criterion level ceilings (`C2`). Verification and platform limits below. |
 | D: annotations, long-answer reports | Done (PR #7) | [PR #7](https://github.com/iamkifojp/cam2-exam-grading/pull/7), branch `phase-d-annotations`, implementation `9956809`. Unified geometry (`D1`), Step 4 pointer tools, quick comments, per-page limits (`D2`), box-adjustment projection and work guards (`D3`), and long-answer reports + gradebook notes (`D4`). Verification and platform limits below. |
 | E: class grid | Done (PR #8) | [PR #8](https://github.com/iamkifojp/cam2-exam-grading/pull/8), branch `phase-e-class-grid`, implementation `8355cc7`. Step 4 **Class grid** (**This question** and **Whole papers** views, 2–5 columns in `grid_columns`, grade sort with NA/Ungraded apart, filters showing *n of class*, `IntersectionObserver` lazy load & off-screen release, bounded server thumbnail cache). Verification and limits below. |
-| G: whole-submission tasks | Implemented, ready for review | Branch `codex/phase-g-whole-submissions`, implementation `3ed948f`. Verification and limits below. |
+| G: whole-submission tasks | Done (PR #9) | [PR #9](https://github.com/iamkifojp/cam2-exam-grading/pull/9), branch `codex/phase-g-whole-submissions`, implementation `3ed948f`. Source, browser, and Windows verification below. |
 | H: assignments, drafts, Late, partners | Not started | Write the session contract for CAM first |
 | I: CAM, workspace removed | Not started | In CAM's repo |
 | J: verification and release | Not started | Includes the rename to CAM2 Grading |
@@ -594,7 +594,11 @@ The teacher authorized pushing and merging PR #5 to `main`.
   batch in filename order and can then be moved in the scan check. A paper
   with teacher work refuses attachment changes. Prior scan revisions are kept
   so a saved config still has its original scan and crops after a refused save.
-- Limits: no frozen Phase G binaries or live CAM handoff were run. Portability
-  was tested by copying and reopening locally. The browser check observed
-  thumbnail loading and release without profiling native memory. The Phase H
-  and I checks cover assignment and draft results in live CAM.
+- Windows follow-up (2026-11-19): the teacher ran the packaged build with a
+  synthetic draft handoff. CAM2 joined three numbered PDFs into one submission
+  and allowed name matching. The exported report contained all three pages in
+  order, with the annotations on page 2.
+- Limits: no frozen Phase G Mac build or live CAM integration was checked.
+  Portability was tested by copying and reopening locally. The browser check
+  observed thumbnail loading and release without profiling native memory.
+  The Phase H and I checks cover assignment and draft results in live CAM.
