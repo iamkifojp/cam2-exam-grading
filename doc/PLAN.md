@@ -378,7 +378,7 @@ Keep source commits apart from packaging results. On another computer, check for
 | D: annotations, long-answer reports | Done (PR #7) | [PR #7](https://github.com/iamkifojp/cam2-exam-grading/pull/7), branch `phase-d-annotations`, implementation `9956809`. Unified geometry (`D1`), Step 4 pointer tools, quick comments, per-page limits (`D2`), box-adjustment projection and work guards (`D3`), and long-answer reports + gradebook notes (`D4`). Verification and platform limits below. |
 | E: class grid | Done (PR #8) | [PR #8](https://github.com/iamkifojp/cam2-exam-grading/pull/8), branch `phase-e-class-grid`, implementation `8355cc7`. Step 4 **Class grid** (**This question** and **Whole papers** views, 2–5 columns in `grid_columns`, grade sort with NA/Ungraded apart, filters showing *n of class*, `IntersectionObserver` lazy load & off-screen release, bounded server thumbnail cache). Verification and limits below. |
 | G: whole-submission tasks | Done (PR #9) | [PR #9](https://github.com/iamkifojp/cam2-exam-grading/pull/9), branch `codex/phase-g-whole-submissions`, implementation `3ed948f`. Source, browser, and Windows verification below. |
-| H: assignments, drafts, Late, partners | In review | Branch `phase-h-assignments-drafts-late-partners`. CAM session contract documented; source and live browser verification below. |
+| H: assignments, drafts, Late, partners | In review | [PR #10](https://github.com/iamkifojp/cam2-exam-grading/pull/10), branch `phase-h-assignments-drafts-late-partners`, implementation `55184db`. CAM session contract documented; source and live browser verification below. |
 | I: CAM, workspace removed | Not started | In CAM's repo |
 | J: verification and release | Not started | Includes the rename to CAM2 Grading |
 
