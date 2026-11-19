@@ -17,7 +17,7 @@
       "weighted": false,
       "report_options": {"section_results": false, "overall_criteria": false,
                          "rubric_table": true, "overall_marks": true,
-                         "no_images_for": ["sec1"]},
+                         "no_images_for": ["sec1"], "all_submission_pages": false},
       "questions": [{"id": "q1", "label": "Q1", "boxes": ["page1!A4:J10"],
                      "max": 5, "rubric_ids": ["r1"], "level_caps": {"r1": 6},
                      "section_id": "sec1"}],             # level_caps optional
@@ -27,7 +27,8 @@
       "partner_groups": [{"id": "pg1", "student_ids": ["s001", "s002"]}],   # optional
       "students": [{"id": "s001", "scan": "scans/Student_001.pdf",
                     "source": "scan0001.pdf", "pages": 4, "roster_id": null,
-                    "files": []}],                       # files optional (multi-file)
+                    "files": [{"id": "f…", "name": "ID/submission.pdf"}],
+                    "page_files": ["f…", "f…", null, "f…"]}],  # optional multi-file data
       "roster": [{"id": "n001", "name": "Tanaka Hana", "external_id": "8A-07"}],
       "host": {"name": "CAM", "class_name": "8A"},       # opened from CAM (engine/host.py)
       "host_ready_at": "..." | null,                     # results sent to the host
@@ -70,7 +71,11 @@ section. A final level is typed by the teacher (never capped), and blank means
 no level. ``task_kind``, ``annotations``, ``highlights``, ``partner_groups``,
 ``files``, and ``late`` are optional version 3 fields added across Phases C–H;
 older sessions omit them or keep them empty. Ids, not labels, key everything so a
-teacher can rename "Q1" without breaking crops or grades.
+teacher can rename "Q1" without breaking crops or grades. A whole submission
+uses the single item ID ``submission`` and no boxes. Each ``page_files``
+entry identifies the source file for that page of the joined scan. A blank
+page inserted by the teacher has no source file. ``files`` lists the source
+labels in teacher-chosen order. The joined scan is the portable copy.
 """
 
 from __future__ import annotations
@@ -195,3 +200,7 @@ def upgrade_session(config: dict, grades: Optional[dict] = None) -> dict:
             config["report_options"] = dict(DEFAULT_REPORT_OPTIONS, overall_criteria=True)
     config["version"] = VERSION
     return config
+
+
+def whole_submission(config: dict) -> bool:
+    return config.get("task_kind", "exam") in ("assignment", "draft")

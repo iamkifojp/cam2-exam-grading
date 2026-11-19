@@ -15,6 +15,7 @@ import base64
 import io
 import os
 import threading
+from contextlib import nullcontext
 from collections import OrderedDict
 from copy import deepcopy
 
@@ -22,7 +23,7 @@ from flask import Flask, abort, jsonify, request, send_file, send_from_directory
 
 from appstate import AppState
 from engine import (gradebook_xlsx, grading_summary, host, i18n, keywords, model, reports, roster,
-                    rubrics, slicer, storage, tables, workflow)
+                    rubrics, slicer, storage, submissions, tables, workflow)
 from engine.errors import SaveError, UserError
 from engine.pickers import documents_folder, open_in_file_manager, pick_folder, pick_pdf
 from engine.slicer import Layout
@@ -104,7 +105,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         return {"host": state.host["host"], "exam_name": state.host["exam_name"],
                 "class_name": state.host["class_name"], "session_folder": folder,
                 "session_exists": storage.is_session_folder(folder),
-                "roster_count": len(state.host["roster"])}
+                "roster_count": len(state.host["roster"]), "task_kind": state.host.get("task_kind", "exam")}
 
     def adopt_host_session(save: bool = True) -> None:
         """The host's own session uses the host's class list (papers are
@@ -258,6 +259,10 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         path = str(data.get("path") or "").strip().strip('"')
         if data.get("kind") == "pdf":
             return jsonify(workflow.inspect_combined_pdf(path))
+        if data.get("kind") == "submissions":
+            info = submissions.inspect_folder(path)
+            del info["files"]
+            return jsonify(info)
         return jsonify(workflow.inspect_scans_folder(path))
 
     @app.post("/api/preview-paper")
@@ -333,11 +338,14 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         if not exam:
             raise UserError("exam_name_required")
         source = data.get("source") or {}
-        workflow.check_source(source)
-        layout = Layout(str(data.get("paper") or ""), landscape=bool(data.get("landscape")))
         chosen = str(data.get("save_folder") or "").strip().strip('"')
         if not chosen:
             raise UserError("save_folder_required")
+        whole = host.is_host_session(state.host, chosen) and model.whole_submission(state.host)
+        if whole:
+            source = dict(source, type="submissions", layout="pages")
+        layout = Layout("A4" if whole else str(data.get("paper") or ""), landscape=bool(data.get("landscape")))
+        workflow.check_source(source)
         if host.is_host_session(state.host, chosen):
             # The host reads this exact folder, so never a subfolder of it.
             folder = os.path.abspath(chosen)
@@ -347,6 +355,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             folder = workflow.choose_session_folder(chosen, exam)
         session, config, grades = storage.create_session(folder, exam)
         config["layout"] = layout.to_config()
+        if host.is_host_session(state.host, folder):
+            host.apply_task(config, state.host)
         state.set_session(session, config, grades)
         storage.claim_lock(folder, force=True)
         state.save_config()
@@ -357,13 +367,16 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         session = state.require_session()
 
         def work(job):
-            config = dict(state.config)
-            workflow.import_scans(session, config, source, job.progress)
-            with state.lock:
-                state.config = config
-                set_step(1)
-                adopt_host_session(save=False)
-                state.save_config()
+            with state.lock if source.get("type") == "submissions" else nullcontext():
+                if source.get("type") == "submissions" and workflow.class_has_work(state.grades):
+                    raise UserError("scans_locked_graded")
+                config = dict(state.config)
+                workflow.import_scans(session, config, source, job.progress)
+                with state.lock:
+                    state.config = config
+                    set_step(1)
+                    adopt_host_session(save=False)
+                    state.save_config()
             return {"students": len(config["students"])}
 
         job = state.start_job("import", work)
@@ -377,6 +390,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         if workflow.class_has_work(state.grades):
             raise UserError("scans_locked_graded")
         source = body().get("source") or {}
+        if model.whole_submission(state.config):
+            source = dict(source, type="submissions", layout="pages")
         workflow.check_source(source)
         return start_import(source)
 
@@ -385,15 +400,18 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         """More papers for this exam, e.g. a student who sat it late."""
         session = state.require_session()
         source = body().get("source") or {}
+        if model.whole_submission(state.config):
+            source = dict(source, type="submissions", layout="pages")
         workflow.check_source(source)
 
         def work(job):
-            config = dict(state.config)
-            added = workflow.add_papers(session, config, source, job.progress)
-            with state.lock:
-                state.config = config
-                adopt_host_session(save=False)
-                state.save_config()
+            with state.lock if source.get("type") == "submissions" else nullcontext():
+                config = dict(state.config)
+                added = workflow.add_papers(session, config, source, job.progress, state.grades)
+                with state.lock:
+                    state.config = config
+                    adopt_host_session(save=False)
+                    state.save_config()
             return {"added": added}
 
         job = state.start_job("import", work)
@@ -411,6 +429,18 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             where = workflow.edit_pages(session, config, state.grades,
                                         str(data.get("student") or ""),
                                         int(data.get("page") or 1), str(data.get("action") or ""))
+            state.config = config
+            state.save_config()
+        return ok(where=where)
+
+    @app.post("/api/files/edit")
+    def files_edit():
+        session = state.require_session()
+        data = body()
+        with state.lock:
+            config = deepcopy(state.config)
+            where = workflow.edit_file(session, config, state.grades,
+                                       data.get("student"), data.get("file"), data.get("action"))
             state.config = config
             state.save_config()
         return ok(where=where)
@@ -437,6 +467,8 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     def goto_step():
         state.require_session()
         step = int(body().get("step") or 1)
+        if step == 2 and model.whole_submission(state.config):
+            step = 3
         if not 1 <= step <= 5:
             raise UserError("unknown_step")
         if step >= 3:
@@ -487,17 +519,19 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
 
     @app.get("/api/thumb/<student_id>")
     def thumb(student_id):
-        workflow.find_student(state.config or {}, student_id)
-        return session_file(f"{storage.THUMBS_DIR}/{student_id}.jpg", "image/jpeg")
+        student = workflow.find_student(state.config or {}, student_id)
+        key = slicer.student_crop_key(student)
+        return session_file(f"{storage.THUMBS_DIR}/{key}.jpg", "image/jpeg")
 
     @app.get("/api/crop/<region_id>/<student_id>")
     def crop(region_id, student_id):
         session = state.require_session()
-        workflow.find_student(state.config, student_id)
+        student = workflow.find_student(state.config, student_id)
         known = {q["id"] for q in state.config.get("questions") or []} | {model.NAME_BOX_ID}
         if region_id not in known:
             abort(404)
-        name = slicer.crop_file(region_id, student_id, Layout.from_config(state.config.get("layout")))
+        name = slicer.crop_file(region_id, slicer.student_crop_key(student),
+                                Layout.from_config(state.config.get("layout")))
         width_arg = request.args.get("w")
         if width_arg:
             try:
@@ -557,7 +591,10 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             abort(404)
         layout = Layout.from_config(state.config.get("layout"))
         boxes = slicer.parse_boxes(question["boxes"], layout) if question.get("boxes") else []
-        geom = slicer.answer_geometry(workflow.student_scan_path(session, student), boxes, layout)
+        if model.whole_submission(state.config):
+            geom = slicer.whole_page_geometry(workflow.student_scan_path(session, student), int(request.args.get("page") or 1))
+        else:
+            geom = slicer.answer_geometry(workflow.student_scan_path(session, student), boxes, layout)
         return image_cache(jsonify(geom))
 
     # --- Step 2: set-up -----------------------------------------------------------------

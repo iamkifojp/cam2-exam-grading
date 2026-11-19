@@ -685,5 +685,13 @@
   "error.unknown_annotation": "このメモはもう存在しません。",
   "error.unknown_annotation_action": "不明な注釈操作です。",
   "error.unknown_highlight_colour": "不明なハイライト色です：{colour}",
-  "error.annotation_invalid": "メモまたはハイライトの位置が正しくありません。"
+  "error.annotation_invalid": "メモまたはハイライトの位置が正しくありません。",
+  "submission.folder_hint": "提出物のフォルダーを選択してください。生徒IDまたは氏名で一意に照合できるファイル（生徒別フォルダーを含む）は、ファイル名順に結合します。照合できないファイルは個別に残します。",
+  "submission.all_pages": "提出物の全ページを含める（オフの場合は注釈のあるページのみ）",
+  "error.submission_unsupported": "未読込：PDF、JPEG、PNGファイルのみ対応しています。",
+  "error.submission_none": "対応する提出物がありません。未読込：{files}",
+  "error.submission_file_missing": "この添付ファイルは提出物にありません。",
+  "submission.remove_file": "ファイルを削除",
+  "submission.multifile": "生徒1人につき複数のファイル…",
+  "error.submission_shared_scan": "添付ファイルは別の答案として追加してください。この生徒の答案は一括スキャンまたは冊子の一部です。"
 }

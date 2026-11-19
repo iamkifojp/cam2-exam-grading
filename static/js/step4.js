@@ -13,6 +13,7 @@ import { act, app, applySession, config, criteriaOf, gradeOf, gradedWith, handle
 import { button, commentField, commentRefused, debounce, formatTime, h, modal, toast } from "./ui.js";
 import { parseRange, snap } from "./boxes.js";
 
+const wholeSubmission = () => ["assignment", "draft"].includes(config()?.task_kind);
 const NA = "not_answered";
 const MAX_BUTTONS = 15;          // above this, a number box with − / +
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
@@ -41,7 +42,7 @@ function entry(sid, qid) {
 
 function hasAnnotationOrComment(sid, qid) {
   const e = entry(sid, qid);
-  return !!(e && ((e.comment || "").trim() || (e.annotations || []).length || (e.highlights || []).length));
+  return !!(wholeSubmission() && app.session?.grades?.overall?.[sid]?.comment?.trim()) || !!(e && ((e.comment || "").trim() || (e.annotations || []).length || (e.highlights || []).length));
 }
 
 // Every item graded across the class, in order: { q, r } (r null for a marks question).
@@ -81,7 +82,7 @@ function draft() {
       qid: it.q.id, rid, sid, ungradedOnly: anyGraded, zoom: 1,
       wholePage: false, page: 1, tool: "pan", hlColour: "yellow",
       pickedKeyword: null, pendingNote: null,
-      gridOpen: false, gridView: "question", gridSort: "order",
+      gridOpen: false, gridView: wholeSubmission() ? "papers" : "question", gridSort: "order",
       gridFilter: "all", gridScroll: 0, gridPages: {},
     };
   }
@@ -205,7 +206,7 @@ function badgeText(c, q, sid) {
 // --- Geometry & projection (matches engine/slicer.py) -------------------------------
 
 function geomKey(c, qid, sid) {
-  return `${c.session_id}|${qid}|${sid}|${c.sliced_at || ""}`;
+  return `${c.session_id}|${qid}|${sid}|${c.sliced_at || ""}|${wholeSubmission() ? app.draft.grading?.page || 1 : ""}`;
 }
 
 function cachedGeometry(c, qid, sid) {
@@ -220,16 +221,15 @@ function loadGeometry(c, qid, sid, onReady = null) {
   if (!rec) {
     rec = { data: null, promise: null };
     geometryCache.set(key, rec);
-    rec.promise = get(`/api/geometry/${encodeURIComponent(qid)}/${encodeURIComponent(sid)}?v=${stamp}`)
+    rec.promise = get(`/api/geometry/${encodeURIComponent(qid)}/${encodeURIComponent(sid)}?v=${stamp}&page=${app.draft.grading?.page || 1}`)
       .then((geom) => {
         rec.data = geom;
-        if (onReady) onReady(geom);
+        if (geometryCache.size > 128) geometryCache.delete(geometryCache.keys().next().value);
         return geom;
       })
       .catch(() => null);
-  } else if (rec.data && onReady) {
-    onReady(rec.data);
   }
+  if (onReady) rec.promise.then((geom) => { if (geom) onReady(geom); });
   return rec.promise;
 }
 
@@ -275,7 +275,7 @@ function snapHighlightFromCrop(geom, cx0, cy0, cx1, cy1) {
   const py0 = r.y + ((iy0 - y0) / h) * r.h;
   const px1 = r.x + ((ix1 - x0) / w) * r.w;
   const py1 = r.y + ((iy1 - y0) / h) * r.h;
-  const g5 = app.session.grid_5mm || app.session.grid;
+  const g5 = part.grid || app.session.grid_5mm || app.session.grid;
   const box = snap(part.page, px0, py0, px1, py1, g5.cols, g5.rows);
   return {
     page: box.page,
@@ -401,7 +401,7 @@ export const saveComment = debounce(async (sid, qid, text) => {
   const sessionId = app.session?.config?.session_id;
   const seq = nextMutationSeq();
   try {
-    const data = await post("/api/grade", { student_id: sid, question_id: qid, comment: text });
+    const data = await post(wholeSubmission() ? "/api/overall" : "/api/grade", { student_id: sid, question_id: qid, comment: text });
     if (app.session?.config?.session_id !== sessionId) return false;
     applySession(data.session, seq);
     updateSavedStatus(data.session);
@@ -535,6 +535,7 @@ export function renderStep4() {
   }
   const c = config();
   const d = draft();
+  if (wholeSubmission()) d.gridView = "papers";
   const list = items(c);
   const at = itemIndex(c, d);
   const item = list[at];
@@ -662,16 +663,16 @@ function viewer(c, d, item, student) {
       nameOrReveal(d, student),
       button([t("step4.next_paper"), " ▶"], () => moveTo({ sid: nextId }), "small", { disabled: !nextId })),
     h("div", { class: "row" },
-      d.wholePage ? null : [
+      d.wholePage && !wholeSubmission() ? null : [
         toolBar(d),
         button("−", () => zoom(d, -1), "small", { "aria-label": t("step4.zoom_out"), title: t("step4.zoom_out") }),
         button(t("step4.fit"), () => { d.zoom = 1; render(); }, "small"),
         button("+", () => zoom(d, 1), "small", { "aria-label": t("step4.zoom_in"), title: t("step4.zoom_in") })],
-      button(t("step4.adjust_box"), async () => {
+      wholeSubmission() ? null : button(t("step4.adjust_box"), async () => {
         if (commentRefused() || !(await flushStep4())) return;
         goTo(2, { draft: { sub: "boxes", adjust: { qid: q.id, rid: item.r?.id || null, sid: student.id } } });
       }, "small ghost", { title: t("step4.adjust_box_hint") }),
-      d.wholePage
+      wholeSubmission() ? null : d.wholePage
         ? button(t("step4.back_to_answer"), () => { d.wholePage = false; render(); }, "small on")
         : button(["🔍 ", t("grade.see_whole_page")], () => {
           d.wholePage = true;
@@ -684,7 +685,7 @@ function viewer(c, d, item, student) {
   let body;
   let pageNav = null;
   let toolHint = null;
-  if (d.wholePage) {
+  if (d.wholePage && !wholeSubmission()) {
     const pages = student.pages || 1;
     const boxes = encodeURIComponent(q.boxes.join(","));
     pageNav = h("div", { class: "page-nav" },
@@ -702,7 +703,7 @@ function viewer(c, d, item, student) {
     else if (d.tool === "highlight") toolHint = h("p", { class: "tool-hint muted small" }, t("step4.hl_remove_hint"));
 
     const img = h("img", {
-      src: `/api/crop/${q.id}/${student.id}?v=${stamp}`,
+      src: wholeSubmission() ? `/api/page/${student.id}/${d.page}?w=1400&v=${stamp}` : `/api/crop/${q.id}/${student.id}?v=${stamp}`,
       alt: t("step4.answer_alt", { label: q.label,
         name: hideNames() ? t("step4.paper_of", { n: index + 1, total: c.students.length }) : student.display_name }),
       draggable: "false",
@@ -716,14 +717,24 @@ function viewer(c, d, item, student) {
       populateOverlay(layer, stage, geomNow, c, d, q, student);
     } else {
       loadGeometry(c, q.id, student.id, (geom) => {
-        if (d.qid === q.id && d.sid === student.id && !d.wholePage && layer.isConnected) {
+        if (d.qid === q.id && d.sid === student.id && (!d.wholePage || wholeSubmission()) && layer.isConnected) {
           populateOverlay(layer, stage, geom, c, d, q, student);
         }
       });
     }
     attachStageInteractions(scroller, stage, layer, c, d, q, student);
     body = scroller;
-    if (nextId) {
+    if (wholeSubmission()) {
+      const changePage = async (page) => {
+        if (commentRefused() || !(await flushStep4())) return;
+        d.page = page; d.pendingNote = null; render();
+      };
+      pageNav = h("div", { class: "row center" },
+        button("‹", () => changePage(d.page - 1), "small", { disabled: d.page <= 1 }),
+        h("span", {}, t("common.page_of", { page: d.page, pages: student.pages })),
+        button("›", () => changePage(d.page + 1), "small", { disabled: d.page >= student.pages }));
+    }
+    if (nextId && !wholeSubmission()) {
       new Image().src = `/api/crop/${q.id}/${nextId}?v=${stamp}`;
       loadGeometry(c, q.id, nextId);
     }
@@ -737,7 +748,7 @@ function viewer(c, d, item, student) {
 
 function populateOverlay(layer, stage, geom, c, d, q, student) {
   const e = entry(student.id, q.id);
-  const projNotes = projectAnnotations(geom, e?.annotations);
+  const projNotes = projectAnnotations(geom, e?.annotations).filter((a) => !geom.whole_page || geom.parts.some((p) => p.page === a.page));
   const projHls = projectHighlights(geom, e?.highlights);
 
   const children = [];
@@ -1106,11 +1117,11 @@ function attachQuickCommentDrag(pill, kw, c, d, q, student) {
       if (!dragging) {
         const same = d.pickedKeyword && d.pickedKeyword.label === kw.label && d.pickedKeyword.type === kw.type;
         d.pickedKeyword = same ? null : { label: kw.label, type: kw.type };
-        if (d.pickedKeyword && d.wholePage) d.wholePage = false;
+        if (d.pickedKeyword && d.wholePage && !wholeSubmission()) d.wholePage = false;
         render();
         return;
       }
-      if (d.wholePage) return;
+      if (d.wholePage && !wholeSubmission()) return;
       const stage = document.querySelector(".answer-stage");
       const geom = cachedGeometry(c, q.id, student.id);
       if (!stage || !geom) return;
@@ -1136,7 +1147,7 @@ function notesSection(c, d, q, student) {
   const e = entry(student.id, q.id);
   const anns = e?.annotations || [];
   const hls = e?.highlights || [];
-  const geom = cachedGeometry(c, q.id, student.id);
+  const geom = wholeSubmission() ? null : cachedGeometry(c, q.id, student.id);
   const projNotes = geom ? projectAnnotations(geom, anns)
     : anns.map((a, i) => ({ ...a, num: i + 1, outOfCrop: false }));
   const excludedHls = geom ? projectHighlights(geom, hls).filter((x) => x.excluded) : [];
@@ -1222,7 +1233,9 @@ function gradeCard(c, d, item, student) {
   const clear = () => setGrade(student.id, q.id, null, value === NA ? null : r?.id);
 
   let grading;
-  if (r) {
+  if (wholeSubmission() && !r) {
+    grading = null;
+  } else if (r) {
     const crit = criteriaOf(c, q);
     const cap = q.level_caps?.[r.id] ?? null;
     const capBand = cap !== null ? r.bands.find((b) => Number(b.max) === Number(cap)) : null;
@@ -1279,29 +1292,30 @@ function gradeCard(c, d, item, student) {
       return pill;
     })));
 
-  const qLimit = app.session.comment_limits?.per_question?.[q.id] ?? app.session.comment_limits.question;
+  const qLimit = wholeSubmission() ? app.session.comment_limits.overall : app.session.comment_limits?.per_question?.[q.id] ?? app.session.comment_limits.question;
   const commentBox = commentField({
     key: `${student.id}/${q.id}`,
     limit: qLimit,
-    saved: () => entry(student.id, q.id)?.comment || "",
+    saved: () => wholeSubmission() ? app.session.grades.overall?.[student.id]?.comment || "" : entry(student.id, q.id)?.comment || "",
     save: (text) => saveComment(student.id, q.id, text),
     flush: saveComment.flush,
-    attrs: { id: "comment-box", rows: "3", placeholder: t("grade.comment_placeholder"),
-      "aria-label": t("grade.comment_placeholder") },
+    attrs: { id: "comment-box", rows: "3",
+      placeholder: t(wholeSubmission() ? "report.overall_comment" : "grade.comment_placeholder"),
+      "aria-label": t(wholeSubmission() ? "report.overall_comment" : "grade.comment_placeholder") },
   });
 
   const nextId = nextStudentId(c, d, 1);
-  const outOf = r ? "" : t("step4.out_of", { max: q.max });
+  const outOf = r || wholeSubmission() ? "" : t("step4.out_of", { max: q.max });
   return h("section", { class: `card grade-card ${value !== null ? "graded" : ""}` },
     h("h2", {}, h("span", { class: "question-name" }, itemLabel(item)), outOf ? h("span", { class: "muted" }, " · ", outOf) : null),
     hideNames() && d.revealed !== student.id ? null : h("p", { class: "muted small" }, student.display_name),
     grading,
-    h("div", { class: "row" },
+    wholeSubmission() && !r ? null : h("div", { class: "row" },
       button(t("grade.not_answered"), notAnswered, value === NA ? "small on" : "small", { "aria-pressed": value === NA ? "true" : "false" }),
       value !== null ? button(t("step4.clear"), clear, "small ghost") : null),
     pills,
     notesSection(c, d, q, student),
-    h("label", { class: "comment" }, h("span", { class: "label" }, t("step4.comment")), commentBox),
+    h("label", { class: "comment" }, h("span", { class: "label" }, t(wholeSubmission() ? "report.overall_comment" : "step4.comment")), commentBox),
     nextId
       ? button(t("step4.next_paper_button"), () => moveTo({ sid: nextId }), "primary big", { id: "next-paper" })
       : lastPaperActions(c, d, item));
@@ -1451,7 +1465,7 @@ function gridStudents(c, d, q, rid) {
 
 function renderCardOverlay(overlay, geom, c, q, sid) {
   const e = entry(sid, q.id);
-  const projNotes = projectAnnotations(geom, e?.annotations);
+  const projNotes = projectAnnotations(geom, e?.annotations).filter((a) => !geom.whole_page || geom.parts.some((p) => p.page === a.page));
   const projHls = projectHighlights(geom, e?.highlights);
   const children = [];
   for (const hl of projHls) {
@@ -1538,7 +1552,7 @@ function classGridSection(c, d, item) {
 
   const toolbar = h("div", { class: "grid-toolbar" },
     h("div", { class: "row" },
-      h("div", { class: "seg", role: "group", "aria-label": t("step4.grid_view") },
+      wholeSubmission() ? null : h("div", { class: "seg", role: "group", "aria-label": t("step4.grid_view") },
         h("button", { type: "button", class: d.gridView === "question" ? "on" : "",
           "aria-pressed": d.gridView === "question" ? "true" : "false",
           onclick: () => { d.gridView = "question"; d.gridScroll = 0; render(); } }, t("step4.grid_view_question")),

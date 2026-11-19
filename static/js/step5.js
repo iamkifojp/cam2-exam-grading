@@ -348,7 +348,7 @@ function reportOptions(c, used, hasMarks) {
       sections ? tick("section_results", t("step5.option.section_results")) : null,
       used.some((r) => r.bands.some((b) => b.descriptor)) ? tick("rubric_table", t("step5.option.rubric_table")) : null,
       hasMarks ? tick("overall_marks", t("step5.option.overall_marks")) : null,
-      sections ? null : imageTick("sec1", t("step5.option.images"))),
+      ["assignment", "draft"].includes(c.task_kind) ? tick("all_submission_pages", t("submission.all_pages")) : sections ? null : imageTick("sec1", t("step5.option.images"))),
     sections ? h("div", {}, h("span", { class: "label" }, t("step5.option.images_for")),
       sections.map((s) => imageTick(s.id, sectionName(c, s.id)))) : null);
 }

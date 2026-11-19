@@ -685,5 +685,13 @@
   "error.unknown_annotation": "This note no longer exists.",
   "error.unknown_annotation_action": "Unknown annotation action.",
   "error.unknown_highlight_colour": "Unknown highlight colour: {colour}.",
-  "error.annotation_invalid": "That note or highlight position is not valid."
+  "error.annotation_invalid": "That note or highlight position is not valid.",
+  "submission.folder_hint": "Choose the submissions folder. Files with a unique student ID or full name, including student subfolders, are joined in filename order. Unmatched files stay separate.",
+  "submission.all_pages": "Include every submission page (otherwise only annotated pages)",
+  "error.submission_unsupported": "Not opened: only PDF, JPEG and PNG files are supported.",
+  "error.submission_none": "No supported submissions found. Not opened: {files}",
+  "error.submission_file_missing": "This attachment is no longer in the paper.",
+  "submission.remove_file": "Remove file",
+  "submission.multifile": "Several files per student…",
+  "error.submission_shared_scan": "Use a separate paper for the attachment. This student’s paper is part of a combined scan or booklet."
 }

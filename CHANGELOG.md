@@ -6,6 +6,19 @@ year-month-day.
 
 ## Unreleased
 
+### Phase G — whole-submission tasks
+
+- A CAM assignment or draft opens as one item per student. Read mixed-size
+  pages in the grading viewer, add numbered notes and highlights, and write
+  one overall comment. The class grid opens in Whole papers view.
+- Join PDFs, JPEGs and PNGs by unique roster match in numeric filename order.
+  See why unsupported files were skipped. Move or remove files and pages on
+  the scan check, and re-slice an affected exam paper. Existing grades and
+  feedback lock the paper against edits and new attachments.
+- Whole-submission reports print pages with notes or highlights by default.
+  Choose all pages from the report options. Exports include note text and the
+  overall comment in English or Japanese.
+
 ### Phase E — class grid (`F11`)
 
 - **Class grid in Step 4 (`static/js/step4.js`, `static/app.css`).**

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import io
 import os
+from contextlib import ExitStack
 from typing import Iterable, List, NamedTuple, Optional, Sequence, Tuple
 
 from PIL import Image, ImageOps
@@ -49,35 +50,39 @@ def blank_ref(width: float, height: float) -> Ref:
 
 # --- Opening sources ---------------------------------------------------------------
 
-def _image_pdf(path: str, max_px: Optional[int]):
+def _image_pdf(path: str, max_px: Optional[int], nominal: bool = False):
     """A picture as a one-page PDF, upright (phone orientation applied)."""
     fitz = _fitz()
-    with Image.open(path) as im:
-        dpi = im.info.get("dpi") or (0, 0)
-        im = ImageOps.exif_transpose(im)
-        im = im.convert("L" if im.mode in ("1", "L", "LA") else "RGB")
-    try:
-        dpi = float(dpi[0]) if float(dpi[0]) >= 50 else ASSUMED_DPI
-    except (TypeError, ValueError, IndexError):
-        dpi = ASSUMED_DPI
-    if max_px and max(im.size) > max_px:
-        scale = max_px / max(im.size)
-        im = im.resize((max(1, round(im.width * scale)), max(1, round(im.height * scale))),
-                       Image.LANCZOS)
-        dpi *= scale
-    buf = io.BytesIO()
-    im.save(buf, "JPEG", quality=85, optimize=True)
-    doc = fitz.open()
-    page = doc.new_page(width=im.width * 72 / dpi, height=im.height * 72 / dpi)
-    page.insert_image(page.rect, stream=buf.getvalue())
-    return doc
+    with ExitStack() as stack:
+        original = stack.enter_context(Image.open(path))
+        dpi = original.info.get("dpi") or (0, 0)
+        upright = stack.enter_context(ImageOps.exif_transpose(original))
+        im = stack.enter_context(upright.convert("L" if upright.mode in ("1", "L", "LA") else "RGB"))
+        try:
+            dpi = float(dpi[0]) if float(dpi[0]) >= 50 else 0
+        except (TypeError, ValueError, IndexError):
+            dpi = 0
+        if not dpi:
+            dpi = max(im.size) * 25.4 / 297 if nominal else ASSUMED_DPI
+        if max_px and max(im.size) > max_px:
+            scale = max_px / max(im.size)
+            im = stack.enter_context(im.resize((max(1, round(im.width * scale)), max(1, round(im.height * scale))),
+                                               Image.LANCZOS))
+            dpi *= scale
+        buf = stack.enter_context(io.BytesIO())
+        im.save(buf, "JPEG", quality=85, optimize=True)
+        doc = fitz.open()
+        page = doc.new_page(width=im.width * 72 / dpi, height=im.height * 72 / dpi)
+        page.insert_image(page.rect, stream=buf.getvalue())
+        return doc
 
 
 class Sources:
     """Open source files once and close them all at the end (``with``)."""
 
-    def __init__(self, photo_max: Optional[int] = None):
+    def __init__(self, photo_max: Optional[int] = None, *, nominal_photos: bool = False):
         self.photo_max = photo_max
+        self.nominal_photos = nominal_photos
         self._docs: dict = {}
 
     def get(self, path: str):
@@ -85,7 +90,7 @@ class Sources:
             if os.path.splitext(path)[1].lower() == PDF_EXT:
                 self._docs[path] = _fitz().open(path)
             else:
-                self._docs[path] = _image_pdf(path, self.photo_max)
+                self._docs[path] = _image_pdf(path, self.photo_max, self.nominal_photos)
         return self._docs[path]
 
     def upright(self, path: str, page: int):
