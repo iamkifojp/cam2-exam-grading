@@ -13,7 +13,12 @@ import { act, app, applySession, config, criteriaOf, gradeOf, gradedWith, handle
 import { button, commentField, commentRefused, debounce, formatTime, h, modal, toast } from "./ui.js";
 import { parseRange, snap } from "./boxes.js";
 
-const wholeSubmission = () => ["assignment", "draft"].includes(config()?.task_kind);
+const isDraft = () => config()?.task_kind === "draft";
+const isAssignment = () => config()?.task_kind === "assignment";
+const wholeSubmission = () => isDraft() || isAssignment();
+const summaryOf = (sid) => app.session?.summary?.students?.find((x) => x.student_id === sid) || null;
+const isSeen = (sid) => !!summaryOf(sid)?.seen;
+const isLate = (sid) => !!summaryOf(sid)?.late;
 const NA = "not_answered";
 const MAX_BUTTONS = 15;          // above this, a number box with − / +
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
@@ -65,6 +70,84 @@ function itemLabel(it) {
 
 const valueOf = (sid, qid, rid) => gradeOf(sid, qid, rid);
 const isGraded = (sid, qid, rid) => valueOf(sid, qid, rid) !== null;
+const isItemDone = (sid, qid, rid) => (isDraft() ? isSeen(sid) : isGraded(sid, qid, rid));
+
+export function partnerInfo(c, sid) {
+  const groups = c?.partner_groups || [];
+  const byId = new Map((c?.students || []).map((s) => [s.id, s]));
+  let num = 0;
+  for (const g of groups) {
+    const members = (g.student_ids || []).map((id) => byId.get(id)).filter(Boolean);
+    if (members.length < 2) continue;
+    num += 1;
+    if (members.some((m) => m.id === sid)) {
+      return { id: g.id, num, members, others: members.filter((m) => m.id !== sid) };
+    }
+  }
+  return null;
+}
+
+export async function openPartnerModal(studentId, { flush = flushStep4 } = {}) {
+  if (commentRefused() || !(await flush())) return;
+  const bodyEl = h("div", { class: "stack" });
+  const drawModal = () => {
+    const c = config();
+    const student = c.students.find((s) => s.id === studentId);
+    if (!student) return;
+    const info = partnerInfo(c, studentId);
+    const groupedOther = new Set();
+    const groupNumOf = new Map();
+    for (const s of c.students) {
+      const pi = partnerInfo(c, s.id);
+      if (pi && pi.id !== info?.id) {
+        groupedOther.add(s.id);
+        groupNumOf.set(s.id, pi.num);
+      }
+    }
+    const inGroupIds = new Set((info?.members || [student]).map((m) => m.id));
+    const candidates = c.students.filter((s) => !inGroupIds.has(s.id));
+    const select = h("select", { id: "partner-select", "aria-label": t("partners.add_label") },
+      h("option", { value: "" }, t("partners.choose")),
+      candidates.map((s) => {
+        const gNum = groupNumOf.get(s.id);
+        const text = gNum ? `${s.display_name} (${t("partners.group_n", { n: gNum })})` : s.display_name;
+        return h("option", { value: s.id, disabled: !!(info && gNum) }, text);
+      }));
+    const linkBtn = button(t("partners.link_button"), async () => {
+      if (!select.value) return;
+      const data = await act(post("/api/partners/link", { student_id: studentId, partner_id: select.value }));
+      if (data || app.saveError) drawModal();
+    }, "primary small", { id: "partner-link-btn", disabled: true });
+    select.addEventListener("change", () => { linkBtn.disabled = !select.value; });
+
+    const currentBox = info
+      ? h("div", { class: "stack" },
+        h("p", { class: "label" }, t("partners.current_group", { n: info.num })),
+        h("ul", { class: "partner-list" }, info.members.map((m) => h("li", { class: "row spread partner-row" },
+          h("span", {}, m.display_name),
+          button(t("partners.unlink"), async () => {
+            const data = await act(post("/api/partners/unlink", { student_id: m.id }));
+            if (data || app.saveError) drawModal();
+          }, "small ghost")))))
+      : h("p", { class: "muted small" }, t("partners.none"));
+
+    const addBox = candidates.some((s) => !(info && groupedOther.has(s.id)))
+      ? h("div", { class: "row partner-add" }, select, linkBtn)
+      : h("p", { class: "muted small" }, t("partners.none_available"));
+
+    bodyEl.replaceChildren(
+      h("p", { class: "muted small" }, t("partners.hint")),
+      currentBox,
+      h("div", { class: "stack" }, h("span", { class: "label" }, t("partners.add_label")), addBox));
+  };
+  drawModal();
+  const student = config().students.find((s) => s.id === studentId);
+  modal({
+    title: t("partners.title", { name: student?.display_name || "" }),
+    body: bodyEl,
+    actions: [{ label: t("common.close"), kind: "primary" }],
+  });
+}
 
 function draft() {
   const c = config();
@@ -75,9 +158,9 @@ function draft() {
       || list[0];
     const rid = it.r?.id || null;
     const sids = papers(c, it.q.id).map((s) => s.id);
-    const anyGraded = sids.some((sid) => list.some((x) => isGraded(sid, x.q.id, x.r?.id)));
+    const anyGraded = sids.some((sid) => list.some((x) => isItemDone(sid, x.q.id, x.r?.id)));
     const sid = sids.includes(resume.student_id) ? resume.student_id
-      : (sids.find((s) => !isGraded(s, it.q.id, rid)) || sids[0]);
+      : (sids.find((s) => !isItemDone(s, it.q.id, rid)) || sids[0]);
     app.draft.grading = {
       qid: it.q.id, rid, sid, ungradedOnly: anyGraded, zoom: 1,
       wholePage: false, page: 1, tool: "pan", hlColour: "yellow",
@@ -89,7 +172,7 @@ function draft() {
   const d = app.draft.grading;
   if (!d.tool) d.tool = "pan";
   if (!d.hlColour) d.hlColour = "yellow";
-  if (!d.gridView) d.gridView = "question";
+  if (!d.gridView) d.gridView = wholeSubmission() ? "papers" : "question";
   if (!d.gridSort) d.gridSort = "order";
   if (!d.gridFilter) d.gridFilter = "all";
   if (!d.gridPages) d.gridPages = {};
@@ -129,10 +212,13 @@ async function moveTo(changes) {
   d.pendingNote = null;
   d.pickedKeyword = null;
   const switchingQuestion = changes.qid && changes.qid !== d.qid;
+  const switchingStudent = changes.sid && changes.sid !== d.sid;
   Object.assign(d, changes);
   if (switchingQuestion && d.gridOpen) d.gridScroll = 0;
-  d.revealed = null;
-  d.page = firstPage(d.qid);
+  if (switchingQuestion || switchingStudent) {
+    d.revealed = null;
+    d.page = firstPage(d.qid);
+  }
   savePosition(d.qid, d.sid, d.rid);
   render();
 }
@@ -165,7 +251,7 @@ function papers(c, qid) {
 function visibleStudents(c, d) {
   const all = papers(c, d.qid);
   if (!d.ungradedOnly) return all;
-  return all.filter((s) => s.id === d.sid || !isGraded(s.id, d.qid, d.rid));
+  return all.filter((s) => s.id === d.sid || !isItemDone(s.id, d.qid, d.rid));
 }
 
 function nextStudentId(c, d, step = 1) {
@@ -174,7 +260,7 @@ function nextStudentId(c, d, step = 1) {
   if (d.ungradedOnly) {
     for (let i = 1; i < list.length; i++) {
       const s = list[(at + step * i + list.length) % list.length];
-      if (!isGraded(s.id, d.qid, d.rid)) return s.id;
+      if (!isItemDone(s.id, d.qid, d.rid)) return s.id;
     }
     return null;
   }
@@ -189,6 +275,7 @@ function levelText(r, value) {
 }
 
 function badgeText(c, q, sid) {
+  if (isDraft()) return null;
   if (gradedWith(c, q) === "marks") {
     const value = valueOf(sid, q.id);
     if (value === null) return null;
@@ -405,6 +492,20 @@ export const saveComment = debounce(async (sid, qid, text) => {
     if (app.session?.config?.session_id !== sessionId) return false;
     applySession(data.session, seq);
     updateSavedStatus(data.session);
+    if (isDraft()) {
+      const c = config();
+      const seenCount = (c?.students || []).filter((s) => isSeen(s.id)).length;
+      const total = c?.students?.length || 0;
+      const progSpan = document.querySelector(".grade-progress span");
+      if (progSpan) progSpan.textContent = t("step4.seen_count", { done: seenCount, total });
+      const progFill = document.querySelector(".grade-progress .progress-fill");
+      if (progFill && total) progFill.style.width = `${(seenCount / total) * 100}%`;
+      const activeDone = isSeen(sid);
+      document.querySelector(".paper-chip.on")?.classList.toggle("graded", activeDone);
+      document.querySelector(".paper-chip.on")?.classList.toggle("noted", hasAnnotationOrComment(sid, qid));
+      document.querySelector(".viewer")?.classList.toggle("graded", activeDone);
+      document.querySelector(".grade-card")?.classList.toggle("graded", activeDone);
+    }
     return true;
   } catch (err) {
     await handleError(err);
@@ -542,7 +643,7 @@ export function renderStep4() {
   const q = item.q;
   const rid = item.r?.id || null;
   const student = c.students.find((s) => s.id === d.sid) || c.students[0];
-  const gradedHere = c.students.filter((s) => isGraded(s.id, q.id, rid)).length;
+  const gradedHere = c.students.filter((s) => isItemDone(s.id, q.id, rid)).length;
   const go = (it) => moveTo({ qid: it.q.id, rid: it.r?.id || null, sid: firstFor(c, d, it) });
 
   const questionBar = h("div", { class: "grade-bar" },
@@ -555,11 +656,11 @@ export function renderStep4() {
           t("step4.question_of", { label: itemLabel(x), n: i + 1, total: list.length }))))),
       button([t("step4.next_question"), " ▶"], () => go(list[at + 1]), "small", { disabled: at === list.length - 1 })),
     h("div", { class: "grade-progress" },
-      h("span", {}, t("step4.graded_count", { done: gradedHere, total: c.students.length })),
+      h("span", {}, t(isDraft() ? "step4.seen_count" : "step4.graded_count", { done: gradedHere, total: c.students.length })),
       h("div", { class: "progress small" }, h("div", { class: "progress-fill",
         style: { width: `${(gradedHere / c.students.length) * 100}%` } }))),
     d.gridOpen ? null : h("label", { class: "check" }, h("input", { type: "checkbox", checked: d.ungradedOnly,
-      onchange: (e) => { d.ungradedOnly = e.target.checked; render(); } }), t("step4.ungraded_only")),
+      onchange: (e) => { d.ungradedOnly = e.target.checked; render(); } }), t(isDraft() ? "step4.unseen_only" : "step4.ungraded_only")),
     h("label", { class: "check" }, h("input", { type: "checkbox", checked: hideNames(),
       onchange: (e) => setPref("hide_names", e.target.checked) }), t("step4.hide_names")),
     h("label", { class: "check" }, h("input", { type: "checkbox", checked: shufflePapers(),
@@ -580,12 +681,12 @@ export function renderStep4() {
   const strip = h("nav", { class: "paper-strip", "aria-label": t("step4.papers") },
     h("span", { class: "strip-label" }, t("step4.papers")),
     papers(c, q.id).map((s, i) => {
-      const hidden = d.ungradedOnly && s.id !== d.sid && isGraded(s.id, q.id, rid);
+      const done = isItemDone(s.id, q.id, rid);
+      const hidden = d.ungradedOnly && s.id !== d.sid && done;
       if (hidden) return null;
-      const v = valueOf(s.id, q.id, rid);
       const noted = hasAnnotationOrComment(s.id, q.id);
       return h("button", { type: "button",
-        class: `paper-chip ${v !== null ? "graded" : ""} ${noted ? "noted" : ""} ${s.id === d.sid ? "on" : ""}`,
+        class: `paper-chip ${done ? "graded" : ""} ${noted ? "noted" : ""} ${s.id === d.sid ? "on" : ""}`,
         title: hideNames() ? null : s.display_name, "aria-current": s.id === d.sid ? "true" : null,
         onclick: () => moveTo({ sid: s.id }) }, String(i + 1));
     }));
@@ -603,7 +704,7 @@ export function renderStep4() {
 
 function firstFor(c, d, it) {
   const all = papers(c, it.q.id);
-  const first = d.ungradedOnly ? all.find((s) => !isGraded(s.id, it.q.id, it.r?.id)) : null;
+  const first = d.ungradedOnly ? all.find((s) => !isItemDone(s.id, it.q.id, it.r?.id)) : null;
   return (first || all[0]).id;
 }
 
@@ -661,6 +762,7 @@ function viewer(c, d, item, student) {
       button(["◀ ", t("step4.prev_paper")], () => moveTo({ sid: prevId }), "small", { disabled: !prevId }),
       h("strong", {}, t("step4.paper_of", { n: index + 1, total: c.students.length })),
       nameOrReveal(d, student),
+      wholeSubmission() && isLate(student.id) ? h("span", { class: "badge warn-badge" }, t("step4.late_badge")) : null,
       button([t("step4.next_paper"), " ▶"], () => moveTo({ sid: nextId }), "small", { disabled: !nextId })),
     h("div", { class: "row" },
       d.wholePage && !wholeSubmission() ? null : [
@@ -740,7 +842,8 @@ function viewer(c, d, item, student) {
     }
   }
 
-  return h("section", { class: `viewer ${value !== null ? "graded" : ""}` }, head, toolHint, pageNav,
+  const viewerDone = isDraft() ? isSeen(student.id) : value !== null;
+  return h("section", { class: `viewer ${viewerDone ? "graded" : ""}` }, head, toolHint, pageNav,
     h("div", { class: "viewer-frame" }, body,
       badge ? h("div", { class: `grade-badge ${badge === t("step4.badge_na") ? "na" : ""} ${badge.includes("\n") ? "multi" : ""}`,
         role: "status" }, badge) : null));
@@ -1306,9 +1409,36 @@ function gradeCard(c, d, item, student) {
 
   const nextId = nextStudentId(c, d, 1);
   const outOf = r || wholeSubmission() ? "" : t("step4.out_of", { max: q.max });
-  return h("section", { class: `card grade-card ${value !== null ? "graded" : ""}` },
+  const cardDone = isDraft() ? isSeen(student.id) : value !== null;
+  let metaBox = null;
+  if (wholeSubmission()) {
+    const late = isLate(student.id);
+    const pInfo = partnerInfo(c, student.id);
+    const pLabel = !pInfo
+      ? null
+      : (hideNames() && d.revealed !== student.id)
+        ? t("partners.group_anon", { n: pInfo.num, count: pInfo.members.length })
+        : t("partners.group_with", { n: pInfo.num, names: pInfo.others.map((m) => m.display_name).join(", ") });
+    metaBox = h("div", { class: "submission-meta" },
+      h("label", { class: "check late-check" },
+        h("input", {
+          type: "checkbox", id: "late-check", checked: late,
+          onchange: async (ev) => {
+            const want = ev.target.checked;
+            if (commentRefused() || !(await flushStep4())) { ev.target.checked = late; return; }
+            await actKeepingScroll(post("/api/overall", { student_id: student.id, late: want }));
+          },
+        }),
+        t("step4.late_label")),
+      h("div", { class: "row partner-meta" },
+        pLabel ? h("span", { class: "badge partner-badge" }, pLabel) : null,
+        button(pInfo ? t("partners.manage") : t("partners.link_action"),
+          () => openPartnerModal(student.id), "small ghost", { id: "partner-btn" })));
+  }
+  return h("section", { class: `card grade-card ${cardDone ? "graded" : ""}` },
     h("h2", {}, h("span", { class: "question-name" }, itemLabel(item)), outOf ? h("span", { class: "muted" }, " · ", outOf) : null),
     hideNames() && d.revealed !== student.id ? null : h("p", { class: "muted small" }, student.display_name),
+    metaBox,
     grading,
     wholeSubmission() && !r ? null : h("div", { class: "row" },
       button(t("grade.not_answered"), notAnswered, value === NA ? "small on" : "small", { "aria-pressed": value === NA ? "true" : "false" }),
@@ -1411,7 +1541,14 @@ function lastPaperActions(c, d, item) {
 }
 
 function doneCard(c, item) {
-  const remaining = items(c).find((x) => c.students.some((s) => !isGraded(s.id, x.q.id, x.r?.id)));
+  if (isDraft()) {
+    return h("section", { class: "card grade-card graded" },
+      h("h2", {}, "✓ ", t("step4.all_seen")),
+      h("p", {}, t("step4.everything_seen")),
+      button(t("step4.to_review"), () => goTo(5, { next: true }), "primary big", { id: "next-paper" }),
+      h("p", { class: "muted small" }, t("step4.show_all_seen_hint")));
+  }
+  const remaining = items(c).find((x) => c.students.some((s) => !isItemDone(s.id, x.q.id, x.r?.id)));
   return h("section", { class: "card grade-card graded" },
     h("h2", {}, "✓ ", t("step4.all_done", { label: itemLabel(item) })),
     remaining
@@ -1427,7 +1564,12 @@ function doneCard(c, item) {
 
 // --- Class grid (F11) ----------------------------------------------------------------------
 
-function gridGradeBadge(q, r, value) {
+function gridGradeBadge(q, r, value, student) {
+  if (isDraft()) {
+    return isSeen(student.id)
+      ? h("span", { class: "grid-grade graded" }, t("step4.grid_seen"))
+      : h("span", { class: "grid-grade ungraded" }, t("step4.grid_unseen"));
+  }
   if (value === null) {
     return h("span", { class: "grid-grade ungraded" }, t("step4.grid_ungraded"));
   }
@@ -1445,6 +1587,9 @@ function gridStudents(c, d, q, rid) {
     value: valueOf(student.id, q.id, rid),
   }));
   const filtered = rows.filter((row) => {
+    if (d.gridFilter === "unseen") return !isSeen(row.student.id);
+    if (d.gridFilter === "seen") return isSeen(row.student.id);
+    if (d.gridFilter === "late") return isLate(row.student.id);
     if (d.gridFilter === "ungraded") return row.value === null;
     if (d.gridFilter === "graded") return typeof row.value === "number";
     if (d.gridFilter === "na") return row.value === NA;
@@ -1545,6 +1690,24 @@ function classGridSection(c, d, item) {
   const cols = gridColumns();
   const stamp = encodeURIComponent(c.sliced_at || "");
   const totalCount = c.students.length;
+  const draftTask = isDraft();
+  const whole = wholeSubmission();
+  const filterOptions = draftTask
+    ? [
+      ["all", t("step4.grid_filter_all")],
+      ["unseen", t("step4.grid_filter_unseen")],
+      ["seen", t("step4.grid_filter_seen")],
+      ["late", t("step4.grid_filter_late")],
+    ]
+    : [
+      ["all", t("step4.grid_filter_all")],
+      ["ungraded", t("step4.grid_filter_ungraded")],
+      ["graded", t("step4.grid_filter_graded")],
+      ["na", t("step4.grid_filter_na")],
+      ["noted", t("step4.grid_filter_noted")],
+      ...(whole ? [["late", t("step4.grid_filter_late")]] : []),
+    ];
+  if (!filterOptions.some(([val]) => val === d.gridFilter)) d.gridFilter = "all";
   const rows = gridStudents(c, d, q, rid);
   const filtered = rows.length !== totalCount;
   const boxesParam = encodeURIComponent((q.boxes || []).join(","));
@@ -1552,7 +1715,7 @@ function classGridSection(c, d, item) {
 
   const toolbar = h("div", { class: "grid-toolbar" },
     h("div", { class: "row" },
-      wholeSubmission() ? null : h("div", { class: "seg", role: "group", "aria-label": t("step4.grid_view") },
+      whole ? null : h("div", { class: "seg", role: "group", "aria-label": t("step4.grid_view") },
         h("button", { type: "button", class: d.gridView === "question" ? "on" : "",
           "aria-pressed": d.gridView === "question" ? "true" : "false",
           onclick: () => { d.gridView = "question"; d.gridScroll = 0; render(); } }, t("step4.grid_view_question")),
@@ -1579,11 +1742,7 @@ function classGridSection(c, d, item) {
         : null,
       h("label", { class: "inline" }, h("span", { class: "label small" }, t("step4.grid_filter")),
         h("select", { id: "grid-filter", onchange: (ev) => { d.gridFilter = ev.target.value; render(); } },
-          h("option", { value: "all", selected: d.gridFilter === "all" ? "selected" : null }, t("step4.grid_filter_all")),
-          h("option", { value: "ungraded", selected: d.gridFilter === "ungraded" ? "selected" : null }, t("step4.grid_filter_ungraded")),
-          h("option", { value: "graded", selected: d.gridFilter === "graded" ? "selected" : null }, t("step4.grid_filter_graded")),
-          h("option", { value: "na", selected: d.gridFilter === "na" ? "selected" : null }, t("step4.grid_filter_na")),
-          h("option", { value: "noted", selected: d.gridFilter === "noted" ? "selected" : null }, t("step4.grid_filter_noted")))),
+          filterOptions.map(([val, label]) => h("option", { value: val, selected: d.gridFilter === val ? "selected" : null }, label)))),
       h("span", { class: `grid-count small ${filtered ? "filtered" : "muted"}`, role: "status" },
         filtered ? t("step4.grid_showing", { shown: rows.length, total: totalCount })
           : t("step4.grid_showing_all", { total: totalCount })),
@@ -1602,7 +1761,19 @@ function classGridSection(c, d, item) {
     const e = entry(student.id, q.id);
     const noteCount = (e?.annotations || []).length;
     const hlCount = (e?.highlights || []).length;
-    const hasComment = !!(e?.comment || "").trim();
+    const hasComment = !!((whole && app.session?.grades?.overall?.[student.id]?.comment?.trim()) || (e?.comment || "").trim());
+    const cardDone = draftTask ? isSeen(student.id) : value !== null;
+    const cardBadges = [];
+    if (whole) {
+      if (isLate(student.id)) cardBadges.push(h("span", { class: "badge warn-badge" }, t("step4.late_badge")));
+      const pi = partnerInfo(c, student.id);
+      if (pi) cardBadges.push(h("span", { class: "badge partner-badge" }, t("partners.group_n", { n: pi.num })));
+      if (noteCount > 0) {
+        cardBadges.push(h("span", { class: "badge" }, noteCount === 1
+          ? t("step4.grid_notes_one") : t("step4.grid_notes_many", { n: noteCount })));
+      }
+      if (hasComment) cardBadges.push(h("span", { class: "badge" }, t("step4.grid_comment")));
+    }
 
     let preview;
     let footer = null;
@@ -1686,7 +1857,7 @@ function classGridSection(c, d, item) {
       : openCard(student.id, { wholePage: false }));
 
     return h("article", {
-      class: `grid-card ${value !== null ? "graded" : ""} ${student.id === d.sid ? "current" : ""}`,
+      class: `grid-card ${cardDone ? "graded" : ""} ${student.id === d.sid ? "current" : ""}`,
       role: "button",
       tabindex: "0",
       dataset: { studentId: student.id },
@@ -1702,7 +1873,8 @@ function classGridSection(c, d, item) {
     },
     h("div", { class: "row spread grid-card-head" },
       h("strong", { class: "grid-card-name" }, headTitle),
-      gridGradeBadge(q, r, value)),
+      gridGradeBadge(q, r, value, student)),
+    cardBadges.length ? h("div", { class: "row grid-card-badges" }, cardBadges) : null,
     preview,
     footer);
   });

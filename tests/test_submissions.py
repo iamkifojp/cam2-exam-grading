@@ -25,6 +25,11 @@ class SubmissionFixture(unittest.TestCase):
         self.session, self.config, self.grades = storage.create_session(os.path.join(self.root, "session"), "Submission test")
         self.handoff = host.normalize({"format": "cam2-host", "version": 1, "task_kind": "assignment",
             "exam_name": "Submission test", "session_folder": self.session.folder,
+            "rubrics": [{"id": "r1", "name": "Criterion A", "bands": [
+                {"levels": "0", "descriptor": ""},
+                {"levels": "1–4", "descriptor": "Basic"},
+                {"levels": "5–8", "descriptor": "Strong"},
+            ]}],
             "roster": [{"external_id": "8A-01", "name": "Tanaka Hana"},
                        {"external_id": "8A-02", "name": "Sato Ken"}]})
         host.apply_roster(self.config, self.handoff)

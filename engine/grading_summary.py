@@ -230,6 +230,163 @@ def _check_comment_length(new, old, limit: int, generated_line: str = "") -> Non
         raise UserError("comment_too_long", limit=limit)
 
 
+# --- Partners & Late -----------------------------------------------------------------
+
+def partner_group_of(config: dict, student_id: str) -> Optional[dict]:
+    """The partner group containing ``student_id`` (with >= 2 valid members), or None."""
+    known = {s["id"] for s in config.get("students") or []}
+    for g in config.get("partner_groups") or []:
+        members = [sid for sid in g.get("student_ids") or [] if sid in known]
+        if len(members) >= 2 and student_id in members:
+            return g
+    return None
+
+
+def partner_group_index(config: dict, student_id: str) -> Optional[int]:
+    """1-based group number for display, or None if ``student_id`` has no partner."""
+    known = {s["id"] for s in config.get("students") or []}
+    idx = 0
+    for g in config.get("partner_groups") or []:
+        members = [sid for sid in g.get("student_ids") or [] if sid in known]
+        if len(members) < 2:
+            continue
+        idx += 1
+        if student_id in members:
+            return idx
+    return None
+
+
+def partner_member_ids(config: dict, student_id: str) -> List[str]:
+    """Student IDs sharing grades and overall comments with ``student_id``."""
+    known = {s["id"] for s in config.get("students") or []}
+    g = partner_group_of(config, student_id)
+    if g is None:
+        return [student_id]
+    members = [sid for sid in g.get("student_ids") or [] if sid in known]
+    return members if student_id in members else [student_id]
+
+
+def _combine_comments(base: str, added: str) -> str:
+    a = str(base or "").strip()
+    b = str(added or "").strip()
+    if not a:
+        return b
+    if not b or a == b:
+        return a
+    return f"{a}\n{b}"
+
+
+def link_partners(config: dict, grades_data: dict, student_id: str, partner_id: str) -> dict:
+    """Link ``student_id`` and ``partner_id`` into one partner group.
+
+    Grades and overall comments sync across all members: if one side joins an
+    existing group (or already has a grade), the group's grade stands and any
+    missing criteria are filled from the joining member. Comments are combined
+    without loss. Notes, highlights, and ``late`` stay per student.
+    """
+    known = {s["id"] for s in config.get("students") or []}
+    if student_id not in known:
+        raise UserError("unknown_student", student=student_id)
+    if partner_id not in known:
+        raise UserError("unknown_student", student=partner_id)
+    if student_id == partner_id:
+        raise UserError("partner_same_student")
+
+    g_a = partner_group_of(config, student_id)
+    g_b = partner_group_of(config, partner_id)
+    if g_a is not None and g_a is g_b:
+        return g_a
+    if g_a is not None and g_b is not None:
+        raise UserError("partner_already_grouped")
+
+    if g_a is not None:
+        group = g_a
+        group["student_ids"] = [sid for sid in group["student_ids"] if sid in known]
+        primary_sid = group["student_ids"][0]
+        joining = partner_id
+        group["student_ids"].append(joining)
+    elif g_b is not None:
+        group = g_b
+        group["student_ids"] = [sid for sid in group["student_ids"] if sid in known]
+        primary_sid = group["student_ids"][0]
+        joining = student_id
+        group["student_ids"].append(joining)
+    else:
+        used_ids = {g.get("id") for g in config.get("partner_groups") or []}
+        gid = f"pg{model.new_session_id()[:8]}"
+        while gid in used_ids:
+            gid = f"pg{model.new_session_id()[:8]}"
+        group = {"id": gid, "student_ids": [student_id, partner_id]}
+        config.setdefault("partner_groups", []).append(group)
+        primary_sid, joining = student_id, partner_id
+
+    members = list(group["student_ids"])
+    overall = grades_data.setdefault("overall", {})
+    p_comment = (overall.get(primary_sid) or {}).get("comment", "")
+    j_comment = (overall.get(joining) or {}).get("comment", "")
+    combined_overall = _combine_comments(p_comment, j_comment)
+    if combined_overall or any("comment" in (overall.get(mid) or {}) for mid in members):
+        for mid in members:
+            overall.setdefault(mid, {})["comment"] = combined_overall
+
+    for q in config.get("questions") or []:
+        qid = q["id"]
+        mode = question_mode(config, q)
+        p_entry = _entry(grades_data, primary_sid, qid)
+        j_entry = _entry(grades_data, joining, qid)
+        q_comment = _combine_comments(p_entry.get("comment", ""), j_entry.get("comment", ""))
+        if mode == "rubric":
+            rids = question_rubric_ids(config, q)
+            merged = {}
+            for rid in rids:
+                pv = level_of(config, p_entry, q, rid)
+                jv = level_of(config, j_entry, q, rid)
+                chosen = pv if pv is not None else jv
+                if chosen is not None:
+                    merged[rid] = chosen
+            if merged or any("levels" in _entry(grades_data, mid, qid) for mid in members):
+                for mid in members:
+                    target = _ensure_entry(grades_data, mid, qid)
+                    target["levels"] = {rid: merged[rid] for rid in rids if rid in merged}
+                    target["value"] = None
+        elif mode == "marks":
+            pv = p_entry.get("value")
+            jv = j_entry.get("value")
+            chosen = pv if pv is not None else jv
+            if chosen is not None:
+                for mid in members:
+                    _ensure_entry(grades_data, mid, qid)["value"] = chosen
+        if q_comment:
+            for mid in members:
+                _ensure_entry(grades_data, mid, qid)["comment"] = q_comment
+    return group
+
+
+def unlink_partner(config: dict, student_id: str) -> None:
+    """Remove ``student_id`` from its partner group; each keeps a copy of grades."""
+    known = {s["id"] for s in config.get("students") or []}
+    if student_id not in known:
+        raise UserError("unknown_student", student=student_id)
+    kept = []
+    for g in config.get("partner_groups") or []:
+        members = [sid for sid in g.get("student_ids") or [] if sid in known and sid != student_id]
+        if len(members) >= 2:
+            kept.append({"id": g["id"], "student_ids": members})
+    config["partner_groups"] = kept
+
+
+def paper_has_feedback(config: dict, grades_data: dict, student_id: str) -> bool:
+    """True once a student's work has an overall/question comment or a numbered note."""
+    overall = (grades_data.get("overall") or {}).get(student_id) or {}
+    if str(overall.get("comment") or "").strip():
+        return True
+    per = (grades_data.get("grades") or {}).get(student_id) or {}
+    return any(
+        isinstance(e, dict) and (str(e.get("comment") or "").strip() or bool(e.get("annotations")))
+        for e in per.values()
+    )
+
+
 # A grade entry is {"value": ..., "comment": ...}. On a rubric question the levels
 # are kept per criterion in "levels": {rubric id: level}, with "value" None,
 # so criteria can be added to or taken off a question after grading starts
@@ -276,22 +433,23 @@ def set_grade(config: dict, grades_data: dict, student_id: str, question_id: str
         _check_comment_length(comment, saved.get("comment"),
                               question_comment_limit(config, question),
                               str(saved.get("keyword_text") or ""))
-    entry = grades_data.setdefault("grades", {}).setdefault(student_id, {}).setdefault(
-        question_id, {"value": None, "comment": ""})
-    if value is not ...:
-        if rubric_mode:
-            if "levels" in entry:
-                levels = dict(entry["levels"])
+    for target_id in partner_member_ids(config, student_id):
+        entry = grades_data.setdefault("grades", {}).setdefault(target_id, {}).setdefault(
+            question_id, {"value": None, "comment": ""})
+        if value is not ...:
+            if rubric_mode:
+                if "levels" in entry:
+                    levels = dict(entry["levels"])
+                else:
+                    levels = {rids[0]: entry.get("value")}
+                for rid in [rubric_id] if rubric_id else rids:
+                    levels[rid] = value
+                entry["levels"] = levels
+                entry["value"] = None
             else:
-                levels = {rids[0]: entry.get("value")}
-            for rid in [rubric_id] if rubric_id else rids:
-                levels[rid] = value
-            entry["levels"] = levels
-            entry["value"] = None
-        else:
-            entry["value"] = value
-    if comment is not None:
-        entry["comment"] = str(comment)
+                entry["value"] = value
+        if comment is not None:
+            entry["comment"] = str(comment)
     return grades_data
 
 
@@ -490,6 +648,8 @@ def counted_questions(config: dict, grades_data: dict, student_id: str):
     answered more of than needed: {group id: {"answered": [qid],
     "chosen": [qid], "pending": bool}}. A pending group counts nothing.
     """
+    if model.is_draft(config):
+        return {}, [], {}
     questions = config.get("questions") or []
     order = {q["id"]: i for i, q in enumerate(questions)}
     values = {q["id"]: question_values(config, grades_data, student_id, q) for q in questions}
@@ -651,8 +811,14 @@ def student_summary(config: dict, grades_data: dict, student_id: str) -> dict:
     section_results = _section_results(config, counted, weighted)
     levels = {q["id"]: question_values(config, grades_data, student_id, q) for q in questions
               if question_mode(config, q) == "rubric"}
+    seen = paper_has_feedback(config, grades_data, student_id)
+    pg = partner_group_of(config, student_id)
+    complete = seen if model.is_draft(config) else (not ungraded and not pending)
     result = {"student_id": student_id, "ungraded": ungraded, "pending": pending,
-              "choices": choices, "complete": not ungraded and not pending,
+              "choices": choices, "complete": complete,
+              "seen": seen, "late": bool(overall.get("late")),
+              "partner_group": pg["id"] if pg else None,
+              "partner_group_num": partner_group_index(config, student_id),
               "counted": counted, "comment": overall.get("comment", ""),
               "levels": levels, "sections": section_results}
 
@@ -758,10 +924,20 @@ def set_choice(config: dict, grades_data: dict, student_id: str, group_id: str, 
     return grades_data
 
 
-def set_overall_comment(grades_data: dict, student_id: str, comment: str) -> dict:
+def set_overall_comment(grades_data: dict, student_id: str, comment: str,
+                        config: Optional[dict] = None) -> dict:
     saved = (grades_data.get("overall") or {}).get(student_id) or {}
     _check_comment_length(comment, saved.get("comment"), MAX_OVERALL_COMMENT)
-    grades_data.setdefault("overall", {}).setdefault(student_id, {})["comment"] = str(comment or "")
+    targets = partner_member_ids(config, student_id) if config else [student_id]
+    text = str(comment or "")
+    for target_id in targets:
+        grades_data.setdefault("overall", {}).setdefault(target_id, {})["comment"] = text
+    return grades_data
+
+
+def set_late(grades_data: dict, student_id: str, late: bool) -> dict:
+    """Record whether ``student_id`` submitted late (always per student, never shared)."""
+    grades_data.setdefault("overall", {}).setdefault(student_id, {})["late"] = bool(late)
     return grades_data
 
 
@@ -784,6 +960,8 @@ def class_summary(config: dict, grades_data: dict) -> dict:
     """
     students = [student_summary(config, grades_data, s["id"])
                 for s in config.get("students") or []]
+    if model.is_draft(config):
+        return {"students": students, "questions": {}, "overall": {}, "sections": {}}
     in_group = {qid for g in config.get("choice_groups") or [] for qid in g["questions"]}
 
     per_question = {}
@@ -797,6 +975,9 @@ def class_summary(config: dict, grades_data: dict) -> dict:
             elif v is not None:
                 nums.append(v)
         per_question[slot_key(q["id"], rid)] = _stats(nums)
+
+    if model.is_assignment(config):
+        return {"students": students, "questions": per_question, "overall": {}, "sections": {}}
 
     started = [s for s in students if s["counted"]]
     overall = {}
@@ -843,8 +1024,12 @@ def highest_level(config: dict, grades_data: dict, question: dict, rubric_id: st
 
 def progress(config: dict, grades_data: dict) -> dict:
     """Slots graded across the class, and papers with every slot graded."""
-    all_slots = slots(config)
     students = [s["id"] for s in config.get("students") or []]
+    if model.is_draft(config):
+        seen = sum(1 for sid in students if paper_has_feedback(config, grades_data, sid))
+        return {"graded": seen, "total": len(students),
+                "students_done": seen, "students_total": len(students)}
+    all_slots = slots(config)
     graded = done = 0
     for sid in students:
         n = sum(1 for q, rid in all_slots

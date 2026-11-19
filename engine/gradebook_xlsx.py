@@ -56,10 +56,122 @@ def comment_with_notes(entry: dict) -> str | None:
     return "\n".join(parts) or None
 
 
+def _whole_submission_comment(overall_comment: str, entry: dict) -> str | None:
+    """Overall comment plus numbered note text for whole-submission workbooks."""
+    parts = []
+    text = str(overall_comment or "").strip()
+    if text:
+        parts.append(text)
+    for i, ann in enumerate((entry or {}).get("annotations") or [], 1):
+        note = str(ann.get("text") or "").strip()
+        if note:
+            parts.append(f"({i}) {note}")
+    return "\n".join(parts) or None
+
+
+def _build_submission_workbook(config: dict, grades: dict, summary: dict, language: str) -> Workbook:
+    from .workflow import display_name     # avoid an import cycle
+    t = lambda key, **kw: i18n.t(key, language, **kw)      # noqa: E731
+    questions = config.get("questions") or []
+    rubric_list = config.get("rubrics") or []
+    rubric_names = {r["id"]: r["name"] for r in rubric_list}
+    draft_task = model.is_draft(config)
+    sub_q = questions[0] if questions else {"id": model.SUBMISSION_ID, "label": config["exam_name"]}
+    crit_rids = [] if draft_task else grading_summary.question_rubric_ids(config, sub_q)
+    used_rubrics = [r for r in rubric_list if r["id"] in set(crit_rids)]
+    na_text = t("grade.not_answered")
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = t("xlsx.sheet_grades")[:31]
+
+    header = [t("xlsx.no"), t("xlsx.student"), t("xlsx.scan_file"), t("xlsx.late"), t("xlsx.partner_group")]
+    header += [rubric_names[rid] for rid in crit_rids]
+    header.append(t("xlsx.overall_comment"))
+    comment_col = len(header)
+    header.append(t("xlsx.seen") if draft_task else t("xlsx.complete"))
+    ws.append(header)
+    for cell in ws[1]:
+        cell.font = BOLD
+        cell.fill = HEADER_FILL
+        cell.alignment = WRAP
+
+    entries_all = grades.get("grades") or {}
+    for i, (student, res) in enumerate(zip(config.get("students") or [], summary["students"]), 1):
+        entries = entries_all.get(student["id"]) or {}
+        sub_entry = entries.get(sub_q["id"]) or {}
+        file_names = ", ".join(f["name"] for f in student.get("files") or []) or student.get("source") or student.get("file")
+        group_text = t("xlsx.group_name", n=res["partner_group_num"]) if res["partner_group_num"] else None
+        row = [i, display_name(config, student), file_names, t("xlsx.yes") if res["late"] else None, group_text]
+        ungraded_cols = []
+        for rid in crit_rids:
+            value = grading_summary.level_of(config, sub_entry, sub_q, rid)
+            if value is None:
+                ungraded_cols.append(len(row) + 1)
+            row.append(na_text if value == model.NOT_ANSWERED else value)
+        row.append(_whole_submission_comment(res["comment"], sub_entry))
+        row.append(t("xlsx.yes") if res["complete"] else t("xlsx.no_answer"))
+        ws.append(row)
+        r_idx = ws.max_row
+        for col in ungraded_cols:
+            ws.cell(r_idx, col).fill = UNGRADED_FILL
+        for cell in ws[r_idx]:
+            cell.alignment = WRAP if isinstance(cell.value, str) and len(cell.value) > 20 else TOP
+
+    if not draft_task and crit_rids:
+        ws.append([])
+        for key, field in STATS:
+            stats_row = [None, t(f"xlsx.{key}"), None, None, None]
+            for rid in crit_rids:
+                st = summary["questions"].get(grading_summary.slot_key(sub_q["id"], rid))
+                stats_row.append(st[field] if st else None)
+            stats_row += [None, None]
+            ws.append(stats_row)
+            for cell in ws[ws.max_row]:
+                cell.fill = SUMMARY_FILL
+                cell.font = BOLD
+
+    widths = {1: 5, 2: 24, 3: 28, 4: 10, 5: 14}
+    for col in range(1, ws.max_column + 1):
+        title = str(ws.cell(1, col).value or "")
+        ws.column_dimensions[get_column_letter(col)].width = widths.get(
+            col, 42 if col == comment_col else max(12, min(len(title) + 2, 24)))
+    ws.freeze_panes = "C2"
+
+    ref = wb.create_sheet(t("xlsx.sheet_reference")[:31])
+    kind_label = t(f"xlsx.kind_{model.task_kind(config)}")
+    if draft_task:
+        ref.append([t("xlsx.task"), t("xlsx.task_kind")])
+        ref.append([config["exam_name"], kind_label])
+    else:
+        ref.append([t("xlsx.task"), t("xlsx.task_kind"), t("xlsx.rubric")])
+        ref.append([config["exam_name"], kind_label, ", ".join(rubric_names[rid] for rid in crit_rids) or None])
+    for cell in ref[1]:
+        cell.font = BOLD
+        cell.fill = HEADER_FILL
+    if not draft_task and used_rubrics:
+        ref.append([])
+        ref.append([t("xlsx.rubric"), t("xlsx.levels"), t("xlsx.descriptor")])
+        for cell in ref[ref.max_row]:
+            cell.font = BOLD
+            cell.fill = HEADER_FILL
+        for r in used_rubrics:
+            for band in r["bands"]:
+                ref.append([r["name"], band["levels"], band.get("descriptor") or None])
+                ref.cell(ref.max_row, 3).alignment = WRAP
+            ref.append([t("xlsx.rubric_max", name=r["name"], max=rubrics.rubric_max(r))])
+    ref.column_dimensions["A"].width = 24
+    ref.column_dimensions["B"].width = 24
+    ref.column_dimensions["C"].width = 60
+    return wb
+
+
 def build_workbook(config: dict, grades: dict, language: str) -> Workbook:
     from .workflow import display_name, report_options     # avoid an import cycle
     t = lambda key, **kw: i18n.t(key, language, **kw)      # noqa: E731
     summary = grading_summary.class_summary(config, grades)
+    if model.whole_submission(config):
+        return _build_submission_workbook(config, grades, summary, language)
     questions = config.get("questions") or []
     rubric_list = config.get("rubrics") or []
     rubric_by_id = {r["id"]: r for r in rubric_list}
