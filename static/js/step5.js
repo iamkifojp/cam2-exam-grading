@@ -4,7 +4,8 @@ import { post, waitForJob } from "./api.js";
 import { t, language } from "./i18n.js";
 import { closeSession, goTo } from "./main.js";
 import { openAddPapers } from "./step1.js";
-import { act, app, config, criteriaOf, gradeOf, gradedWith, handleError, render, usedCriteria } from "./store.js";
+import { openPartnerModal, partnerInfo } from "./step4.js";
+import { act, app, applySession, config, criteriaOf, gradeOf, gradedWith, handleError, nextMutationSeq, render, usedCriteria } from "./store.js";
 import { button, coach, commentField, commentRefused, confirmBox, debounce, formatTime, h, modal, progressOverlay, toast } from "./ui.js";
 
 const NA = "not_answered";
@@ -30,16 +31,38 @@ function columns(c) {
 }
 
 export const saveComment = debounce(async (sid, text) => {
-  const sessionId = app.session?.id;
+  const sessionId = app.session?.config?.session_id;
+  const seq = nextMutationSeq();
   try {
     const data = await post("/api/overall", { student_id: sid, comment: text });
-    if (app.session?.id !== sessionId) return false;
-    app.session = data.session;
-    if (!data.session?.save_failed) app.saveError = null;
+    if (app.session?.config?.session_id !== sessionId) return false;
+    applySession(data.session, seq);
     const status = document.querySelector(".save-status");
     if (status && data.session.saved_at && !data.session?.save_failed) {
       status.className = "save-status ok";
       status.textContent = t("save.saved_at", { time: formatTime(data.session.saved_at) });
+    }
+    const c = config();
+    const info = partnerInfo(c, sid);
+    if (info) {
+      for (const other of info.others) {
+        const ta = document.getElementById(`overall-${other.id}`);
+        if (ta && document.activeElement !== ta && !ta.classList.contains("too-long")) {
+          ta.value = data.session.grades?.overall?.[other.id]?.comment || "";
+        }
+      }
+    }
+    if (c?.task_kind === "draft") {
+      const sumById = new Map((data.session.summary?.students || []).map((x) => [x.student_id, x]));
+      for (const member of info ? info.members : [{ id: sid }]) {
+        const btn = document.getElementById(`draft-status-${member.id}`);
+        const seen = !!sumById.get(member.id)?.seen;
+        if (btn) {
+          btn.textContent = seen ? t("step5.seen_yes") : "—";
+          btn.closest("td")?.classList.toggle("missing", !seen);
+          btn.closest("tr")?.classList.toggle("incomplete", !seen);
+        }
+      }
     }
     return true;
   } catch (err) {
@@ -133,19 +156,127 @@ export function renderStep5() {
   const summary = app.session.summary;
   const grades = app.session.grades.grades || {};
   const byId = new Map(summary.students.map((s) => [s.student_id, s]));
-  const inGroup = new Set((c.choice_groups || []).flatMap((g) => g.questions));
+  const draftTask = c.task_kind === "draft";
+  const assignmentTask = c.task_kind === "assignment";
+  const whole = draftTask || assignmentTask;
   const incomplete = summary.students.filter((s) => !s.complete).length;
   const ungraded = summary.students.filter((s) => s.ungraded.length).length;
+  const used = usedCriteria(c);
+  const anyComment = Object.values(grades).some((per) => Object.values(per || {}).some((e) =>
+    (e?.comment || "").trim() || (e?.annotations || []).length));
+
+  if (whole) {
+    const subQ = c.questions?.[0] || { id: "submission", label: c.exam_name };
+    const subCols = draftTask ? [] : criteriaOf(c, subQ);
+    const head = h("tr", {},
+      h("th", {}, "#"),
+      h("th", { class: "sticky-col" }, t("step5.student")),
+      draftTask
+        ? h("th", { class: "num-col" }, t("step5.draft_status"))
+        : subCols.map((r) => h("th", { class: "num-col" }, r.name)),
+      h("th", { class: "num-col" }, t("step5.late")),
+      h("th", {}, t("step5.partners")),
+      h("th", {}, t("step5.overall_comment")));
+
+    const rows = c.students.map((s, i) => {
+      const res = byId.get(s.id);
+      const entry = grades[s.id]?.[subQ.id];
+      const noteText = (entry?.annotations || []).map((a, idx) => `(${idx + 1}) ${a.text}`).join("\n");
+      const statusOrGrades = draftTask
+        ? h("td", { class: `num-col grade-cell ${res.seen ? "" : "missing"} ${noteText ? "has-comment" : ""}` },
+          h("button", {
+            type: "button",
+            id: `draft-status-${s.id}`,
+            class: "draft-status-btn",
+            onclick: () => gradeThis(subQ.id, s.id, null),
+            title: noteText ? `💬 ${noteText}\n\n${t("step5.click_to_open")}` : t("step5.click_to_open"),
+          }, res.seen ? t("step5.seen_yes") : "—"))
+        : subCols.map((r) => {
+          const value = gradeOf(s.id, subQ.id, r.id);
+          const cls = ["num-col", "grade-cell", value === null ? "missing" : "", noteText ? "has-comment" : ""].join(" ");
+          const action = value === null ? t("step5.click_to_grade") : t("step5.click_to_change");
+          return h("td", { class: cls },
+            h("button", {
+              type: "button",
+              onclick: () => gradeThis(subQ.id, s.id, r.id),
+              title: noteText ? `💬 ${noteText}\n\n${action}` : action,
+              "aria-label": `${r.name} · ${s.display_name}: ${value === null ? t("report.not_graded") : valueText(c, subQ, value)}${noteText ? ` · ${noteText}` : ""}`,
+            }, value === null ? "?" : valueText(c, subQ, value)));
+        });
+
+      const lateCell = h("td", { class: "num-col" },
+        h("input", {
+          type: "checkbox",
+          id: `late-${s.id}`,
+          checked: !!res.late,
+          "aria-label": `${t("step5.late")} · ${s.display_name}`,
+          onchange: async (ev) => {
+            const want = ev.target.checked;
+            if (commentRefused() || !(await saveComment.flush())) { ev.target.checked = !!res.late; return; }
+            await keepingPlace(post("/api/overall", { student_id: s.id, late: want }));
+          },
+        }));
+
+      const pInfo = partnerInfo(c, s.id);
+      const partnerBtn = button(
+        pInfo ? t("partners.group_with", { n: pInfo.num, names: pInfo.others.map((m) => m.display_name).join(", ") }) : t("partners.link_action"),
+        () => openPartnerModal(s.id, { flush: saveComment.flush }),
+        `small ${pInfo ? "" : "ghost"}`,
+      );
+
+      const comment = commentField({
+        key: `overall/${s.id}`,
+        limit: app.session.comment_limits.overall,
+        saved: () => app.session.grades.overall?.[s.id]?.comment || "",
+        save: (text) => saveComment(s.id, text),
+        flush: saveComment.flush,
+        attrs: {
+          id: `overall-${s.id}`, rows: "2", class: "overall-comment",
+          placeholder: t("step5.comment_placeholder"), "aria-label": t("step5.overall_comment"),
+        },
+      });
+
+      return h("tr", { class: res.complete ? "" : "incomplete" },
+        h("td", { class: "num-cell" }, String(i + 1)),
+        h("td", { class: "sticky-col" }, h("strong", {}, s.display_name)),
+        statusOrGrades,
+        lateCell,
+        h("td", {}, partnerBtn),
+        h("td", {}, comment));
+    });
+
+    const stat = (key) => {
+      const label = { average: t("xlsx.average"), max: t("xlsx.max_row"), min: t("xlsx.min_row") }[key];
+      const cCells = subCols.map((r) => h("td", { class: "num-col" }, summary.questions[`${subQ.id}/${r.id}`]?.[key] ?? ""));
+      return h("tr", { class: "stat-row" }, h("td", {}), h("td", { class: "sticky-col" }, label),
+        cCells, h("td", {}), h("td", {}), h("td", {}));
+    };
+
+    const warnBanner = draftTask
+      ? (incomplete ? h("div", { class: "banner warn" }, h("p", {}, t("step5.unseen", { n: incomplete }))) : null)
+      : (ungraded ? h("div", { class: "banner warn" }, h("p", {}, t("step5.incomplete", { n: ungraded }))) : null);
+
+    return h("main", { class: "page full review" },
+      h("h1", {}, t("step5.title")),
+      coach(t(draftTask ? "step5.coach_draft" : "step5.coach_assignment")),
+      warnBanner,
+      anyComment ? h("p", { class: "muted small" }, h("span", { class: "comment-dot" }), t("step5.comment_legend")) : null,
+      h("div", { class: "table-scroll review-scroll" },
+        h("table", { class: "review-table" }, h("thead", {}, head),
+          h("tbody", {}, rows),
+          assignmentTask && subCols.length ? h("tfoot", {}, stat("average"), stat("max"), stat("min")) : null)),
+      c.host ? hostPanel(c, incomplete) : null,
+      exportPanel(c, incomplete, used, false));
+  }
+
+  const inGroup = new Set((c.choice_groups || []).flatMap((g) => g.questions));
   const pending = summary.students.filter((s) => (s.pending || []).length).length;
   const hasMarks = c.questions.some((q) => gradedWith(c, q) === "marks");
   const hasLevels = c.questions.some((q) => gradedWith(c, q) === "rubric");
-  const used = usedCriteria(c);
   const criteria = c.report_options.overall_criteria ? used : [];
   const sharing = (c.sections || []).filter((s) => s.weight !== null && s.weight !== undefined);
   const sectionCols = sharing.length >= 2 ? sharing : [];
   const weighted = !!c.weighted && sharing.length >= 2;
-  const anyComment = Object.values(grades).some((per) => Object.values(per || {}).some((e) =>
-    (e?.comment || "").trim() || (e?.annotations || []).length));
   const cols = columns(c);
 
   // What the teacher decides comes first, beside the name; each question's grade
@@ -246,6 +377,7 @@ ${action}` : action,
 // --- How results are worked out --------------------------------------------------------------
 
 function resultsPanel(c, used, sharing, weighted) {
+  if (["assignment", "draft"].includes(c.task_kind)) return null;
   if (!used.length && sharing.length < 2) return null;
   const tick = (checked, label, hint, onchange) => h("div", {},
     h("label", { class: "check" }, h("input", { type: "checkbox", checked, onchange }), label),
@@ -283,9 +415,13 @@ async function keepingPlace(promise) {
 // Opened from CAM: CAM reads the results only once the teacher sends them.
 function hostPanel(c, incomplete) {
   const sent = c.host_ready_at;
+  const draftTask = c.task_kind === "draft";
   const send = async () => {
-    if (incomplete && !(await confirmBox(t("host.send_incomplete_title"),
-      t("host.send_incomplete", { n: incomplete, host: c.host.name }), t("host.send_anyway")))) return;
+    if (incomplete && !(await confirmBox(
+      t(draftTask ? "host.send_unseen_title" : "host.send_incomplete_title"),
+      t(draftTask ? "host.send_unseen" : "host.send_incomplete", { n: incomplete, host: c.host.name }),
+      t("host.send_anyway"),
+    ))) return;
     act(post("/api/host/ready", { ready: true }));
   };
   return h("section", { class: `card ${sent ? "" : "accent"}` },
@@ -388,6 +524,7 @@ function exportPanel(c, incomplete, used, hasMarks) {
 
 // Final levels typed for some students and not others: who is missing, per criterion.
 function missingFinals(c) {
+  if (["assignment", "draft"].includes(c.task_kind)) return [];
   if (!c.report_options.overall_criteria) return [];
   const results = new Map(app.session.summary.students.map((s) => [s.student_id, s]));
   return usedCriteria(c).flatMap((r) => {
@@ -400,8 +537,12 @@ function missingFinals(c) {
 async function runExport(what, incomplete) {
   if (commentRefused() || !(await saveComment.flush())) return;
   const d = exportDraft();
-  if (incomplete && !(await confirmBox(t("step5.incomplete_title"), t("step5.incomplete_confirm", { n: incomplete }),
-    t("step5.make_anyway")))) return;
+  const draftTask = config()?.task_kind === "draft";
+  if (incomplete && !(await confirmBox(
+    t(draftTask ? "step5.unseen_title" : "step5.incomplete_title"),
+    t(draftTask ? "step5.unseen_confirm" : "step5.incomplete_confirm", { n: incomplete }),
+    t("step5.make_anyway"),
+  ))) return;
   const missing = what === "all" ? missingFinals(config()) : [];
   if (missing.length && !(await confirmBox(t("step5.finals_title"), t("step5.finals_confirm", { list: missing.join(" / ") }),
     t("step5.make_anyway")))) return;

@@ -107,13 +107,30 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
                 "session_exists": storage.is_session_folder(folder),
                 "roster_count": len(state.host["roster"]), "task_kind": state.host.get("task_kind", "exam")}
 
-    def adopt_host_session(save: bool = True) -> None:
+    def save_both() -> None:
+        first_err = None
+        for fn in (state.save_config, state.save_grades):
+            try:
+                fn()
+            except UserError as err:
+                if first_err is None:
+                    first_err = err
+        if first_err is not None:
+            raise first_err
+
+    def adopt_host_session(save: bool = True) -> bool:
         """The host's own session uses the host's class list (papers are
         matched again once scans come in)."""
+        late_changed = False
         if host.is_host_session(state.host, state.session.folder):
             host.apply_roster(state.config, state.host)
+            late_changed = host.apply_late_defaults(state.config, state.grades)
             if save:
-                state.save_config()
+                if late_changed:
+                    save_both()
+                else:
+                    state.save_config()
+        return late_changed
 
     def ok(**extra):
         return jsonify(dict({"ok": True, "session": session_view()}, **extra))
@@ -375,8 +392,16 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
                 with state.lock:
                     state.config = config
                     set_step(1)
-                    adopt_host_session(save=False)
-                    state.save_config()
+                    grades_changed = False
+                    if not workflow.class_has_work(state.grades):
+                        for entry in (state.grades.get("overall") or {}).values():
+                            if isinstance(entry, dict) and "late" in entry:
+                                entry.pop("late", None)
+                                grades_changed = True
+                    if adopt_host_session(save=False) or grades_changed:
+                        save_both()
+                    else:
+                        state.save_config()
             return {"students": len(config["students"])}
 
         job = state.start_job("import", work)
@@ -410,8 +435,10 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
                 added = workflow.add_papers(session, config, source, job.progress, state.grades)
                 with state.lock:
                     state.config = config
-                    adopt_host_session(save=False)
-                    state.save_config()
+                    if adopt_host_session(save=False):
+                        save_both()
+                    else:
+                        state.save_config()
             return {"added": added}
 
         job = state.start_job("import", work)
@@ -826,7 +853,7 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
 
     @app.post("/api/overall")
     def overall():
-        """Overall comment, report-only total or percentage, or final levels.
+        """Overall comment, report-only total or percentage, final levels, or Late.
 
         An empty or null total or percentage goes back to the calculated value,
         and an empty or null final level means no final level.
@@ -836,10 +863,13 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
         sid = str(data.get("student_id"))
         workflow.find_student(state.config, sid)
         with state.lock:
-            current = state.grades.get("overall", {}).get(sid, {})
-            edited = {"overall": {sid: deepcopy(current)}}
+            members = grading_summary.partner_member_ids(state.config, sid)
+            overall_all = state.grades.get("overall", {})
+            edited = {"overall": {mid: deepcopy(overall_all.get(mid, {})) for mid in members}}
             if "comment" in data:
-                grading_summary.set_overall_comment(edited, sid, data.get("comment"))
+                grading_summary.set_overall_comment(edited, sid, data.get("comment"), config=state.config)
+            if "late" in data:
+                grading_summary.set_late(edited, sid, bool(data.get("late")))
             if "report_total" in data:
                 value = data.get("report_total")
                 grading_summary.set_report_total(state.config, edited, sid, None if value == "" else value)
@@ -849,8 +879,43 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
             for rid, level in (data.get("final_levels") or {}).items():
                 grading_summary.set_final_level(state.config, edited, sid, rid,
                                                 None if level in ("", None) else level)
-            state.grades.setdefault("overall", {})[sid] = edited["overall"][sid]
+            target_overall = state.grades.setdefault("overall", {})
+            for mid in members:
+                if edited["overall"][mid] or mid in target_overall:
+                    target_overall[mid] = edited["overall"][mid]
             state.save_grades()
+            state.remember()
+        return ok()
+
+    @app.post("/api/partners/link")
+    def partners_link():
+        """Link two students (or add a student to an existing group) to share grades."""
+        state.require_session()
+        data = body()
+        sid = str(data.get("student_id") or "")
+        pid = str(data.get("partner_id") or "")
+        with state.lock:
+            cfg = deepcopy(state.config)
+            grd = deepcopy(state.grades)
+            grading_summary.link_partners(cfg, grd, sid, pid)
+            state.config = cfg
+            state.grades = grd
+            save_both()
+            state.remember()
+        return ok()
+
+    @app.post("/api/partners/unlink")
+    def partners_unlink():
+        """Remove a student from their partner group; each keeps a copy."""
+        state.require_session()
+        data = body()
+        sid = str(data.get("student_id") or "")
+        with state.lock:
+            cfg = deepcopy(state.config)
+            grading_summary.unlink_partner(cfg, sid)
+            state.config = cfg
+            state.save_config()
+            state.remember()
         return ok()
 
     @app.post("/api/weighting")
@@ -944,9 +1009,13 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     def student_match(student_id):
         state.require_session()
         data = body()
-        workflow.match_student(state.config, student_id, data.get("roster_id") or None,
-                               data.get("name"))
-        state.save_config()
+        with state.lock:
+            workflow.match_student(state.config, student_id, data.get("roster_id") or None,
+                                   data.get("name"))
+            if host.apply_late_defaults(state.config, state.grades):
+                save_both()
+            else:
+                state.save_config()
         return ok()
 
     return app

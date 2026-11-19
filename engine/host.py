@@ -16,8 +16,10 @@ teacher clicks *Send to CAM*, which stamps ``host_ready_at`` in
 
 An optional ``task_kind`` selects ``exam`` (default), ``assignment`` or
 ``draft`` when creating the session. For an assignment the handoff can
-include ``rubrics`` in the same form as CAM2 rubric setup. The task kind is
-kept when that session opens again.
+include ``rubrics`` in the same form as CAM2 rubric setup. Roster entries may
+carry an optional ``late: true`` flag (or the handoff may list ``late_ids`` of
+``external_id``s) to seed Late ticks for matched students without overwriting
+any teacher decision. The task kind is kept when that session opens again.
 """
 
 from __future__ import annotations
@@ -45,6 +47,7 @@ def normalize(data) -> dict:
     folder = str(data.get("session_folder") or "").strip()
     if not exam or not folder or not os.path.isabs(folder):
         raise UserError("host_handoff_invalid")
+    late_ids = {str(x).strip() for x in (data.get("late_ids") or []) if str(x or "").strip()}
     roster, seen = [], set()
     for entry in data.get("roster") or []:
         if not isinstance(entry, dict):
@@ -53,7 +56,10 @@ def normalize(data) -> dict:
         name = " ".join(str(entry.get("name") or "").split())[:100]
         if ext and name and ext not in seen:
             seen.add(ext)
-            roster.append({"external_id": ext, "name": name})
+            item = {"external_id": ext, "name": name}
+            if bool(entry.get("late")) or ext in late_ids:
+                item["late"] = True
+            roster.append(item)
     kind = data.get("task_kind", "exam")
     if kind not in ("exam", "assignment", "draft"):
         raise UserError("host_handoff_invalid")
@@ -95,10 +101,34 @@ def apply_roster(config: dict, handoff: dict) -> dict:
                 n += 1
             rid = f"n{n:03d}"
             used.add(rid)
-        entries.append({"id": rid, "name": person["name"], "external_id": person["external_id"]})
+        item = {"id": rid, "name": person["name"], "external_id": person["external_id"]}
+        if person.get("late"):
+            item["late"] = True
+        entries.append(item)
     workflow.set_roster(config, entries, keep_existing=True)
     config["host"] = {"name": handoff["host"], "class_name": handoff["class_name"]}
     return config
+
+
+def apply_late_defaults(config: dict, grades_data: Optional[dict]) -> bool:
+    """Seed ``late = True`` for students whose host roster entry is marked late.
+
+    Only populates students without an explicit ``late`` key yet, so a teacher
+    clearing CAM's Late flag persists across reopens. Returns True if changed.
+    """
+    if grades_data is None:
+        return False
+    late_rids = {r["id"] for r in config.get("roster") or [] if r.get("late")}
+    if not late_rids:
+        return False
+    changed = False
+    for s in config.get("students") or []:
+        if s.get("roster_id") in late_rids:
+            entry = grades_data.setdefault("overall", {}).setdefault(s["id"], {})
+            if "late" not in entry:
+                entry["late"] = True
+                changed = True
+    return changed
 
 
 def set_ready(config: dict, ready: bool) -> dict:
@@ -111,9 +141,9 @@ def apply_task(config, handoff):
     """Set task kind only when a CAM session is first created."""
     config["task_kind"] = handoff.get("task_kind", "exam")
     if model.whole_submission(config):
-        criteria = handoff.get("rubrics") if config["task_kind"] == "assignment" else None
+        criteria = handoff.get("rubrics") if model.is_assignment(config) else None
         workflow.set_rubrics(config, criteria or [])
-        config["questions"] = [{"id": "submission", "label": config["exam_name"],
+        config["questions"] = [{"id": model.SUBMISSION_ID, "label": config["exam_name"],
                                 "boxes": [], "max": None,
                                 "rubric_ids": [r["id"] for r in config["rubrics"]]}]
-        config["mode"] = "rubric"
+        config["mode"] = None if model.is_draft(config) else "rubric"
