@@ -228,10 +228,14 @@ def create_app(state: AppState | None = None, shutdown=None) -> Flask:
     @app.post("/api/host/ready")
     def host_ready():
         """Grading finished: the host may read the results (or not yet)."""
-        state.require_session()
-        host.set_ready(state.config, bool(body().get("ready")))
-        state.save_config()
-        return ok()
+        with state.lock:
+            state.require_session()
+            ready = bool(body().get("ready"))
+            if ready and state.grades_failed:
+                state.save_grades()
+            host.set_ready(state.config, ready)
+            state.save_config()
+            return ok()
 
     @app.post("/api/heartbeat")
     def heartbeat():

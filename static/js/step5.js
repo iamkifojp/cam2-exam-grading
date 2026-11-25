@@ -417,9 +417,11 @@ function hostPanel(c, incomplete) {
   const sent = c.host_ready_at;
   const draftTask = c.task_kind === "draft";
   const send = async () => {
-    if (incomplete && !(await confirmBox(
+    if (commentRefused() || !(await saveComment.flush())) return;
+    const latestIncomplete = (app.session?.summary?.students || []).filter((s) => !s.complete).length;
+    if (latestIncomplete && !(await confirmBox(
       t(draftTask ? "host.send_unseen_title" : "host.send_incomplete_title"),
-      t(draftTask ? "host.send_unseen" : "host.send_incomplete", { n: incomplete, host: c.host.name }),
+      t(draftTask ? "host.send_unseen" : "host.send_incomplete", { n: latestIncomplete, host: c.host.name }),
       t("host.send_anyway"),
     ))) return;
     act(post("/api/host/ready", { ready: true }));

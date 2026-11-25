@@ -419,6 +419,32 @@ class AssignmentLatePartnerTests(PhaseHFixture):
         self.assertEqual(self.state.grades["grades"][hana]["submission"]["levels"],
                          {"crit_a": None, "crit_b": None})
 
+    def test_host_ready_refuses_while_grades_save_failed_and_recovers(self):
+        folder, _, view = self._setup_two_criteria_assignment()
+        hana = view["config"]["students"][0]["id"]
+
+        conflict = os.path.join(folder, "grades (1).json")
+        with open(conflict, "w", encoding="utf-8") as fh:
+            fh.write("{}")
+        res = self.post("/api/overall", {"student_id": hana, "comment": "Pending comment."}, status=409)
+        self.assertTrue(res["save_error"])
+        self.assertTrue(self.state.grades_failed)
+
+        ready_err = self.post("/api/host/ready", {"ready": True}, status=409)
+        self.assertTrue(ready_err["save_error"])
+        self.assertIsNone(self.state.config.get("host_ready_at"))
+        with open(os.path.join(folder, "cam2_session.json"), encoding="utf-8") as fh:
+            self.assertIsNone(json.load(fh).get("host_ready_at"))
+
+        os.remove(conflict)
+        ready_ok = self.post("/api/host/ready", {"ready": True})["session"]
+        self.assertFalse(ready_ok["save_failed"])
+        self.assertIsNotNone(ready_ok["config"].get("host_ready_at"))
+        with open(os.path.join(folder, "cam2_session.json"), encoding="utf-8") as fh:
+            self.assertIsNotNone(json.load(fh).get("host_ready_at"))
+        with open(os.path.join(folder, "grades.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["overall"][hana]["comment"], "Pending comment.")
+
 
 if __name__ == "__main__":
     unittest.main()
