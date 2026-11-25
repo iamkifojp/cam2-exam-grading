@@ -76,6 +76,49 @@ uses the single item ID ``submission`` and no boxes. Each ``page_files``
 entry identifies the source file for that page of the joined scan. A blank
 page inserted by the teacher has no source file. ``files`` lists the source
 labels in teacher-chosen order. The joined scan is the portable copy.
+
+CAM session contract (version 3, relied on by CAM in Phase I)
+------------------------------------------------------------
+CAM reads ``cam2_session.json`` and ``grades.json`` directly from the session
+folder (and writes no CSV; CAM never modifies CAM2's session files):
+
+* **Handoff (``cam2-host`` v1):** ``task_kind`` (``"exam"`` | ``"assignment"`` |
+  ``"draft"``), ``rubrics`` (for ``"assignment"``; preserves unique non-empty
+  ``id``, ``name``, ``bands``), ``roster`` (``[{"external_id", "name",
+  "late"?: bool}]`` and optional top-level ``"late_ids": [external_id, ...]``).
+* **Ready signal:** ``cam2_session.json["host_ready_at"]`` (ISO timestamp or
+  ``null``). CAM ingests results only when set.
+* **Task kind & criteria:** ``cam2_session.json["task_kind"]`` (absent =
+  ``"exam"``), ``cam2_session.json["rubrics"]``, ``questions[0]``
+  (``id: "submission"``, ``rubric_ids`` empty for ``"draft"`` and criterion IDs
+  for ``"assignment"``).
+* **Student identity & files:** ``students[]`` joined to CAM via
+  ``roster_id`` -> ``roster[].external_id``; each student carries ``files:
+  [{"id", "name"}]`` in teacher-chosen order (``file_count = len(files)``,
+  ``file_names = [f["name"] for f in files]``; fallback count 1 / ``[source or
+  file]`` when ``files`` is absent) and ``page_files`` (per-page file ID or
+  ``null`` for inserted blank pages).
+* **Partner groups:** ``cam2_session.json["partner_groups"]``:
+  ``[{"id": "pg...", "student_ids": ["s001", "s002"]}]`` (>= 2 students per
+  group, at most 1 group per student). Grades and overall comments are stored on
+  every member's own ``student_id`` in ``grades.json``; ``annotations``,
+  ``highlights``, and ``late`` stay per student.
+* **Assignment levels:**
+  ``grades.json["grades"][sid]["submission"]["levels"][rubric_id]`` (``int``,
+  ``"not_answered"``, or ``null``/absent). That level IS the student's result
+  (no separate ``final_levels`` and no calculation).
+* **Comment & notes (kept separate):**
+  ``grades.json["overall"][sid]["comment"]`` (plain teacher comment; ``late``
+  is never written into it). Numbered notes live in
+  ``grades.json["grades"][sid]["submission"]["annotations"]``
+  (``[{"id", "page", "x", "y", "text", "type"}]``, ordered); CAM joins note text
+  with the comment when reading. ``highlights`` carry no text.
+* **Late flag:** ``grades.json["overall"][sid]["late"]`` (``bool``, absent =
+  ``false``).
+* **Drafts:** ``task_kind == "draft"``, ``rubrics == []``, no grades; a student
+  counts as seen when ``overall[sid]["comment"]`` or
+  ``grades[sid]["submission"]["annotations"]`` (or question comment) is
+  non-empty.
 """
 
 from __future__ import annotations
@@ -92,6 +135,7 @@ VERSION = 3
 
 NOT_ANSWERED = "not_answered"
 NAME_BOX_ID = "__name__"
+SUBMISSION_ID = "submission"
 DEFAULT_REPORT_OPTIONS = {"section_results": False, "overall_criteria": False,
                           "rubric_table": True, "overall_marks": True, "no_images_for": []}
 
@@ -202,5 +246,17 @@ def upgrade_session(config: dict, grades: Optional[dict] = None) -> dict:
     return config
 
 
+def task_kind(config: dict) -> str:
+    return config.get("task_kind") or "exam"
+
+
+def is_draft(config: dict) -> bool:
+    return task_kind(config) == "draft"
+
+
+def is_assignment(config: dict) -> bool:
+    return task_kind(config) == "assignment"
+
+
 def whole_submission(config: dict) -> bool:
-    return config.get("task_kind", "exam") in ("assignment", "draft")
+    return task_kind(config) in ("assignment", "draft")

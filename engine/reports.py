@@ -652,9 +652,9 @@ def _submission_pages(w, session, config, grades, student, entries, options, lan
     q = config["questions"][0]
     entry = entries.get(q["id"]) or {}
     # The submission is the assessed item; its grade must print even when
-    # no pages carry annotations and the rubric table is off.
+    # no pages carry annotations and the rubric table is off (assignments show it beside the rubric).
     parts = _grades(config, grades, student["id"], q)
-    if grading_summary.question_mode(config, q):
+    if grading_summary.question_mode(config, q) and not model.is_assignment(config):
         w.html(_grade_html(parts, language))
     notes = entry.get("annotations") or []
     highlights = entry.get("highlights") or []
@@ -705,13 +705,21 @@ def build_student_pdf(session: storage.Session, config: dict, grades: dict, stud
         # The rubrics, once, and only those this exam uses ---------------------------------
         used = {rid for q in config.get("questions") or []
                 for rid in grading_summary.question_rubric_ids(config, q)}
+        sub_q = (config.get("questions") or [{}])[0]
+        sub_entry = entries.get(sub_q.get("id")) or {}
         for r in config.get("rubrics") or []:
             if r["id"] in used:
-                result = summary["rubrics"][r["id"]]
-                final = result["final"] if options["overall_criteria"] else None
-                side = (_criterion_side(r, result, summary["marks"]["weighted"], language)
-                        if options["overall_criteria"] else "")
-                _criterion_block(w, r, side, options["rubric_table"], final)
+                if model.is_assignment(config):
+                    level = grading_summary.level_of(config, sub_entry, sub_q, r["id"])
+                    final = level if isinstance(level, int) else None
+                    side = f"<p class='label'>{_e(t('report.result'))}</p>{_grade_html([(r, level, rubrics.rubric_max(r))], language)}"
+                    _criterion_block(w, r, side, options["rubric_table"], final)
+                else:
+                    result = summary["rubrics"][r["id"]]
+                    final = result["final"] if options["overall_criteria"] else None
+                    side = (_criterion_side(r, result, summary["marks"]["weighted"], language)
+                            if options["overall_criteria"] else "")
+                    _criterion_block(w, r, side, options["rubric_table"], final)
 
         overall = ((grades.get("overall") or {}).get(student["id"]) or {}).get("comment", "").strip()
         if overall:

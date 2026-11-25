@@ -6,6 +6,31 @@ year-month-day.
 
 ## Unreleased
 
+### Phase H — assignments, drafts, Late and partners
+
+- **Drafts:** open with no grade controls, lift the marks/criteria check for
+  drafts only (`check_ready`), count a paper as **Seen** once it has an
+  overall comment or numbered note, omit totals and statistics, and keep
+  student PDFs, report options, and Send to CAM working.
+- **Assignments:** assess one level per criterion using Step 4 rubric cards
+  and criterion tabs while keeping the current submission page when switching
+  criteria; the earned level is the result (printed beside each rubric as
+  `Result` with its band shaded, no separate final level), and Step 5 and the
+  Excel gradebook show per-criterion averages, highs, and lows.
+- **Late flag:** per-student `late` boolean optionally seeded by CAM
+  (`late` on roster entries or `late_ids`), editable on Step 4 or Step 5 without
+  being overwritten on reopen, shown in the viewer header badge, class grid,
+  Step 5, and Excel gradebook, without altering comments or locking Step 1
+  file/page edits.
+- **Partners:** link students into groups (`partner_groups`) whose grades and
+  overall comments propagate by `student_id`, preserving an existing group's
+  grades (filling missing criteria) and combining comments without loss when a
+  solo student joins; notes, highlights, and `Late` remain per student,
+  unlinking leaves an independent copy, and **Hide student names** hides
+  partner names.
+- **CAM session contract:** documented version 3 in `engine/model.py` and
+  `ARCHITECTURE.md` for Phase I integration.
+
 ### Phase G — whole-submission tasks
 
 - A CAM assignment or draft opens as one item per student. Read mixed-size

@@ -533,6 +533,19 @@ textarea.too-long { border-color: var(--warn); outline-color: var(--warn); }
 .grid-stage img { display: block; width: 100%; height: auto; background: #fff; }
 .grid-annot-layer { pointer-events: none; }
 .grid-card-foot { gap: 6px; flex-wrap: wrap; }
+.grid-card-badges { gap: 4px; flex-wrap: wrap; }
+.grid-card-badges .badge:not(.warn-badge):not(.partner-badge) { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.badge.warn-badge { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); }
+.badge.partner-badge { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); }
+.submission-meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;
+  margin: 8px 0 10px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); }
+.submission-meta label.late-check { margin: 0; font-weight: 600; }
+.partner-meta { gap: 6px; align-items: center; }
+.partner-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.partner-row { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.partner-add { gap: 8px; }
+.partner-add select { flex: 1; min-width: 0; }
+.draft-status-btn { min-width: 4.5em; }
 .grid-card-pager { margin-top: auto; }
 .grid-empty { padding: 32px 20px; }
 .host-badge { margin-left: 8px; font-size: .8rem; }

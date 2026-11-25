@@ -275,6 +275,7 @@ def import_scans(session: storage.Session, config: dict, source: dict,
     students = _write_papers(session, source, files, 1, 0, writing)
     _finish_students(session, students, _scaled(progress, len(students), len(students) * 2))
     config["students"] = students
+    config["partner_groups"] = []
     config["import"] = _import_record(source, files)
     config["more_imports"] = []
     config["scan_warnings"] = scan_warnings(config)
@@ -917,11 +918,16 @@ def check_ready(config: dict) -> None:
     """Everything needed before slicing; raises the first problem found."""
     if not config.get("students"):
         raise UserError("scans_not_chosen")
-    if model.whole_submission(config):
+    if model.is_draft(config):
         return
     questions = config.get("questions") or []
     if not questions:
         raise UserError("no_questions")
+    if model.is_assignment(config):
+        for q in questions:
+            if grading_summary.question_mode(config, q) is None:
+                raise UserError("question_needs_marks_or_criterion", question=q.get("label") or q["id"])
+        return
     labels = set()
     for q in questions:
         label = q.get("label") or ""
@@ -1114,6 +1120,8 @@ def import_submissions(session, config, source, grades_data=None, adding=False, 
         if progress:
             progress(i + 1, len(plans))
     config["students"] = students
+    if not adding:
+        config["partner_groups"] = []
     config["not_opened"] = rejected
     record = _import_record(source, [])
     if adding:

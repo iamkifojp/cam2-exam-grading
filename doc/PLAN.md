@@ -378,7 +378,7 @@ Keep source commits apart from packaging results. On another computer, check for
 | D: annotations, long-answer reports | Done (PR #7) | [PR #7](https://github.com/iamkifojp/cam2-exam-grading/pull/7), branch `phase-d-annotations`, implementation `9956809`. Unified geometry (`D1`), Step 4 pointer tools, quick comments, per-page limits (`D2`), box-adjustment projection and work guards (`D3`), and long-answer reports + gradebook notes (`D4`). Verification and platform limits below. |
 | E: class grid | Done (PR #8) | [PR #8](https://github.com/iamkifojp/cam2-exam-grading/pull/8), branch `phase-e-class-grid`, implementation `8355cc7`. Step 4 **Class grid** (**This question** and **Whole papers** views, 2–5 columns in `grid_columns`, grade sort with NA/Ungraded apart, filters showing *n of class*, `IntersectionObserver` lazy load & off-screen release, bounded server thumbnail cache). Verification and limits below. |
 | G: whole-submission tasks | Done (PR #9) | [PR #9](https://github.com/iamkifojp/cam2-exam-grading/pull/9), branch `codex/phase-g-whole-submissions`, implementation `3ed948f`. Source, browser, and Windows verification below. |
-| H: assignments, drafts, Late, partners | Not started | Write the session contract for CAM first |
+| H: assignments, drafts, Late, partners | Done (PR #10) | [PR #10](https://github.com/iamkifojp/cam2-exam-grading/pull/10), branch `phase-h-assignments-drafts-late-partners`, implementation `55184db`. CAM session contract documented; source and live browser verification below. |
 | I: CAM, workspace removed | Not started | In CAM's repo |
 | J: verification and release | Not started | Includes the rename to CAM2 Grading |
 
@@ -602,3 +602,57 @@ The teacher authorized pushing and merging PR #5 to `main`.
   Portability was tested by copying and reopening locally. The browser check
   observed thumbnail loading and release without profiling native memory.
   The Phase H and I checks cover assignment and draft results in live CAM.
+
+
+### Phase H verification — 2026-11-19
+
+- `build/venv/bin/python -m unittest discover -s tests -t .` with Node.js on
+  `PATH` ran 397 tests in the sandbox: 393 passed (`tests/test_ui_syntax.py`,
+  `tests/test_i18n.py`, `tests/test_phase_h.py`, `tests/test_submissions.py`,
+  and all other non-socket modules; 0 skipped), while the 4
+  `RunningInstanceTests` in `tests/test_launcher.py` failed on sandbox
+  localhost socket restrictions. Re-running
+  `build/venv/bin/python -m unittest tests.test_launcher` with localhost access
+  passed all 8 tests (`OK`).
+- Automated coverage in `tests/test_phase_h.py` and `tests/test_submissions.py`
+  verified draft validation (`check_ready` lifts the marks/criteria check for
+  drafts only), draft `seen` state from comments or notes, empty draft stats,
+  2-criterion assignments (earned level as `Result`, criterion stats only),
+  per-student `late` seeding without overwriting on reopen and without locking
+  Step 1 edits, partner groups (propagating grades and overall comments by
+  `student_id`, combining comments on join, independent copy after unlink, and
+  conflict/save-error handling), PDF reports, Excel gradebooks, and host
+  routes.
+- Live browser checks on local Flask (`http://127.0.0.1:5231/`, 0 console
+  errors, 0 uncaught page errors, 0 HTTP >=400 responses):
+  - **Draft fixture:** Step 2 skipped (`1`, `3`, `4`, `5`); Step 4 showed no
+    grade controls; placing a note on Tanaka Hana and an overall comment on Sato
+    Ken updated progress (`0` → `1` → `2 of 3 papers seen`); CAM-seeded `Late`
+    checkbox/badge on Sato Ken toggled off cleanly; **Class grid** filtered
+    `Not seen` to `1 of 3 in class` (Ito Mei); Step 5 showed columns `#`,
+    `Student`, `Seen`, `Late`, `Partners`, `Overall comment` with no `tfoot` or
+    `Overall criterion results`, an unseen-draft warning, single report option,
+    **Send to CAM** confirmation modal and sent status, and PDF + Excel export
+    (`3` student PDFs + Excel gradebook).
+  - **2-criterion Assignment fixture:** CAM-seeded `Late` appeared on Tanaka
+    Hana; advancing to Page 2 of 2 preserved Page 2 when switching from
+    `Criterion A` to `Criterion B`; linking Sato Ken propagated grades (`6`,
+    `7`) and comment (`"Strong lab."`) while keeping `Late` per student; solo
+    student Ito Mei (`Criterion A = 3`, `"Mei data note."`) joining Group 1 kept
+    Group 1's grades (`6`, `7`) and combined comments (`"Strong lab.\nMei data
+    note."`); **Hide student names** hid names in the partner badge
+    (`Group 1 (3 students)`) and **Class grid** (`Paper 1`–`Paper 4`, `Group 1`,
+    `Late`); unlinking Ito Mei left an independent copy (changing Ito Mei to
+    `5` kept Tanaka Hana at `6`); Step 5 displayed `Criterion A` / `Criterion B`
+    stats (`5.7` / `7`, `6` / `7`, `5` / `7`) with no `Overall criterion
+    results` or final levels, exported `4` student PDFs + Excel gradebook, and
+    switched cleanly to **日本語**.
+- Limits and follow-ups: no frozen Mac `.app` or Windows `.exe` trial build
+  was run for Phase H, live CAM integration will be verified in Phase I, and
+  new Japanese wording has not yet had native-speaker review. Minor UI/layout
+  observations from the browser checks: the Step 1 `Check the scans` heading
+  top edge slightly clips under the sticky header at `1280x900`, the Step 5
+  review table scrolls horizontally at `1280x900`/`1440x900` (with Japanese `ペア`
+  badges wrapping across multiple lines), and two Step 5 Draft strings
+  (annotation legend and Send-to-CAM card copy) still mention "grade".
+- **2026-11-26 follow-up:** guarded Step 5 **Send to CAM** (`static/js/step5.js`) to check `commentRefused()`, flush `saveComment`, and recompute `latestIncomplete` before sending, and guarded `POST /api/host/ready` (`app.py`) to flush `state.save_grades()` before stamping `host_ready_at` when `state.grades_failed` is set, with regression test `test_host_ready_refuses_while_grades_save_failed_and_recovers` (`tests/test_phase_h.py`). Verified with `398` total tests (`394` passed in sandbox + `8/8` `tests.test_launcher` with localhost sockets, `0` skipped, Node.js syntax check and EN/JA i18n checks passing).
