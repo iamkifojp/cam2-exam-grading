@@ -6,6 +6,17 @@ year-month-day.
 
 ## Unreleased
 
+### Sample exam
+
+- **`tools/make_sample_exam.py` rewritten** for the guide's screenshots and for
+  testing: an interdisciplinary exam on water, 9 pages per student, with
+  multiple choice, a labelled diagram, blanks, true or false, a calculation, a
+  graph, a source-based question, a design sketch and a choice of two essays.
+  Three MYP-style criteria in our own wording, printed on a cover page and in
+  `rubrics.xlsx`; Q8 and Q9 have highest levels. 7 students in the class PDF
+  (one page upside down) and one in `late-paper.pdf`. `Test-guide.pdf` walks
+  through Exam 1 as designed and Exam 2 with marks on every question.
+
 ### Layout fixes
 
 - **Step 1 heading:** opening or creating a session now starts the screen at

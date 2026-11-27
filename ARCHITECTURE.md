@@ -359,7 +359,7 @@ both languages.
 if Node isn't installed. A syntax error in any one module stops the whole app
 loading, and no other test would notice.
 
-`tools/make_sample_scans.py` makes fake papers for trying the app by hand. `tools/make_sample_exam.py` makes a whole made-up exam in English and Japanese with a test guide, for testing by hand; `test_sample_exam.py` checks the results its guide promises against the engine.
+`tools/make_sample_scans.py` makes fake papers for trying the app by hand. `tools/make_sample_exam.py` makes a whole made-up exam in English and Japanese (one theme, water; ten question types; three criteria; a late paper and an upside-down page) with a test guide, for testing by hand and for the guide's screenshots. Its `QUESTIONS` table is read by the papers, the expected results, the guide and the test; `test_sample_exam.py` checks the results its guide promises against the engine.
 
 `tests/helpers.py` builds test PDFs and images with coloured grid cells, so
 crop positions can be checked by colour. No real student data is used.

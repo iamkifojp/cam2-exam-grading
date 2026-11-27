@@ -186,8 +186,8 @@ python tools/make_sample_exam.py test-folder
 ```
 
 This makes a whole made-up exam in English and in Japanese, in
-`sample-exam-en` and `sample-exam-ja`: 6 students' scanned papers, a class list,
-three rubrics to upload, and `Test-guide.pdf`, which walks through two exams with the
+`sample-exam-en` and `sample-exam-ja`: an interdisciplinary exam on water with 7
+students' scanned papers, one late paper, a class list, three criteria to upload, and `Test-guide.pdf`, which walks through two exams with the
 grades to give and the results to expect. `test-folder/` is not committed, so testers
 get these two folders as a zip on the release.
 

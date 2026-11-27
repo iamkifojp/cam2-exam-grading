@@ -57,7 +57,7 @@ The guide is for two kinds of reader: a teacher who has never used grading softw
 
 ## 3. The sample exam
 
-`tools/make_sample_exam.py` is rewritten around one theme, **Water**, like an MYP interdisciplinary paper, so every subject sees a familiar question type. A4, about 7 pages per student, 8 students (the class grid fills 4 columns). English and Japanese, as now.
+`tools/make_sample_exam.py` is rewritten around one theme, **Water**, like an MYP interdisciplinary paper, so every subject sees a familiar question type. A4, **9 pages per student**: the cover, then pages 2–9 as below. 8 students: 7 in the class PDF and one in `late-paper.pdf`, so the class grid fills 4 columns once the late paper is added. Greyscale scans at 200 dpi, about 7.5 MB per language. English and Japanese, as now. **Built 2026-11-27** on `phase-j-sample-exam`.
 
 ### 3.1 Criteria
 
@@ -88,7 +88,7 @@ Each section belongs to one criterion; the essay also counts towards B, to show 
 | 6 | B · Criterion B | **Plot a graph** from a data table, then describe the trend | Marks | Large box on a printed grid; a highlight |
 | 7 | B · Criterion B | **Source-based structured question**: a short source, then parts a, b, c | Rubric level | One stem for several parts: box the source, then **+ Add another box** |
 | 8 | C · Criterion C | **Annotated design sketch** (a water-bottle label) | Rubric level, **capped at 4** (a foundation task) | Tiered question; notes placed on a drawing |
-| 9 / 10 | C · Criteria B and C | **Essay, choose one**, about 1½ pages | Rubric levels | Choice group; boxes across two pages; a tab per criterion; notes and highlights; per-page limits |
+| 9 / 10 | C · Criteria B and C | **Essay, choose one.** Each has its own answer space: Q9 on page 7 running onto the top of page 8, Q10 on the bottom of page 8 running onto page 9 | Rubric levels | Choice group; two boxes across two pages; a tab per criterion; notes and highlights; per-page limits |
 
 **Tiered choice in the essays:** Q9 is the standard prompt, capped at **6** on both criteria; Q10 is the extension prompt with the full 0–8. Section C's heading shortcut is shown setting a ceiling, then lifted for Q10.
 
@@ -104,7 +104,12 @@ In Step 5, **Overall criterion results** gathers each criterion's marks and leve
 
 ### 3.4 Test guide
 
-`Test-guide.pdf` is rewritten for the new paper, with expected results worked out by plain arithmetic as now. It keeps the checks the current one covers: sections and weighting, the choice group (best of two, and "I choose"), *Not answered*, ceilings, and half-up rounding of the final percentage. The current two runs (all marks, then mixed) become: one run as designed above, and one where Section C is given marks instead, to check the marks-only path.
+`Test-guide.pdf` is rewritten for the new paper, with expected results worked out by plain arithmetic as now. It keeps the checks the current one covers: sections and weighting, the choice group, *Not answered*, ceilings, and half-up rounding of the final percentage. As built, the two runs are:
+
+- **Exam 1, as designed:** marks on Q1–Q6 (/30), rubric levels on Q7–Q10 with the ceilings above, sections A, B and C, the essays counting the best. Weighting gives A and B 50% each, and Section C, with no marks, no share. Upside-down page, late paper and ceilings are checked here.
+- **Exam 2, marks on every question** (/50), started from **Marks**: never sent to a rubric screen; the essays use "I choose which count", and the student who wrote both waits for the teacher's choice. Criteria and sections are then added without slicing again, and weighting is 34/33/33.
+
+(The plan first said the second run would give only Section C marks; Q7 in Section B is a rubric question, so that run would still have been mixed.)
 
 ## 4. Build changes
 
