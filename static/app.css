@@ -440,6 +440,9 @@ textarea.too-long { border-color: var(--warn); outline-color: var(--warn); }
 .review-table thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); font-size: .85rem; white-space: nowrap; }
 .review-table .sticky-col { position: sticky; left: 0; z-index: 1; background: var(--surface); min-width: 11em; }
 .review-table thead .sticky-col { z-index: 3; background: var(--surface-2); }
+/* Criterion names can be long ("Criterion A: Knowing and understanding"); let them wrap
+   instead of widening a column that holds a one-digit level. */
+.review-table thead th.wrap-head, .review-table thead .wrap-head { white-space: normal; min-width: 6em; }
 .review-table .num-col { text-align: center; white-space: nowrap; }
 .grade-cell button { min-width: 3em; padding: 4px 8px; border: 1px solid transparent; border-radius: 6px; background: none;
   color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
@@ -554,6 +557,7 @@ textarea.too-long { border-color: var(--warn); outline-color: var(--warn); }
 .override-wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; }
 .override { width: 5.5em; text-align: center; font-weight: 700; }
 .overall-comment { min-width: 16em; font-size: .9rem; }
+.review-table .partner-cell { min-width: 10em; }
 .stat-row td { background: var(--surface-2); font-weight: 600; font-size: .9rem; }
 .stat-row .sticky-col { background: var(--surface-2); }
 .export-card { margin-top: 20px; }

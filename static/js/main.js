@@ -197,6 +197,9 @@ export function enterWizard() {
   app.step = Math.min(Number(c.resume?.current || c.resume?.step || 1), 5);
   if (app.step >= 3 && !c.sliced) app.step = 2;
   app.draft = {};
+  // A new screen starts at the top; draw() would otherwise keep the start or
+  // new-session page's scroll and hide the heading under the sticky header.
+  window.scrollTo(0, 0);
 }
 
 async function boot() {

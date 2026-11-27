@@ -173,7 +173,7 @@ export function renderStep5() {
       h("th", { class: "sticky-col" }, t("step5.student")),
       draftTask
         ? h("th", { class: "num-col" }, t("step5.draft_status"))
-        : subCols.map((r) => h("th", { class: "num-col" }, r.name)),
+        : subCols.map((r) => h("th", { class: "num-col wrap-head" }, r.name)),
       h("th", { class: "num-col" }, t("step5.late")),
       h("th", {}, t("step5.partners")),
       h("th", {}, t("step5.overall_comment")));
@@ -241,7 +241,7 @@ export function renderStep5() {
         h("td", { class: "sticky-col" }, h("strong", {}, s.display_name)),
         statusOrGrades,
         lateCell,
-        h("td", {}, partnerBtn),
+        h("td", { class: "partner-cell" }, partnerBtn),
         h("td", {}, comment));
     });
 
@@ -260,7 +260,8 @@ export function renderStep5() {
       h("h1", {}, t("step5.title")),
       coach(t(draftTask ? "step5.coach_draft" : "step5.coach_assignment")),
       warnBanner,
-      anyComment ? h("p", { class: "muted small" }, h("span", { class: "comment-dot" }), t("step5.comment_legend")) : null,
+      anyComment ? h("p", { class: "muted small" }, h("span", { class: "comment-dot" }),
+        draftTask ? t("step5.comment_legend_draft") : t("step5.comment_legend")) : null,
       h("div", { class: "table-scroll review-scroll" },
         h("table", { class: "review-table" }, h("thead", {}, head),
           h("tbody", {}, rows),
@@ -285,11 +286,12 @@ export function renderStep5() {
     h("th", {}, "#"), h("th", { class: "sticky-col" }, t("step5.student")),
     hasMarks ? [h("th", { class: "num-col" }, t("step5.calculated")),
       h("th", { class: "num-col" }, t(weighted ? "step5.on_report_percent" : "step5.on_report"))] : null,
-    criteria.map((r) => [h("th", {}, r.name), h("th", { class: "num-col" }, t("step5.final", { name: r.name }))]),
+    criteria.map((r) => [h("th", { class: "wrap-head" }, r.name),
+      h("th", { class: "num-col wrap-head" }, t("step5.final", { name: r.name }))]),
     h("th", {}, t("step5.overall_comment")),
     sectionCols.map((sec) => h("th", { class: "num-col" }, sectionName(c, sec.id))),
     cols.map(({ q, r, multi }) => h("th", { class: "num-col" }, q.label,
-      r ? h("div", { class: "muted small" }, multi || used.length > 1 ? r.name : "")
+      r ? h("div", { class: "muted small wrap-head" }, multi || used.length > 1 ? r.name : "")
         : h("span", { class: "muted small" }, ` /${q.max}`))));
 
   const rows = c.students.map((s, i) => {
@@ -434,8 +436,9 @@ function hostPanel(c, incomplete) {
           button(t("save.close"), closeSession, "primary"),
           button(t("host.send_again"), send),
           button(t("host.unsend"), () => act(post("/api/host/ready", { ready: false })), "ghost"))]
-      : [h("p", { class: "muted" }, t("host.send_hint", { host: c.host.name })),
-        h("div", { class: "actions left" }, button(t("host.send", { host: c.host.name }), send, "primary big"))]);
+      : [h("p", { class: "muted" }, draftTask ? t("host.send_hint_draft", { host: c.host.name }) : t("host.send_hint", { host: c.host.name })),
+        h("div", { class: "actions left" },
+          button(draftTask ? t("host.send_draft", { host: c.host.name }) : t("host.send", { host: c.host.name }), send, "primary big"))]);
 }
 
 // A number box for "Total on report" / "Final level". Empty, or the calculated
