@@ -9,6 +9,7 @@ This is the only plan. It replaces the root `PLAN.md`, `Feedback-and-Upgrades.md
 
 | Date | Decision |
 |---|---|
+| 2026-11-27 | **No Apps Script in CAM2's guide.** Downloading Classroom work is CAM's concern; whether CAM documents an example script is decided in CAM. The guide and sample exam are planned in [Quick-Guide-Plan.md](Quick-Guide-Plan.md) |
 | 2026-11-11 | **One release.** Everything below ships together as `v1.0.0`. No public test build in between. Trial builds for the teacher's own checks are allowed and are not releases |
 | 2026-11-11 | **1.0 replaces CAM's grading workspace (CGW) completely.** This reverses the 2026-11-10 plan, which left the workspace in place |
 | 2026-11-11 | **Highlights snap to the 5 mm grid** and are drawn like answer boxes. **Comment stamps are placed freely** |
@@ -17,7 +18,7 @@ This is the only plan. It replaces the root `PLAN.md`, `Feedback-and-Upgrades.md
 | 2026-11-11 | **Results reach CAM through the session folder,** as exams do. No CSV. It is the route with atomic saves, read-back, a save counter and a version check, and it has no export step to forget and no file to go stale |
 | 2026-11-11 | **Several files join in file-name order,** natural sort. Download times don't show when work was handed in, so "newest" can't be trusted. A wrong file is removed, or moved, on the scan check |
 | 2026-11-11 | **A draft is an assignment with no grade.** It gets a student PDF like any other task |
-| 2026-11-11 | **CAM2 opens PDFs and pictures (JPEG, PNG) only.** The guide carries a simple example Apps Script for downloading and renaming work as PDFs. The teacher's own school script is not shared |
+| 2026-11-11 | **CAM2 opens PDFs and pictures (JPEG, PNG) only.** The guide carries a simple example Apps Script for downloading and renaming work as PDFs. The teacher's own school script is not shared. *(Apps Script part replaced 2026-11-27: not in CAM2's guide.)* |
 | 2026-11-11 | **Up to 8 notes per page of an answer,** replacing 8 per answer. A page is used, not a screen, because a screen changes with zoom and window size. CAM trims note text for the LLM prompt |
 | 2026-11-11 | **The app is renamed CAM2 Grading.** Only what teachers read changes; the app-data folder, default sessions folder and repository keep their names |
 | 2026-11-11 | **The teacher can reorder a student's files and pages in CAM2,** so an extra attachment can't put answer boxes on the wrong pages |
@@ -278,7 +279,7 @@ This work is in CAM's repository and follows CAM's own plan documents (`docs/CAM
 4. `engine/exam_bridge.py` reads assignment and draft sessions as well as exams, and files them by task kind: today every CAM2 session is filed as an exam (`_ingest_cam2_session` sets `is_exam`) and the Classroom Entry tab leaves exams out. Results reach the gradebook, the Classroom Entry tab and `draft_feedback` for term prompts. A re-read neither duplicates nor resurrects anything.
 5. **Run both side by side:** one real draft, then one real assignment, graded in the workspace and in CAM2, and the results in CAM compared. Drafts first, because a mistake can't touch a mark.
 6. **Remove the workspace:** `cam_grading_workspace/`, OAuth and Drive code, credentials handling and their set-up documents. Marks and comments already in CAM stay. Amend CAM's decision D16.
-7. The guide's example Apps Script turns Classroom work into PDFs named with the class and student first, covering Docs and Word as well as Slides and PowerPoint. It is a simple example to adapt, not the teacher's own school script.
+7. *(CAM's decision since 2026-11-27; not in CAM2's guide.)* If CAM documents one, an example Apps Script turns Classroom work into PDFs named with the class and student first, covering Docs and Word as well as Slides and PowerPoint. It is a simple example to adapt, not the teacher's own school script.
 8. CAM's links to `Feedback-and-Upgrades.md` on GitHub now point at a moved file; update them to this plan.
 
 **Accept:** CAM's test suite, including bridge tests for notes, Late, partners, drafts and re-sends; the side-by-side comparison written up; a clean CAM install with no Google set-up grading an exam, an assignment and a draft.
@@ -315,6 +316,8 @@ Node must be available so the JavaScript check runs. Record real results, skips 
 4. Make the sample exams with `python tools/make_sample_exam.py`, and zip `sample-exam-en` and `sample-exam-ja`.
 5. Tag the commit and publish the release with both zips, the samples and the two source archives named in `licences/NOTICE.txt`.
 6. Pull the tag into CAM and release CAM on it. Release notes say every computer needs the update before opening an upgraded session.
+
+**Guide and sample exam.** Rewrite the sample exam and the bundled quick guide as planned in [Quick-Guide-Plan.md](Quick-Guide-Plan.md).
 
 Update `CHANGELOG.md`, `ARCHITECTURE.md`, `README.md`, [SPEC.md](SPEC.md), the bundled guides and the table in §14.
 
