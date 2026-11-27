@@ -883,13 +883,20 @@ UI_WORDS = ("step1.combined", "step1.add_papers", "pages.tools", "pages.turn", "
             "step2.boxes.add_criteria", "step2.rubric.upload", "step2.sections.start_short", "step2.sub.choice",
             "step2.choice.pick_teacher", "step5.option.overall_criteria", "step5.option.section_results",
             "step5.option.images_for", "step5.weighting", "step5.preview", "step5.make_all", "grade.not_answered",
-            "step4.class_grid")
+            "step4.class_grid", "step2.boxes.add_box")
 
 
 def _ui(language: str) -> dict:
     """The app's own labels, so the guide quotes exactly what testers see."""
-    return {key.replace(".", "_"): i18n.t(key, language).replace("→", "").replace("✂", "").replace("👁", "")
-            .replace("📄", "").strip().lstrip("＋+ ") for key in UI_WORDS}
+    words = {}
+    for key in UI_WORDS:
+        text = i18n.t(key, language)
+        for mark in ("→", "✂", "👁", "📄"):
+            text = text.replace(mark, "")
+        if key == "step2.boxes.add_box":         # the button's words, without the hint after them
+            text = re.split(r" \(|（", text)[0]
+        words[key.replace(".", "_")] = text.strip().lstrip("＋+ ")
+    return words
 
 
 def _crit(language: str, letter: str) -> str:
@@ -912,7 +919,7 @@ def _guide_text(language: str) -> dict:
                   f"答案の確認で、6人目の答案の5ページ目が上下逆です。その答案を開いて5ページ目を表示し、「{{pages_tools}}」の「{{pages_turn}}」を2回押します（1回で90度回ります）。",
                   f"「{{step1_add_papers}}」で late-paper.pdf を追加します。<b>確認：</b>答案が8人分になること。",
                   "枠：氏名欄は1ページ目。問1・問2は2ページ目、問3〜問5は3ページ目、問6は4ページ目、問7は5ページ目"
-                  "（資料を囲んでから「＋別の枠を追加」で解答らんを追加）、問8は6ページ目。問9は7ページ目と8ページ目上半分、"
+                  "（資料を囲んでから「{step2_boxes_add_box}」で解答らんを追加）、問8は6ページ目。問9は7ページ目と8ページ目上半分、"
                   "問10は8ページ目下半分と9ページ目の、それぞれ2つの枠です。",
                   "氏名の照合では class_list.xlsx を使います。"],
             "exam1": "試験1：設計どおり（点数とルーブリックの混在、上限レベル、セクション）",
@@ -964,7 +971,7 @@ def _guide_text(language: str) -> dict:
               "“{pages_turn}” under “{pages_tools}” twice (each press is a quarter turn).",
               "Use “{step1_add_papers}” to add late-paper.pdf. <b>Check:</b> there are now 8 papers.",
               "Boxes: the name box is on page 1. Q1 and Q2 are on page 2, Q3 to Q5 on page 3, Q6 on page 4, Q7 on page 5 "
-              "(box the source, then use + Add another box for the answers), Q8 on page 6. Q9 has two boxes, page 7 "
+              "(box the source, then use “{step2_boxes_add_box}” for the answers), Q8 on page 6. Q9 has two boxes, page 7 "
               "and the top half of page 8; Q10 has two, the bottom half of page 8 and page 9.",
               "Use class_list.xlsx when matching names."],
         "exam1": "Exam 1: as designed (marks and rubric levels, highest levels, sections)",
