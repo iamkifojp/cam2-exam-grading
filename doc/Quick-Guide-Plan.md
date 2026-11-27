@@ -122,4 +122,4 @@ In Step 5, **Overall criterion results** gathers each criterion's marks and leve
 
 ## 6. Still open elsewhere
 
-Phase I is in progress in CAM. Phase H left: no frozen trial build, Japanese wording not reviewed by a native speaker, the Step 1 heading clipping under the sticky header, the Step 5 table scrolling sideways, and two Draft strings that mention "grade". Screenshots taken before those layout fixes would need retaking.
+Phase I is in progress in CAM. Phase H left: no frozen trial build, and Japanese wording not reviewed by a native speaker. The Step 1 heading and Step 5 table layout bugs and the two Draft strings were fixed on 2026-11-27 (`fix/layout-step1-step5`).

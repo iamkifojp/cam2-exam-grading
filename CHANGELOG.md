@@ -6,6 +6,22 @@ year-month-day.
 
 ## Unreleased
 
+### Layout fixes
+
+- **Step 1 heading:** opening or creating a session now starts the screen at
+  the top. Before, *Check the scans* kept the scroll position of the long
+  new-session form and its heading sat under the sticky header.
+- **Step 5 table:** column headings that carry criterion names (assignment
+  criteria, overall criterion results and final levels, a question's
+  criterion) now wrap instead of widening their column, so four MYP-length
+  criterion names no longer push the review table past the window at
+  1280 px. The Partners column keeps a minimum width so *ペアを設定…* and
+  *Link partner…* stay on one line.
+- **Draft wording:** on a draft's Step 5, the note legend and the Send to CAM
+  card no longer mention grades (*point at the Seen column*, *Feedback
+  finished — send to CAM*), in English and Japanese. Assignments and exams
+  keep their wording.
+
 ### Phase H — assignments, drafts, Late and partners
 
 - **Drafts:** open with no grade controls, lift the marks/criteria check for
