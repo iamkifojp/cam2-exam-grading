@@ -58,7 +58,7 @@ CAM tells CAM2 which kind a task is. The standalone start screen offers only exa
 - **Built:** one PDF of the whole class, one file per student, or photos of each page. Batches joined. Folded A3 booklets unfolded. Page fixes (move, turn, remove, blank page, booklet sheet fixes). Late papers added at any time.
 - **Built:** A4, B5 (ISO and JIS), A3, Slide 16:9 and Slide 4:3, detected and confirmed. **1.0:** Slide 16:10.
 - **1.0, assignments and drafts:** a folder of submissions where a student may have **several files**, joined into one paper **in file-name order** (numbers sorted as numbers, so `2` comes before `10`). On the scan check the teacher can **move a whole file earlier or later, move single pages, and remove a file or page** handed in by mistake, so an extra attachment never pushes the assessed pages out of place. Files are matched to the class list by student ID or full name in the file name, or by a subfolder per student. Papers may differ in length without a warning.
-- **CAM2 opens PDFs and pictures only** (JPEG or PNG, for pages scanned or photographed one by one). Anything else is turned into a PDF first, outside CAM2. The guide gives a simple example Apps Script that downloads Classroom work as PDFs named with the class and student first; each school adapts its own.
+- **CAM2 opens PDFs and pictures only** (JPEG or PNG, for pages scanned or photographed one by one). Anything else is turned into a PDF first, outside CAM2. CAM2's guide carries no download script; that is left to CAM.
 - The session folder is portable and holds a copy of the work, so it opens on another computer.
 
 ### 4.2 Set up (exams)
