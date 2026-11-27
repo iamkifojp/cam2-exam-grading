@@ -374,8 +374,7 @@ WRITTEN = {
                 "have cut their use. The best plan would use both, but in that order.",
                 "A dam can store a lot of water for the dry months, which is good, but it costs a lot and floods land. "
                 "Saving water at home is cheaper and everyone can help, like having shorter showers. I think saving "
-                "water is better because it is cheaper and better for nature.",
-                "A dam is better because it holds more water."),
+                "water is better because it is cheaper and better for nature."),
     },
     "ja": {
         "Q5": ("(a) 面積 = 8 × 5 = 40 m²。40 × 12 = 480リットル。\n(b) 480は400より多いので、80リットルあふれる。"
@@ -416,9 +415,70 @@ WRITTEN = {
                 "これらを比べると、まずは家庭での節水がよい。速く、公平で、自然をこわさないからである。人々が使う量を減らしても"
                 "なお足りないときにだけ、ダムを造るべきである。両方を使うのが最もよいが、この順番で行うべきだ。",
                 "ダムは乾いた月のために水をたくさんためられるのでよいが、費用が高く土地が沈む。家庭での節水は安く、シャワーを"
-                "短くするなどだれでも協力できる。安くて自然にもよいので、節水のほうがよいと思う。",
-                "ダムのほうが水をたくさんためられるのでよい。"),
+                "短くするなどだれでも協力できる。安くて自然にもよいので、節水のほうがよいと思う。"),
     },
+}
+
+# Each essay belongs to one student, so no two papers in the class grid read the
+# same. Each is written to that student's levels in GRADES.
+_MORE_ESSAYS = {
+    "en": {
+        ("Q9", 1): "In my community saving water is important for farms and for our homes. Many families near the "
+                   "river grow vegetables, and in a dry summer the farmers cannot water their fields if the town uses "
+                   "too much. Last August the river was so low that the farm shop had fewer vegetables.\n"
+                   "At home we can save water easily. My family collects rainwater in a barrel for the garden, and we "
+                   "only run the washing machine when it is full. If everyone did this, there would be more water for "
+                   "the farms and for nature.\n"
+                   "Saving water also means less work for the water plant, which saves electricity.",
+        ("Q9", 7): "Saving water matters because there is not always enough. In 2024 our school had no water for one "
+                   "day when a pipe broke and we saw how much we need it. Also people in hot countries have even less "
+                   "water than us so we should not waste it.\n"
+                   "Examples are, leaving the tap on when brushing teeth wastes about 6 litres, and a dripping tap "
+                   "wastes a lot in a year. My grandma uses the water from washing vegetables for her plants which is "
+                   "a good idea. So saving water helps the town and other people too",
+        ("Q10", 6): "To secure its water, a town has to think about both storing water and using less of it.\n"
+                    "Saving water at home reduces demand quickly and cheaply. Simple changes such as fixing leaks and "
+                    "using rainwater tanks, like the school roof in Q5, could save thousands of litres. However, the "
+                    "graph in Q6 shows that most of the rain falls between March and June. Even if every family saved "
+                    "water, there would still be months with little rain and nowhere to keep it.\n"
+                    "A dam solves this storage problem, which saving water cannot do. It can also protect the town from "
+                    "floods when the rain is heaviest. On the other hand, it is expensive, it changes the river, and the "
+                    "source in Q7 shows that promises about dams should not be trusted without evidence.\n"
+                    "In conclusion, saving water at home should come first because it is cheap and works at once, but a "
+                    "growing town will probably also need some storage. A smaller reservoir, checked by people who do "
+                    "not profit from it, would be a fair balance.",
+    },
+    "ja": {
+        ("Q9", 1): "わたしの地域では、畑と家庭の両方のために水の節約が大切だ。川の近くの多くの家族は野菜を育てていて、雨の少ない"
+                   "夏に町が水を使いすぎると、農家は畑に水をやれなくなる。去年の8月は川の水がとても少なく、直売所の野菜も少なかった。\n"
+                   "家庭では簡単に節水できる。わたしの家では雨水をたるにためて庭に使い、洗濯機は満杯のときだけ回している。みんなが"
+                   "こうすれば、畑や自然のための水が増える。\n"
+                   "節水すると浄水場の仕事も減り、電気の節約にもなる。",
+        ("Q9", 7): "水を節約するのは、いつも十分にあるわけではないからです。2024年に学校の水道管がこわれて1日水が使えなかったとき、"
+                   "水がどれだけ必要かわかりました。それに暑い国の人はもっと水が少ないので、むだにしてはいけないと思う。\n"
+                   "例は、歯みがきのとき水を出しっぱなしにすると約6リットルむだになるし、ぽたぽた落ちる蛇口も1年でたくさんむだになる。"
+                   "おばあちゃんは野菜を洗った水を植木にあげていて、いい考えだと思う。だから節水は町にもほかの人にも役に立つ",
+        ("Q10", 6): "町の水を確保するには、水をためることと使う量を減らすことの両方を考える必要がある。\n"
+                    "家庭での節水は、使う量を早く安く減らせる。水もれを直したり、問5の学校の屋根のように雨水タンクを使ったりすれば、"
+                    "何千リットルも節約できる。しかし問6のグラフを見ると、雨の多くは3月から6月に降っている。どの家庭が節水しても、"
+                    "雨の少ない月があり、水をためておく場所がない。\n"
+                    "ダムは、節水ではできない「ためる」問題を解決する。雨が最も多い時期には洪水から町を守ることもできる。一方で費用が"
+                    "高く、川のようすを変えてしまう。また問7の資料からわかるように、ダムについての約束は根拠なしに信じてはいけない。\n"
+                    "結論として、安くてすぐに効果がある家庭での節水をまず行うべきだが、人口が増える町にはある程度の貯水も必要だろう。"
+                    "もうけと関係のない人が点検する小さな貯水池が、公平なバランスだと思う。",
+    },
+}
+
+# ESSAYS[language][question][student]: the written essay (strong, middling, weak above
+# go to the students whose levels match them).
+ESSAYS = {
+    language: {
+        "Q9": {2: WRITTEN[language]["Q9"][0], 1: _MORE_ESSAYS[language][("Q9", 1)],
+               7: _MORE_ESSAYS[language][("Q9", 7)], 4: WRITTEN[language]["Q9"][1], 3: WRITTEN[language]["Q9"][2]},
+        "Q10": {0: WRITTEN[language]["Q10"][0], 6: _MORE_ESSAYS[language][("Q10", 6)],
+                2: WRITTEN[language]["Q10"][1]},
+    }
+    for language in LANGUAGES
 }
 
 WRITING_CSS = {"en": "* { font-family: serif; font-style: italic; color: #1a1a80; font-size: 13pt; line-height: 1.5; }",
@@ -758,7 +818,7 @@ def _draw_sketch(p: _Paper, grades: dict):
     p.printed((20, 240, 190, 258), f"<b>{w['choose']}</b>")
 
 
-def _draw_essays(p: _Paper, grades: dict):
+def _draw_essays(p: _Paper, grades: dict, student: int):
     """Q9 on page 7, running onto page 8; Q10 halfway down page 8, running onto page 9."""
     w, lang = p.words, p.language
     css = ESSAY_CSS[lang]
@@ -776,7 +836,7 @@ def _draw_essays(p: _Paper, grades: dict):
         grade = grades[qid]
         if grade is NA:
             return None
-        paragraphs = WRITTEN[lang][qid][tier(grade, out_of(qid))].split("\n")
+        paragraphs = ESSAYS[lang][qid][student].split("\n")
         inner = (first[0] + 4, first[1] + 1.6, first[2] - 4, first[3] - 1)
         now, later = _split_to_fit(paragraphs, inner, css)
         p.page.insert_htmlbox(p.rect(*inner), _essay_html(now), css=css, scale_low=1)
@@ -835,7 +895,7 @@ def draw_paper(language: str, student: int, rng: random.Random) -> fitz.Document
     _draw_section_b(p, grades)
     _draw_source(p, grades)
     _draw_sketch(p, grades)
-    _draw_essays(p, grades)
+    _draw_essays(p, grades, student)
     assert len(p.doc) == PAGES_PER_STUDENT
     return p.doc
 

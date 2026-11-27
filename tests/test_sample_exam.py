@@ -87,6 +87,15 @@ class ThePaperTests(unittest.TestCase):
     def test_someone_is_at_q9s_ceiling(self):
         self.assertIn(6, [level for plan in sample.GRADES if plan["Q9"] for level in plan["Q9"]])
 
+    def test_every_essay_is_its_own(self):
+        for language in sample.LANGUAGES:
+            texts = []
+            for qid in sample.CHOICE:
+                written = {i for i, plan in enumerate(sample.GRADES) if plan[qid] is not sample.NA}
+                self.assertEqual(set(sample.ESSAYS[language][qid]), written, (language, qid))
+                texts += list(sample.ESSAYS[language][qid].values())
+            self.assertEqual(len(texts), len(set(texts)), language)
+
     def test_the_special_papers(self):
         both = sample.GRADES[sample.BOTH_ESSAYS]
         self.assertTrue(both["Q9"] and both["Q10"])

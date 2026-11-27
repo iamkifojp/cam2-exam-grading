@@ -16,6 +16,9 @@ year-month-day.
   `rubrics.xlsx`; Q8 and Q9 have highest levels. 7 students in the class PDF
   (one page upside down) and one in `late-paper.pdf`. `Test-guide.pdf` walks
   through Exam 1 as designed and Exam 2 with marks on every question.
+- **Each essay is its own:** every student who writes Q9 or Q10 has their
+  own wording at their own level, so no two essays look copied in the class
+  grid.
 
 ### Layout fixes
 
