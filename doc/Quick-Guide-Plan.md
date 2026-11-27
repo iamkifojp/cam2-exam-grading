@@ -98,6 +98,7 @@ In Step 5, **Overall criterion results** gathers each criterion's marks and leve
 
 - One student writes past the printed answer space; one crosses out an answer (why boxes should be generous).
 - The essay runs onto a second page.
+- Each essay is written by one student only, at that student's levels, so the class grid shows no copied essays (short answers still come in strong, middling and weak versions).
 - Strong, middling and weak answers; one question left blank (*Not answered*); one student answers both essays; one sits the exam late (a separate PDF, for "Add more papers").
 - One upside-down page in the class PDF, for the Step 1 page-fix screenshot.
 - Graph points and the sketch are drawn as simple lines in the handwriting colour.
